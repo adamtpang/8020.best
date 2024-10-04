@@ -34,26 +34,6 @@ const Landing = () => {
             </Card.Body>
           </Card>
 
-          <div className="d-grid gap-3">
-            <Button variant="primary" size="lg" onClick={handlePurchase}>
-              Get Hower - $9.99/month
-            </Button>
-            <div id="g_id_onload"
-                 data-client_id="YOUR_GOOGLE_CLIENT_ID"
-                 data-context="signin"
-                 data-ux_mode="popup"
-                 data-callback={handleGoogleSignIn}
-                 data-auto_prompt="false">
-            </div>
-            <div className="g_id_signin"
-                 data-type="standard"
-                 data-shape="rectangular"
-                 data-theme="outline"
-                 data-text="continue_with"
-                 data-size="large"
-                 data-logo_alignment="center">
-            </div>
-          </div>
         </Col>
       </Row>
     </Container>

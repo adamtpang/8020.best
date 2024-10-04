@@ -1,6 +1,6 @@
 import React from 'react';
 import { Container } from 'react-bootstrap';
-import Landing from './Landing';
+import Landing from './components/Landing';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const App = () => {
