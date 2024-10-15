@@ -1,0 +1,62 @@
+/* src/components/Product.css */
+
+.product-container {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+  }
+
+  .god-bar {
+    background-color: #333;
+    color: #fff;
+    padding: 10px;
+    margin-bottom: 20px;
+  }
+
+  .input-section {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .input-section input[type='text'] {
+    flex: 1;
+    padding: 10px;
+    margin-right: 10px;
+  }
+
+  .input-section input[type='range'] {
+    width: 100px;
+  }
+
+  .lists {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .list {
+    width: 30%;
+  }
+
+  .list h2 {
+    text-align: center;
+  }
+
+  .list ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .list li {
+    padding: 5px;
+    cursor: pointer;
+  }
+
+  .list li.selected {
+    background-color: #ec4e20;
+    color: #fff;
+  }
+
+  .list button {
+    margin-top: 10px;
+    margin-right: 5px;
+  }
