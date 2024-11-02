@@ -8,30 +8,37 @@ require('dotenv').config();
 const { processText } = require('./textProcessor');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// Configure CORS before other middleware
+const corsOptions = {
+  origin: ['https://hower.app', 'http://localhost:5173'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
 
 // Special middleware for Stripe webhook (must come before express.json())
 app.use('/webhook', express.raw({ type: 'application/json' }));
 
-app.use(express.json()); // Parse JSON bodies for other routes
+app.use(express.json());
 
 // Connect to MongoDB
 console.log('MONGO_URI:', process.env.MONGO_URI);
 mongoose.connect(process.env.MONGO_URI)
 
-// Get the default connection
 const db = mongoose.connection;
 
-// Bind connection to error event (to get notification of connection errors)
 db.on('error', (error) => {
   console.error('MongoDB connection error:', error);
-  process.exit(1); // Exit the application
+  process.exit(1);
 });
 
-// Once the connection is open, start the server
 db.once('open', () => {
   console.log('Connected to MongoDB');
 
@@ -42,28 +49,24 @@ db.once('open', () => {
   const userDataRouter = require('./routes/userData');
 
   // Routes
-  app.get('/', (req, res) => {
-    res.send('Hello from MERN Boilerplate API');
-  });
-
   app.use(tasksRouter);
   app.use(purchasesRouter);
   app.use(webhookRouter);
   app.use(userDataRouter);
 
-  // Add proper error handling for undefined routes
+  // Error handling for undefined routes
   app.use((req, res) => {
     console.error(`404 - Route not found: ${req.originalUrl}`);
     res.status(404).json({ error: 'Route not found' });
   });
 
-  // Add error handling middleware
+  // Global error handler
   app.use((err, req, res, next) => {
     console.error('Server error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: err.message });
   });
 
-  // Start the server after the database connection is established
+  const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });

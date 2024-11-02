@@ -29,6 +29,10 @@ const ProtectedRoute = ({ children }) => {
           `${apiUrl}/api/check-purchase`,
           {
             params: { email: user.email },
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json',
+            }
           }
         );
 
