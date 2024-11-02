@@ -2,54 +2,64 @@
 
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const Purchase = require('../models/Purchase');
 
-// Check purchase status
-router.get('/api/check-purchase', async (req, res) => {
-    const userEmail = req.query.email;
+// Log to verify route is registered
+console.log('Registering purchase routes...');
 
-    if (!userEmail) {
-      console.log('Email is missing in request');
-      return res.status(400).json({ error: 'Email is required' });
-    }
+// Add test route
+router.get('/api/purchases/test', (req, res) => {
+  res.json({ message: 'Purchase routes working' });
+});
 
-    console.log(`Received request to check purchase status for email: ${userEmail}`);
-
-    try {
-      const user = await User.findOne({ email: userEmail });
-      if (!user) {
-        console.log(`No user found with email: ${userEmail}`);
-        res.json({ hasPurchased: false });
-      } else {
-        console.log(`User found: ${JSON.stringify(user)}`);
-        res.json({ hasPurchased: user.hasPurchased });
-      }
-    } catch (error) {
-      console.error('Error checking purchase status:', error);
-      res.status(500).json({ error: 'Failed to check purchase status' });
-    }
-  });
-
-// Manually add a purchase
-router.post('/api/manual-add-purchase', async (req, res) => {
+// Manual purchase setter
+router.post('/api/purchases/set-purchase', async (req, res) => {
+  try {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
+      return res.status(400).json({ error: 'Email is required' });
     }
 
-    try {
-      const user = await User.findOneAndUpdate(
-        { email: email },
-        { $set: { hasPurchased: true } },
-        { upsert: true, new: true }
-      );
-      console.log(`User ${email} updated with hasPurchased: true`);
-      res.json({ message: `User ${email} updated successfully`, user });
-    } catch (error) {
-      console.error('Error updating user purchase status:', error);
-      res.status(500).json({ error: 'Internal server error' });
+    console.log('Setting purchase for email:', email);
+
+    const purchase = await Purchase.findOneAndUpdate(
+      { email },
+      { email, hasPurchased: true },
+      { upsert: true, new: true }
+    );
+
+    console.log('Purchase record created/updated:', purchase);
+    res.json({ success: true, purchase });
+
+  } catch (error) {
+    console.error('Error setting purchase:', error);
+    res.status(500).json({ error: 'Failed to set purchase', details: error.message });
+  }
+});
+
+// Add check-purchase route
+router.get('/api/purchases/check-purchase', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
     }
-  });
+
+    console.log('Checking purchase for email:', email);
+
+    const purchase = await Purchase.findOne({ email });
+    console.log('Purchase record found:', purchase);
+
+    return res.json({
+      hasPurchased: Boolean(purchase),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error checking purchase:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
 
 module.exports = router;
