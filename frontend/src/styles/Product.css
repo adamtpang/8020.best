@@ -3,60 +3,80 @@
 .product-container {
     padding: 20px;
     font-family: Arial, sans-serif;
-  }
+}
 
-  .god-bar {
+.god-bar {
     background-color: #333;
     color: #fff;
     padding: 10px;
     margin-bottom: 20px;
-  }
+}
 
-  .input-section {
+.input-section {
     display: flex;
     align-items: center;
     margin-bottom: 20px;
-  }
+}
 
-  .input-section input[type='text'] {
+.input-section input[type='text'] {
     flex: 1;
     padding: 10px;
     margin-right: 10px;
-  }
+}
 
-  .input-section input[type='range'] {
+.input-section input[type='range'] {
     width: 100px;
-  }
+}
 
-  .lists {
+.lists {
     display: flex;
     justify-content: space-between;
-  }
+}
 
-  .list {
+.list {
     width: 30%;
-  }
+}
 
-  .list h2 {
+.list h2 {
     text-align: center;
-  }
+}
 
-  .list ul {
-    list-style: none;
+
+/* Product.css */
+
+.list ul {
+    list-style-type: none;
     padding: 0;
+    max-height: 200px; /* Set a height if you want a scrollable list */
+    overflow-y: auto;
+    border: 1px solid #ccc;
   }
 
   .list li {
-    padding: 5px;
+    padding: 8px;
     cursor: pointer;
   }
 
   .list li.selected {
-    background-color: #ec4e20;
-    color: #fff;
+    background-color: #007bff;
+    color: white;
   }
 
-  .list button {
+
+.list button {
     margin-top: 10px;
     margin-right: 5px;
-  }
+}
+
+/* Product.css */
+
+.back-button-container {
+    margin-bottom: 20px;
+}
+
+.back-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
