@@ -17,8 +17,16 @@ const ProtectedRoute = ({ children }) => {
       }
 
       try {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        if (!apiUrl) {
+          console.error('API URL not configured');
+          setHasAccess(false);
+          setLoading(false);
+          return;
+        }
+
         const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/api/check-purchase`,
+          `${apiUrl}/api/check-purchase`,
           {
             params: { email: user.email },
           }
@@ -37,7 +45,7 @@ const ProtectedRoute = ({ children }) => {
   }, []);
 
   if (loading) {
-    return <div>Loading...</div>; // Or a proper loading spinner
+    return <div>Loading...</div>;
   }
 
   if (!hasAccess) {

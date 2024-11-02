@@ -51,6 +51,18 @@ db.once('open', () => {
   app.use(webhookRouter);
   app.use(userDataRouter);
 
+  // Add proper error handling for undefined routes
+  app.use((req, res) => {
+    console.error(`404 - Route not found: ${req.originalUrl}`);
+    res.status(404).json({ error: 'Route not found' });
+  });
+
+  // Add error handling middleware
+  app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  });
+
   // Start the server after the database connection is established
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
