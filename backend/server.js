@@ -1,133 +1,112 @@
+// server.js
+
+require('web-streams-polyfill');
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
 const mongoose = require('mongoose');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+require('dotenv').config();
+const { processText } = require('./textProcessor');
 
 const app = express();
-const PORT = process.env.PORT || 5000; // Use a different port
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
-app.use(express.json()); // This middleware parses JSON request bodies
 
-// Special middleware for Stripe webhook (this should come after express.json())
+// Special middleware for Stripe webhook (must come before express.json())
 app.use('/webhook', express.raw({ type: 'application/json' }));
 
+app.use(express.json()); // Parse JSON bodies for other routes
+
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+console.log('MONGO_URI:', process.env.MONGO_URI);
+mongoose.connect(process.env.MONGO_URI)
 
-// User model
-const User = mongoose.model('User', new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  hasPurchased: { type: Boolean, default: false },
-}));
+// Get the default connection
+const db = mongoose.connection;
 
-// Add this function after the User model definition
-async function checkUserPurchaseStatus(email) {
-  try {
-    const user = await User.findOne({ email });
-    return user ? user.hasPurchased : false;
-  } catch (error) {
-    console.error('Error checking user purchase status:', error);
-    throw error;
-  }
-}
-
-// Routes
-app.get('/', (req, res) => {
-  res.send('Hello from MERN Boilerplate API');
+// Bind connection to error event (to get notification of connection errors)
+db.on('error', (error) => {
+  console.error('MongoDB connection error:', error);
+  process.exit(1); // Exit the application
 });
 
-app.post('/webhook', async (request, response) => {
-  const sig = request.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+// Once the connection is open, start the server
+db.once('open', () => {
+  console.log('Connected to MongoDB');
 
-  let event;
+  // Import routers after successful connection
+  const tasksRouter = require('./routes/tasks');
+  const purchasesRouter = require('./routes/purchases');
+  const webhookRouter = require('./routes/webhook');
+  const userDataRouter = require('./routes/userData');
 
-  try {
-    event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
-  } catch (err) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
-    return response.status(400).send(`Webhook Error: ${err.message}`);
-  }
+  // Routes
+  app.get('/', (req, res) => {
+    res.send('Hello from MERN Boilerplate API');
+  });
 
-  response.status(200).send('Received'); // Respond quickly
+  app.use(tasksRouter);
+  app.use(purchasesRouter);
+  app.use(webhookRouter);
+  app.use(userDataRouter);
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const customerEmail = session.customer_details.email;
+  // Start the server after the database connection is established
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
 
-    if (customerEmail) {
-      try {
-        await User.findOneAndUpdate(
-          { email: customerEmail },
-          { email: customerEmail, hasPurchased: true },
-          { upsert: true, new: true }
-        );
-        console.log(`Purchase recorded for ${customerEmail}`);
-      } catch (error) {
-        console.error(`Error updating user purchase status: ${error.message}`);
+  app.post('/api/process-text', async (req, res) => {
+    try {
+      console.log('Backend: Received text processing request');
+
+      if (!process.env.REPLICATE_API_TOKEN) {
+        console.error('Backend: REPLICATE_API_TOKEN is not set');
+        return res.status(500).json({ error: 'API token not configured' });
       }
-    } else {
-      console.error('No email address found in session data');
+
+      const { text } = req.body;
+      if (!text) {
+        console.error('Backend: No text provided in request');
+        return res.status(400).json({ error: 'No text provided' });
+      }
+
+      console.log('Backend: Processing text:', text.substring(0, 100) + '...');
+      console.log('Backend: Using Replicate token:', process.env.REPLICATE_API_TOKEN.substring(0, 5) + '...');
+
+      try {
+        const result = await processText(text);
+        console.log('Backend: Processing complete. Result:', result);
+        res.json(result);
+      } catch (processingError) {
+        console.error('Backend: Error in processText:', {
+          message: processingError.message,
+          stack: processingError.stack,
+          response: processingError.response?.data,
+          status: processingError.response?.status,
+          fullError: processingError
+        });
+
+        return res.status(500).json({
+          error: 'Processing error',
+          details: processingError.message,
+          response: processingError.response?.data
+        });
+      }
+    } catch (error) {
+      console.error('Backend Error Details:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response?.data,
+        status: error.response?.status,
+        fullError: error
+      });
+
+      res.status(500).json({
+        error: 'An error occurred while processing the text',
+        details: error.message,
+        response: error.response?.data
+      });
     }
-  }
-});
-
-app.get('/api/check-purchase', async (req, res) => {
-  const userEmail = req.query.email;
-
-  if (!userEmail) {
-    console.log('Email is missing in request');
-    return res.status(400).json({ error: 'Email is required' });
-  }
-
-  console.log(`Received request to check purchase status for email: ${userEmail}`);
-
-  try {
-    const user = await User.findOne({ email: userEmail });
-    if (!user) {
-      console.log(`No user found with email: ${userEmail}`);
-      res.json({ hasPurchased: false });
-    } else {
-      console.log(`User found: ${JSON.stringify(user)}`);
-      res.json({ hasPurchased: user.hasPurchased });
-    }
-  } catch (error) {
-    console.error('Error checking purchase status:', error);
-    res.status(500).json({ error: 'Failed to check purchase status' });
-  }
-});
-
-
-
-app.post('/api/manual-add-purchase', async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) {
-    return res.status(400).json({ message: 'Email is required' });
-  }
-
-  try {
-    const user = await User.findOneAndUpdate(
-      { email: email },
-      { $set: { hasPurchased: true } },
-      { upsert: true, new: true }
-    );
-    console.log(`User ${email} updated with hasPurchased: true`);
-    res.json({ message: `User ${email} updated successfully`, user });
-  } catch (error) {
-    console.error('Error updating user purchase status:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  });
 });

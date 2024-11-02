@@ -1,10 +1,21 @@
+// src/components/Landing.jsx
+
 import React, { useEffect, useState } from 'react';
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../firebase-config';
 import { useNavigate } from 'react-router-dom';
-import logoImage from '../assets/logo.png';
 import axios from 'axios';
-import '../styles/Landing.css';
+
+// Import MUI components
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Box,
+  Grid,
+  Container,
+} from '@mui/material';
 
 const Landing = () => {
   const [user, setUser] = useState(null);
@@ -14,204 +25,215 @@ const Landing = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        console.log('User logged in:', user.email); // Log the user's email when they log in
-        setUser(user); // Set user data from Firebase
-        checkPurchaseStatus(user); // Check purchase status using Firebase user data
+        setUser(user);
+        checkPurchaseStatus(user);
       } else {
-        console.log('No user logged in or user logged out'); // Log when no user is logged in
         setUser(null);
         setHasPurchased(false);
       }
     });
 
-    // Set up Google One-Tap Sign-In if no user is logged in
-    if (!user) {
-      console.log('Initializing Google One-Tap sign-in'); // Log when initializing Google One-Tap
-      window.google?.accounts.id.initialize({
-        client_id: 'YOUR_GOOGLE_CLIENT_ID',
-        callback: handleGoogleSignInCallback,
-      });
-      window.google?.accounts.id.prompt();
-    }
-
     // Load Stripe Buy Button script
-    console.log('Loading Stripe Buy Button script'); // Log when loading Stripe script
     const stripeScript = document.createElement('script');
     stripeScript.src = 'https://js.stripe.com/v3/buy-button.js';
     stripeScript.async = true;
     document.body.appendChild(stripeScript);
 
     return () => {
-      console.log('Cleaning up'); // Log when the component unmounts and cleanup is done
       document.body.removeChild(stripeScript);
       unsubscribe();
     };
   }, [user]);
 
+  const checkPurchaseStatus = async (user) => {
+    if (!user || !user.email) {
+      setHasPurchased(false);
+      return;
+    }
 
-  // Landing.jsx
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/check-purchase`,
+        {
+          params: { email: user.email },
+        }
+      );
 
-const checkPurchaseStatus = async (user) => {
-  if (!user || !user.email) {
-    console.error('User or user email is not available');
-    setHasPurchased(false);
-    return;
-  }
-
-  console.log('Checking purchase status for user:', user.email);
-
-  try {
-    // Use the environment variable from Vite
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/check-purchase`,
-      {
-        params: { email: user.email },
+      if (response?.data?.hasPurchased !== undefined) {
+        setHasPurchased(Boolean(response.data.hasPurchased));
+      } else {
+        setHasPurchased(false);
       }
-    );
-
-    console.log('Full response from server:', response);
-
-    if (
-      response &&
-      response.data &&
-      typeof response.data.hasPurchased !== 'undefined'
-    ) {
-      setHasPurchased(Boolean(response.data.hasPurchased));
-      console.log(
-        `User ${user.email} has purchased: ${Boolean(
-          response.data.hasPurchased
-        )}`
-      );
-    } else {
-      console.warn(
-        `Server response for ${user.email} did not include hasPurchased or was malformed.`
-      );
+    } catch (error) {
+      console.error('Error checking purchase status:', error);
       setHasPurchased(false);
     }
-  } catch (error) {
-    console.error('Error checking purchase status:', error);
-    setHasPurchased(false);
-  }
-};
-
+  };
 
   const handleGoogleSignIn = () => {
-    console.log('Attempting Google sign-in...'); // Log when the sign-in starts
     const provider = new GoogleAuthProvider();
     signInWithPopup(auth, provider)
       .then((result) => {
-        console.log('User signed in successfully:', result.user.email); // Log the signed-in user
         setUser(result.user);
-
-        // Check the user's purchase status
-        if (result.user && result.user.email) {
+        if (result.user?.email) {
           checkPurchaseStatus(result.user);
         }
       })
       .catch((error) => {
-        console.error('Error during sign-in:', error); // Log any error during sign-in
+        console.error('Error during sign-in:', error);
       });
   };
 
-
-  const handleGoogleSignInCallback = (response) => {
-    console.log('Google One-Tap Response:', response);
-  };
-
-
   const handleLogout = () => {
-    console.log('Attempting to sign out...'); // Log when logout starts
     signOut(auth)
       .then(() => {
-        console.log('User signed out successfully'); // Log successful logout
         setUser(null);
         setHasPurchased(false);
       })
       .catch((error) => {
-        console.error('Error during logout:', error); // Log any error during logout
+        console.error('Error during logout:', error);
       });
   };
-
 
   const handleContinueToHower = () => {
     navigate('/product');
   };
 
-  const getInitials = (name) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase();
-  };
-
-  const UserAvatar = ({ user }) => {
-    const initials = getInitials(user.displayName || 'User Name');
-    return (
-      <div className="avatar-container">
-        {user.photoURL ? (
-          <img src={user.photoURL} alt="User" className="avatar" />
-        ) : (
-          <div className="initials-avatar">
-            {initials}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const NavBar = () => (
-    <nav className="navbar">
-      <h2 className="nav-title">hower.app</h2>
-      {user && (
-        <div className="nav-user">
-          <UserAvatar user={user} />
-          <button className="logout-button" onClick={handleLogout}>
+    <AppBar position="static" sx={{ backgroundColor: 'black' }}>
+      <Toolbar>
+        <Typography variant="h6" sx={{ flexGrow: 1, textAlign: 'center' }}>
+          hower.app
+        </Typography>
+        {user && (
+          <Button
+            color="inherit"
+            onClick={handleLogout}
+            sx={{
+              textTransform: 'none',  // Prevents all-caps
+              fontSize: '1rem'
+            }}
+          >
             Logout
-          </button>
-        </div>
-      )}
-    </nav>
+          </Button>
+        )}
+      </Toolbar>
+    </AppBar>
   );
 
   return (
-    <div className="container">
+    <div>
       <NavBar />
-      <div className="content">
-        <img src={logoImage} alt="Hower Logo" className="logo" />
-        <h1 className="title">hower.app</h1>
-        <h3 className="subtitle">Do less, achieve more.</h3>
-        <p className="description">
-          Overwhelmed by your to-do list?
-          <br />
-          Lots of creative ideas but don't know where to start?
-          <br />
-          Hower can help :)
-        </p>
-        {!user && (
-          <button className="button" onClick={handleGoogleSignIn}>
-            Continue with Google
-          </button>
-        )}
-        {user && (
-          <div className="card">
-            <UserAvatar user={user} />
-            <div className="card-body">
-              <p className="welcome-text">Welcome, {user.displayName}!</p>
-              {hasPurchased ? (
-                <button className="button" onClick={handleContinueToHower}>
-                  Proceed to Hower
-                </button>
-              ) : (
-                <stripe-buy-button
-                  buy-button-id="buy_btn_1Q8WGpFL7C10dNyGiDnbvoQB"
-                  publishable-key="pk_live_51J7Ti4FL7C10dNyGy2ZUp791IXhOiFpGLDcHMTwl6sUMG5p9paNbeJFjKkz1VTbIcMqiQAR32d5aO6zvzxxVwOIv00uWhizkxZ"
-                ></stripe-buy-button>
+      <Container sx={{ mt: 8 }}>
+        <Grid container spacing={4} justifyContent="center">
+          {/* Main Content */}
+          <Grid item xs={12} md={8}>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography
+                variant="h3"
+                component="h1"
+                gutterBottom
+                sx={{
+                  fontWeight: 'bold',
+                  mb: 3,
+                  fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+                  lineHeight: 1.2
+                }}
+              >
+                Are you an overwhelmed achiever?
+              </Typography>
+              <Typography
+                variant="h4"
+                component="h2"
+                gutterBottom
+                sx={{
+                  color: 'text.secondary',
+                  mb: 6,
+                  fontSize: { xs: '1.7rem', sm: '2rem', md: '2.5rem' },
+                  lineHeight: 1.2
+                }}
+              >
+                Cut your todo list by 80% with hower.app
+              </Typography>
+
+              {!user && (
+                <Button
+                  variant="contained"
+                  onClick={handleGoogleSignIn}
+                  size="large"
+                  sx={{
+                    mt: 4,
+                    py: 2,
+                    px: 6,
+                    fontSize: '1.25rem',
+                    backgroundColor: 'black',
+                    '&:hover': {
+                      backgroundColor: '#333'
+                    }
+                  }}
+                >
+                  Continue with Google
+                </Button>
               )}
-            </div>
-          </div>
-        )}
-      </div>
+            </Box>
+          </Grid>
+
+          {/* Purchase or Continue Section */}
+          {user && !hasPurchased && (
+            <Grid item xs={12} sx={{ textAlign: 'center', mt: 4 }}>
+              <Typography variant="h5" gutterBottom sx={{ mb: 4 }}>
+                Welcome, {user.displayName}!
+              </Typography>
+              <stripe-buy-button
+                buy-button-id="buy_btn_1Q8WGpFL7C10dNyGiDnbvoQB"
+                publishable-key="pk_live_51J7Ti4FL7C10dNyGy2ZUp791IXhOiFpGLDcHMTwl6sUMG5p9paNbeJFjKkz1VTbIcMqiQAR32d5aO6zvzxxVwOIv00uWhizkxZ"
+              ></stripe-buy-button>
+            </Grid>
+          )}
+          {user && hasPurchased && (
+            <Grid item xs={12} sx={{ textAlign: 'center', mt: 4 }}>
+              <Button
+                variant="contained"
+                onClick={handleContinueToHower}
+                size="large"
+                sx={{
+                  py: 2.5,
+                  px: 8,
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  backgroundColor: 'black',
+                  position: 'relative',
+                  '&:hover': {
+                    backgroundColor: '#333',
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: -3,
+                    left: -3,
+                    right: -3,
+                    bottom: -3,
+                    background: 'linear-gradient(45deg, #ff0000, #ff8800, #ffd000, #00ff88, #00ffff, #0066ff, #9900ff)',
+                    borderRadius: '8px',
+                    zIndex: -1,
+                    animation: 'borderAnimation 4s linear infinite',
+                  },
+                  '@keyframes borderAnimation': {
+                    '0%': {
+                      filter: 'hue-rotate(0deg)',
+                    },
+                    '100%': {
+                      filter: 'hue-rotate(360deg)',
+                    }
+                  }
+                }}
+              >
+                Ready to become 10x more productive?
+              </Button>
+            </Grid>
+          )}
+        </Grid>
+      </Container>
     </div>
   );
 };
