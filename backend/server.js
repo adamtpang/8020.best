@@ -3,125 +3,41 @@
 require('web-streams-polyfill');
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
 require('dotenv').config();
-const { processText } = require('./textProcessor');
+const mongoose = require('mongoose');
 
 const app = express();
 
-// Configure CORS before other middleware
-const corsOptions = {
-  origin: ['https://hower.app', 'http://localhost:5173'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  optionsSuccessStatus: 204
-};
-
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', cors(corsOptions));
-
-// Special middleware for Stripe webhook (must come before express.json())
-app.use('/webhook', express.raw({ type: 'application/json' }));
+// Simple CORS setup
+app.use(cors({
+  origin: 'http://127.0.0.1:5173'
+}));
 
 app.use(express.json());
 
-// Connect to MongoDB
-console.log('MONGO_URI:', process.env.MONGO_URI);
+// MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
-const db = mongoose.connection;
+// Import routes
+const userDataRouter = require('./routes/userData');
+const purchasesRouter = require('./routes/purchases');
 
-db.on('error', (error) => {
-  console.error('MongoDB connection error:', error);
-  process.exit(1);
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Hower API Server',
+    status: 'running',
+    timestamp: new Date().toISOString()
+  });
 });
 
-db.once('open', () => {
-  console.log('Connected to MongoDB');
+// Use routes
+app.use(userDataRouter);
+app.use(purchasesRouter);
 
-  // Import routers after successful connection
-  const tasksRouter = require('./routes/tasks');
-  const purchasesRouter = require('./routes/purchases');
-  const webhookRouter = require('./routes/webhook');
-  const userDataRouter = require('./routes/userData');
-
-  // Routes
-  app.use(tasksRouter);
-  app.use(purchasesRouter);
-  app.use(webhookRouter);
-  app.use(userDataRouter);
-
-  // Error handling for undefined routes
-  app.use((req, res) => {
-    console.error(`404 - Route not found: ${req.originalUrl}`);
-    res.status(404).json({ error: 'Route not found' });
-  });
-
-  // Global error handler
-  app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(500).json({ error: 'Internal server error', details: err.message });
-  });
-
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-
-  app.post('/api/process-text', async (req, res) => {
-    try {
-      console.log('Backend: Received text processing request');
-
-      if (!process.env.REPLICATE_API_TOKEN) {
-        console.error('Backend: REPLICATE_API_TOKEN is not set');
-        return res.status(500).json({ error: 'API token not configured' });
-      }
-
-      const { text } = req.body;
-      if (!text) {
-        console.error('Backend: No text provided in request');
-        return res.status(400).json({ error: 'No text provided' });
-      }
-
-      console.log('Backend: Processing text:', text.substring(0, 100) + '...');
-      console.log('Backend: Using Replicate token:', process.env.REPLICATE_API_TOKEN.substring(0, 5) + '...');
-
-      try {
-        const result = await processText(text);
-        console.log('Backend: Processing complete. Result:', result);
-        res.json(result);
-      } catch (processingError) {
-        console.error('Backend: Error in processText:', {
-          message: processingError.message,
-          stack: processingError.stack,
-          response: processingError.response?.data,
-          status: processingError.response?.status,
-          fullError: processingError
-        });
-
-        return res.status(500).json({
-          error: 'Processing error',
-          details: processingError.message,
-          response: processingError.response?.data
-        });
-      }
-    } catch (error) {
-      console.error('Backend Error Details:', {
-        message: error.message,
-        stack: error.stack,
-        response: error.response?.data,
-        status: error.response?.status,
-        fullError: error
-      });
-
-      res.status(500).json({
-        error: 'An error occurred while processing the text',
-        details: error.message,
-        response: error.response?.data
-      });
-    }
-  });
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

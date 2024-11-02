@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from '../firebase-config';
+import { auth, provider } from '../firebase-config';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -34,54 +34,49 @@ const Landing = () => {
     });
 
     // Load Stripe Buy Button script
-    const stripeScript = document.createElement('script');
-    stripeScript.src = 'https://js.stripe.com/v3/buy-button.js';
-    stripeScript.async = true;
-    document.body.appendChild(stripeScript);
+    const script = document.createElement('script');
+    script.src = 'https://js.stripe.com/v3/buy-button.js';
+    script.async = true;
+    document.head.appendChild(script);
 
     return () => {
-      document.body.removeChild(stripeScript);
+      document.head.removeChild(script);
       unsubscribe();
     };
   }, [user]);
 
   const checkPurchaseStatus = async (user) => {
-    if (!user || !user.email) {
-      setHasPurchased(false);
-      return;
-    }
-
     try {
+      console.log('Checking purchase status for:', user.email);
+
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/check-purchase`,
+        `${import.meta.env.VITE_API_URL}/api/purchases/check-purchase`,
         {
-          params: { email: user.email },
+          params: { email: user.email }
         }
       );
 
-      if (response?.data?.hasPurchased !== undefined) {
-        setHasPurchased(Boolean(response.data.hasPurchased));
-      } else {
-        setHasPurchased(false);
-      }
+      console.log('Purchase status response:', response.data);
+      setHasPurchased(Boolean(response.data.hasPurchased));
     } catch (error) {
       console.error('Error checking purchase status:', error);
-      setHasPurchased(false);
     }
   };
 
-  const handleGoogleSignIn = () => {
-    const provider = new GoogleAuthProvider();
-    signInWithPopup(auth, provider)
-      .then((result) => {
-        setUser(result.user);
-        if (result.user?.email) {
-          checkPurchaseStatus(result.user);
-        }
-      })
-      .catch((error) => {
-        console.error('Error during sign-in:', error);
-      });
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      console.log('Sign in successful:', result.user.email);
+      if (result.user?.email) {
+        checkPurchaseStatus(result.user);
+      }
+    } catch (error) {
+      console.error('Error during sign-in:', error);
+      // Handle specific error cases if needed
+      if (error.code === 'auth/popup-closed-by-user') {
+        console.log('Sign-in cancelled by user');
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -181,13 +176,11 @@ const Landing = () => {
           {/* Purchase or Continue Section */}
           {user && !hasPurchased && (
             <Grid item xs={12} sx={{ textAlign: 'center', mt: 4 }}>
-              <Typography variant="h5" gutterBottom sx={{ mb: 4 }}>
-                Welcome, {user.displayName}!
-              </Typography>
               <stripe-buy-button
                 buy-button-id="buy_btn_1Q8WGpFL7C10dNyGiDnbvoQB"
-                publishable-key="pk_live_51J7Ti4FL7C10dNyGy2ZUp791IXhOiFpGLDcHMTwl6sUMG5p9paNbeJFjKkz1VTbIcMqiQAR32d5aO6zvzxxVwOIv00uWhizkxZ"
-              ></stripe-buy-button>
+                publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+              >
+              </stripe-buy-button>
             </Grid>
           )}
           {user && hasPurchased && (
