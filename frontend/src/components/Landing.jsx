@@ -67,6 +67,46 @@ const Landing = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let pollInterval;
+
+    const pollPurchaseStatus = async () => {
+      if (user?.email) {
+        try {
+          const response = await axios.get(
+            `${import.meta.env.VITE_API_URL}/api/purchases/check-purchase`,
+            {
+              params: { email: user.email }
+            }
+          );
+
+          console.log('Poll purchase status:', response.data);
+
+          if (response.data.hasPurchased) {
+            setHasPurchased(true);
+            clearInterval(pollInterval);
+            navigate('/product');
+          }
+        } catch (error) {
+          console.error('Error polling purchase status:', error);
+        }
+      }
+    };
+
+    // Start polling when user is logged in and hasn't purchased
+    if (user && !hasPurchased) {
+      pollPurchaseStatus(); // Check immediately
+      pollInterval = setInterval(pollPurchaseStatus, 2000); // Then every 2 seconds
+    }
+
+    // Cleanup
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [user, hasPurchased, navigate]);
+
   const checkPurchaseStatus = async (user) => {
     try {
       console.log('Checking purchase status for:', user.email);

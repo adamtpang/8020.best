@@ -4,15 +4,18 @@ const purchaseSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    lowercase: true
   },
   hasPurchased: {
     type: Boolean,
-    default: true
+    default: false
   },
   purchaseDate: {
-    type: Date,
-    default: Date.now
+    type: Date
+  },
+  stripeSessionId: {
+    type: String
   }
 }, {
   timestamps: true
