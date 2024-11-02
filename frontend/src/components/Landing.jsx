@@ -85,7 +85,6 @@ const Landing = () => {
           if (response.data.hasPurchased) {
             setHasPurchased(true);
             clearInterval(pollInterval);
-            navigate('/product');
           }
         } catch (error) {
           console.error('Error polling purchase status:', error);
@@ -105,7 +104,7 @@ const Landing = () => {
         clearInterval(pollInterval);
       }
     };
-  }, [user, hasPurchased, navigate]);
+  }, [user, hasPurchased]);
 
   const checkPurchaseStatus = async (user) => {
     try {
@@ -243,8 +242,8 @@ const Landing = () => {
                 publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
                 client-reference-id={user.email}
                 customer-email={user.email}
-                success-url={`${window.location.origin}/product?success=true&email=${encodeURIComponent(user.email)}`}
-                cancel-url={`${window.location.origin}?canceled=true`}
+                success-url={window.location.origin}
+                cancel-url={window.location.origin}
               >
               </stripe-buy-button>
             </Grid>
@@ -253,7 +252,7 @@ const Landing = () => {
             <Grid item xs={12} sx={{ textAlign: 'center', mt: 4 }}>
               <Button
                 variant="contained"
-                onClick={handleContinueToHower}
+                onClick={() => navigate('/product')}
                 size="large"
                 sx={{
                   py: 2.5,
@@ -287,7 +286,7 @@ const Landing = () => {
                   }
                 }}
               >
-                Ready to become 10x more productive?
+                Ready to 10x your productivity?
               </Button>
             </Grid>
           )}
