@@ -73,6 +73,28 @@ app.get('/', (req, res) => {
 app.use(userDataRouter);
 app.use(purchasesRouter);
 
+// Add success URL handler
+app.get('/product', async (req, res) => {
+  const { success, email } = req.query;
+
+  if (success && email) {
+    try {
+      // Create purchase record
+      await Purchase.findOneAndUpdate(
+        { email },
+        { email, hasPurchased: true },
+        { upsert: true, new: true }
+      );
+
+      console.log('Purchase recorded for:', email);
+    } catch (error) {
+      console.error('Error recording purchase:', error);
+    }
+  }
+
+  res.redirect('/product');
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
