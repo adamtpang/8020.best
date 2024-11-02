@@ -20,8 +20,9 @@ import {
   FormGroup,
   FormControlLabel,
   Checkbox,
+  TextField,
 } from "@mui/material";
-import { Close as CloseIcon, ContentPaste, DeleteOutline, ContentCopy, HelpOutline } from "@mui/icons-material";
+import { Close as CloseIcon, ContentPaste, DeleteOutline, ContentCopy, HelpOutline, Add } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 import axios from "axios";
@@ -63,6 +64,21 @@ const Product = () => {
     '0,1': false,
     '0,0': false
   });
+
+  // Add new state for text input
+  const [newTask, setNewTask] = useState('');
+
+  // Add handler for adding tasks
+  const handleAddTask = (e) => {
+    e.preventDefault();
+    if (newTask.trim()) {
+      setList1(prev => [newTask.trim(), ...prev]);
+      setNewTask('');
+      // Auto-select the new task
+      setSelectedIndex1(0);
+      setActiveList(1);
+    }
+  };
 
   // Handle selecting an item
   const handleSelectItem = (listNumber, index) => {
@@ -571,44 +587,42 @@ const Product = () => {
           flexDirection: 'column',
           maxHeight: '65vh'
         }}>
-          {/* Import Progress Bar */}
-          {importProgress > 0 && (
-            <LinearProgress
-              variant="determinate"
-              value={importProgress}
-              sx={{
-                width: '100%',
-                height: 2,
-                mb: 1,
-                borderRadius: 1,
-                backgroundColor: 'rgba(0,0,0,0.05)',
-                '& .MuiLinearProgress-bar': {
-                  backgroundColor: '#2196f3',
-                }
-              }}
-            />
-          )}
-          {remainingLines > 0 && (
-            <Typography
-              variant="caption"
-              sx={{
-                mb: 1,
-                color: 'text.secondary',
-                fontSize: '0.75rem'
-              }}
+          {/* Top Controls Container */}
+          <Box sx={{
+            display: 'flex',
+            gap: 1,
+            mb: 2,
+            alignItems: 'center'  // Align items vertically
+          }}>
+            {/* Import Button */}
+            <IconButton
+              onClick={handleClipboardImport}
+              size="small"
+              sx={{ flexShrink: 0 }}  // Prevent button from shrinking
             >
-              {remainingLines} remaining
-            </Typography>
-          )}
+              <ContentPaste />
+            </IconButton>
 
-          {/* Import Button */}
-          <IconButton
-            onClick={handleClipboardImport}
-            size="small"
-            sx={{ alignSelf: 'flex-start', mb: 1 }}
-          >
-            <ContentPaste />
-          </IconButton>
+            {/* Add Task Form */}
+            <Box
+              component="form"
+              onSubmit={handleAddTask}
+              sx={{ flex: 1 }}  // Take remaining space
+            >
+              <TextField
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value)}
+                placeholder="Add new task..."
+                size="small"
+                fullWidth
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.stopPropagation();
+                  }
+                }}
+              />
+            </Box>
+          </Box>
 
           <List sx={{
             flex: 1,
