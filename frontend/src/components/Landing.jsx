@@ -34,16 +34,38 @@ const Landing = () => {
     });
 
     // Load Stripe Buy Button script
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/buy-button.js';
-    script.async = true;
-    document.head.appendChild(script);
+    const loadStripe = () => {
+      try {
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/buy-button.js';
+        script.async = true;
+        script.defer = true;
 
-    return () => {
-      document.head.removeChild(script);
-      unsubscribe();
+        // Handle script load with Promise
+        script.onload = () => {
+          console.log('Stripe script loaded successfully');
+        };
+
+        script.onerror = (error) => {
+          console.error('Error loading Stripe script:', error);
+        };
+
+        document.head.appendChild(script);
+      } catch (error) {
+        console.error('Error setting up Stripe script:', error);
+      }
     };
-  }, [user]);
+
+    loadStripe();
+
+    // Cleanup
+    return () => {
+      const script = document.querySelector('script[src="https://js.stripe.com/v3/buy-button.js"]');
+      if (script) {
+        document.head.removeChild(script);
+      }
+    };
+  }, []);
 
   const checkPurchaseStatus = async (user) => {
     try {
@@ -177,8 +199,12 @@ const Landing = () => {
           {user && !hasPurchased && (
             <Grid item xs={12} sx={{ textAlign: 'center', mt: 4 }}>
               <stripe-buy-button
-                buy-button-id="buy_btn_1Q8WGpFL7C10dNyGiDnbvoQB"
+                buy-button-id="buy_btn_1QFxXeFL7C10dNyGXYgYJ8Ks"
                 publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+                client-reference-id={user.email}
+                customer-email={user.email}
+                success-url={`${window.location.origin}/product`}
+                cancel-url={window.location.origin}
               >
               </stripe-buy-button>
             </Grid>
