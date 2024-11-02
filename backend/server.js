@@ -21,20 +21,11 @@ console.log('Allowed Origins:', allowedOrigins);
 app.use(cors({
   origin: function(origin, callback) {
     console.log('Request origin:', origin);
-
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log('No origin');
-      return callback(null, true);
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
     }
-
-    if (allowedOrigins.indexOf(origin) === -1) {
-      console.log('Origin not allowed:', origin);
-      return callback(new Error('CORS not allowed'));
-    }
-
-    console.log('Origin allowed:', origin);
-    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -46,10 +37,22 @@ app.options('*', cors());
 
 app.use(express.json());
 
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// MongoDB connection with specific database
+const mongoConfig = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  dbName: 'howerdotapp'  // Specify the database name
+};
+
+mongoose.connect(process.env.MONGO_URI, mongoConfig)
+  .then(() => {
+    console.log('Connected to MongoDB - Database:', mongoConfig.dbName);
+    console.log('Collections:', mongoose.connection.collections);
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });
 
 // Import routes
 const userDataRouter = require('./routes/userData');
@@ -61,6 +64,7 @@ app.get('/', (req, res) => {
     message: 'Hower API Server',
     status: 'running',
     environment: process.env.NODE_ENV,
+    database: mongoConfig.dbName,
     timestamp: new Date().toISOString()
   });
 });
