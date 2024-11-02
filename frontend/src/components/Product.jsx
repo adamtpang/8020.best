@@ -532,11 +532,11 @@ const Product = () => {
       <Paper
         sx={{
           p: 1.5,
-          backgroundColor: '#2196f3',
+          backgroundColor: 'black',
           color: 'white',
           minHeight: '35px',
           display: 'flex',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
         }}
       >
@@ -566,7 +566,27 @@ const Product = () => {
           marks
           min={0}
           max={1}
-          sx={{ width: 200 }}
+          sx={{
+            width: 200,
+            '& .MuiSlider-track': {
+              backgroundColor: 'black',
+            },
+            '& .MuiSlider-rail': {
+              backgroundColor: '#ccc',
+            },
+            '& .MuiSlider-thumb': {
+              backgroundColor: 'black',
+              '&:hover, &.Mui-focusVisible': {
+                boxShadow: '0 0 0 8px rgba(0, 0, 0, 0.16)',
+              },
+            },
+            '& .MuiSlider-mark': {
+              backgroundColor: '#bbb',
+            },
+            '& .MuiSlider-markActive': {
+              backgroundColor: 'black',
+            }
+          }}
           size="small"
         />
       </Box>
@@ -651,12 +671,12 @@ const Product = () => {
                   onClick={() => handleSelectItem(1, index)}
                   sx={{
                     cursor: 'pointer',
-                    backgroundColor: selectedIndex1 === index ? '#2196f3 !important' : 'transparent',
+                    backgroundColor: selectedIndex1 === index ? 'black !important' : 'transparent',
                     color: selectedIndex1 === index ? 'white !important' : 'inherit',
-                    borderLeft: selectedIndex1 === index ? '6px solid #1565c0' : '6px solid transparent',
+                    borderLeft: selectedIndex1 === index ? '6px solid #333' : '6px solid transparent',
                     boxShadow: selectedIndex1 === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
                     '&:hover': {
-                      backgroundColor: selectedIndex1 === index ? '#2196f3 !important' : 'rgba(0, 0, 0, 0.04)',
+                      backgroundColor: selectedIndex1 === index ? 'black !important' : 'rgba(0, 0, 0, 0.04)',
                     },
                     borderRadius: 1,
                     mb: 0.5,
@@ -672,8 +692,8 @@ const Product = () => {
                   color: 'text.disabled',
                   fontStyle: 'italic',
                   cursor: 'pointer',
-                  backgroundColor: selectedIndex1 === 0 ? '#2196f3 !important' : 'transparent',
-                  borderLeft: selectedIndex1 === 0 ? '6px solid #1565c0' : '6px solid transparent',
+                  backgroundColor: selectedIndex1 === 0 ? 'black !important' : 'transparent',
+                  borderLeft: selectedIndex1 === 0 ? '6px solid #333' : '6px solid transparent',
                   boxShadow: selectedIndex1 === 0 ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
                   borderRadius: 1,
                   transition: 'all 0.2s ease',
@@ -695,8 +715,8 @@ const Product = () => {
               document.activeElement.blur();
             }}
             size="small"
-            color="error"
-            sx={{ mt: 1, alignSelf: 'center' }}
+            color="default"
+            sx={{ mt: 1, alignSelf: 'center', color: 'black', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
           >
             <DeleteOutline />
           </IconButton>
@@ -719,7 +739,7 @@ const Product = () => {
                 left: 0,
                 height: '100%',
                 width: `${peakCount1 ? (list1.length / peakCount1) * 100 : 0}%`,
-                bgcolor: '#2196f3',
+                bgcolor: 'black',
                 transition: 'width 0.3s ease'
               }}
             />
@@ -766,11 +786,11 @@ const Product = () => {
                     onClick={() => handleSelectItem(2, index)}
                     sx={{
                       cursor: 'pointer',
-                      backgroundColor: selectedIndex2 === index ? '#2196f3 !important' : 'transparent',
-                      borderLeft: selectedIndex2 === index ? '6px solid #1565c0' : '6px solid transparent',
+                      backgroundColor: selectedIndex2 === index ? 'black !important' : 'transparent',
+                      borderLeft: selectedIndex2 === index ? '6px solid #333' : '6px solid transparent',
                       boxShadow: selectedIndex2 === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
                       '&:hover': {
-                        backgroundColor: selectedIndex2 === index ? '#2196f3 !important' : 'rgba(0, 0, 0, 0.04)',
+                        backgroundColor: selectedIndex2 === index ? 'black !important' : 'rgba(0, 0, 0, 0.04)',
                       },
                       borderRadius: 1,
                       mb: isLastImportantItem ? 0 : 0.5,
@@ -815,8 +835,8 @@ const Product = () => {
               document.activeElement.blur();
             }}
             size="small"
-            color="error"
-            sx={{ mt: 1, alignSelf: 'center' }}
+            color="default"
+            sx={{ mt: 1, alignSelf: 'center', color: 'black', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
           >
             <DeleteOutline />
           </IconButton>
@@ -839,7 +859,7 @@ const Product = () => {
                 left: 0,
                 height: '100%',
                 width: `${peakCount2 ? (list2.length / peakCount2) * 100 : 0}%`,
-                bgcolor: '#2196f3',
+                bgcolor: 'black',
                 transition: 'width 0.3s ease'
               }}
             />
@@ -858,7 +878,7 @@ const Product = () => {
           <IconButton
             onClick={handleExportList3}
             size="small"
-            sx={{ alignSelf: 'flex-start', mb: 1 }}
+            sx={{ alignSelf: 'flex-start', mb: 1, color: 'black', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
           >
             <ContentCopy />
           </IconButton>
@@ -890,12 +910,12 @@ const Product = () => {
                   onClick={() => handleSelectItem(3, index)}
                   sx={{
                     cursor: 'pointer',
-                    backgroundColor: selectedIndex3 === index ? '#2196f3 !important' : 'transparent',
+                    backgroundColor: selectedIndex3 === index ? 'black !important' : 'transparent',
                     color: selectedIndex3 === index ? 'white !important' : 'inherit',
-                    borderLeft: selectedIndex3 === index ? '6px solid #1565c0' : '6px solid transparent',
+                    borderLeft: selectedIndex3 === index ? '6px solid #333' : '6px solid transparent',
                     boxShadow: selectedIndex3 === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
                     '&:hover': {
-                      backgroundColor: selectedIndex3 === index ? '#2196f3 !important' : 'rgba(0, 0, 0, 0.04)',
+                      backgroundColor: selectedIndex3 === index ? 'black !important' : 'rgba(0, 0, 0, 0.04)',
                     },
                     borderRadius: 1,
                     mb: 0.5,
@@ -911,8 +931,8 @@ const Product = () => {
                   color: 'text.disabled',
                   fontStyle: 'italic',
                   cursor: 'pointer',
-                  backgroundColor: selectedIndex3 === 0 ? '#2196f3 !important' : 'transparent',
-                  borderLeft: selectedIndex3 === 0 ? '6px solid #1565c0' : '6px solid transparent',
+                  backgroundColor: selectedIndex3 === 0 ? 'black !important' : 'transparent',
+                  borderLeft: selectedIndex3 === 0 ? '6px solid #333' : '6px solid transparent',
                   boxShadow: selectedIndex3 === 0 ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
                   borderRadius: 1,
                   transition: 'all 0.2s ease',
@@ -934,8 +954,8 @@ const Product = () => {
               document.activeElement.blur();
             }}
             size="small"
-            color="error"
-            sx={{ mt: 1, alignSelf: 'center' }}
+            color="default"
+            sx={{ mt: 1, alignSelf: 'center', color: 'black', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
           >
             <DeleteOutline />
           </IconButton>
@@ -958,7 +978,7 @@ const Product = () => {
                 left: 0,
                 height: '100%',
                 width: `${peakCount3 ? (list3.length / peakCount3) * 100 : 0}%`,
-                bgcolor: '#2196f3',
+                bgcolor: 'black',
                 transition: 'width 0.3s ease'
               }}
             />
@@ -1070,38 +1090,61 @@ const Product = () => {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>How to Use Hower</DialogTitle>
+        <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+          How to Use Hower
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Keyboard Controls</Typography>
-            <Typography paragraph>
-              • Use <b>Up/Down Arrow Keys</b> to navigate tasks within a list<br />
-              • Use <b>[ and ]</b> keys to move between lists<br />
-              • Use <b>Left/Right Arrow Keys</b> to toggle importance/urgency (0/1)<br />
-              • Press <b>Enter</b> to move a task to the next list<br />
-              • Press <b>Delete</b> or <b>Backspace</b> to remove a task
-            </Typography>
+            <Typography variant="h6" gutterBottom>Step by Step Guide</Typography>
+            <Box sx={{ pl: 2 }}>
+              <Typography paragraph>
+                1. <b>Import Tasks</b><br />
+                • Paste your tasks using the clipboard icon, or<br />
+                • Type tasks one by one in the input box
+              </Typography>
 
-            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Lists Explanation</Typography>
-            <Typography paragraph>
-              1. <b>First List:</b> Initial tasks - Paste or import your tasks here<br />
-              2. <b>Second List:</b> Rate tasks by importance (0 = Not Important, 1 = Important)<br />
-              3. <b>Third List:</b> Rate tasks by urgency (0 = Not Urgent, 1 = Urgent)
-            </Typography>
+              <Typography paragraph>
+                2. <b>Rate Tasks by Importance</b><br />
+                • Navigate tasks using Up/Down arrow keys<br />
+                • Use Left/Right arrow keys to set importance (0 or 1)<br />
+                • Press Enter to move task to next list
+              </Typography>
 
-            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Features</Typography>
-            <Typography paragraph>
-              • <b>Import:</b> Use the clipboard icon to paste multiple tasks<br />
-              • <b>Export:</b> Copy the final rated tasks using the copy icon<br />
-              • <b>Clear Lists:</b> Use the trash icon to clear any list<br />
-              • <b>Auto-sorting:</b> Tasks are automatically sorted by their ratings
-            </Typography>
+              <Typography paragraph>
+                3. <b>Rate Tasks by Urgency</b><br />
+                • Navigate to second list using ] key<br />
+                • Use Left/Right arrow keys to set urgency (0 or 1)<br />
+                • Press Enter to move task to final list
+              </Typography>
 
-            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Task Format</Typography>
-            <Typography paragraph>
-              Final tasks are formatted as: importance,urgency,task<br />
-              Example: "1,1,High priority task" (Important and Urgent)
-            </Typography>
+              <Typography paragraph>
+                4. <b>Review Final List</b><br />
+                • Tasks are automatically sorted by importance and urgency<br />
+                • Format: importance,urgency,task<br />
+                • Use the copy icon to export your prioritized tasks
+              </Typography>
+            </Box>
+
+            <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Keyboard Shortcuts</Typography>
+            <Box sx={{ pl: 2 }}>
+              <Typography>
+                • <b>[ and ]</b> - Move between lists<br />
+                • <b>↑/↓</b> - Navigate tasks<br />
+                • <b>←/→</b> - Toggle rating (0/1)<br />
+                • <b>Enter</b> - Move task forward<br />
+                • <b>Delete/Backspace</b> - Remove task
+              </Typography>
+            </Box>
+
+            <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Task Ratings</Typography>
+            <Box sx={{ pl: 2 }}>
+              <Typography>
+                • <b>1,1</b> - Important & Urgent<br />
+                • <b>1,0</b> - Important, Not Urgent<br />
+                • <b>0,1</b> - Not Important, Urgent<br />
+                • <b>0,0</b> - Not Important, Not Urgent
+              </Typography>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
