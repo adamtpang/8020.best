@@ -199,12 +199,12 @@ const Landing = () => {
           {user && !hasPurchased && (
             <Grid item xs={12} sx={{ textAlign: 'center', mt: 4 }}>
               <stripe-buy-button
-                buy-button-id="buy_btn_1QFxXeFL7C10dNyGXYgYJ8Ks"
+                buy-button-id="buy_btn_1Q8WGpFL7C10dNyGiDnbvoQB"
                 publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
                 client-reference-id={user.email}
                 customer-email={user.email}
-                success-url={`${window.location.origin}/product`}
-                cancel-url={window.location.origin}
+                success-url={`${window.location.origin}/product?success=true&email=${encodeURIComponent(user.email)}`}
+                cancel-url={`${window.location.origin}?canceled=true`}
               >
               </stripe-buy-button>
             </Grid>
