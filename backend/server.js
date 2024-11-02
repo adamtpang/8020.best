@@ -5,6 +5,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const mongoose = require('mongoose');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 
@@ -19,7 +20,7 @@ console.log('Allowed Origins:', allowedOrigins);
 
 // CORS configuration with dynamic origin checking
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     console.log('Request origin:', origin);
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
@@ -73,26 +74,75 @@ app.get('/', (req, res) => {
 app.use(userDataRouter);
 app.use(purchasesRouter);
 
-// Add success URL handler
-app.get('/product', async (req, res) => {
-  const { success, email } = req.query;
+// Stripe webhook handler
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
 
-  if (success && email) {
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error('Webhook Error:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle successful payment
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const customerEmail = session.customer_email;
+
     try {
-      // Create purchase record
-      await Purchase.findOneAndUpdate(
-        { email },
-        { email, hasPurchased: true },
+      // Update purchase status
+      const purchase = await Purchase.findOneAndUpdate(
+        { email: customerEmail },
+        {
+          email: customerEmail,
+          hasPurchased: true,
+          purchaseDate: new Date(),
+          stripeSessionId: session.id
+        },
         { upsert: true, new: true }
       );
 
-      console.log('Purchase recorded for:', email);
+      console.log('Purchase recorded for:', customerEmail);
     } catch (error) {
       console.error('Error recording purchase:', error);
     }
   }
 
-  res.redirect('/product');
+  res.json({ received: true });
+});
+
+// Success URL handler
+app.get('/api/purchases/success', async (req, res) => {
+  const { session_id } = req.query;
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    const customerEmail = session.customer_email;
+
+    // Update purchase status
+    const purchase = await Purchase.findOneAndUpdate(
+      { email: customerEmail },
+      {
+        email: customerEmail,
+        hasPurchased: true,
+        purchaseDate: new Date(),
+        stripeSessionId: session_id
+      },
+      { upsert: true, new: true }
+    );
+
+    console.log('Purchase confirmed for:', customerEmail);
+    res.redirect('/product');
+  } catch (error) {
+    console.error('Error confirming purchase:', error);
+    res.redirect('/?error=purchase-confirmation-failed');
+  }
 });
 
 const PORT = process.env.PORT || 5000;
