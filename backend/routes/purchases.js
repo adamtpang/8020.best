@@ -7,30 +7,37 @@ const Purchase = require('../models/Purchase');
 // Log to verify route is registered
 console.log('Registering purchase routes...');
 
-// Add test route
-router.get('/api/purchases/test', (req, res) => {
-  res.json({ message: 'Purchase routes working' });
-});
-
 // Manual purchase setter
 router.post('/api/purchases/set-purchase', async (req, res) => {
   try {
     const { email } = req.body;
 
     if (!email) {
+      console.log('No email provided in request');
       return res.status(400).json({ error: 'Email is required' });
     }
 
     console.log('Setting purchase for email:', email);
 
     const purchase = await Purchase.findOneAndUpdate(
-      { email },
-      { email, hasPurchased: true },
-      { upsert: true, new: true }
+      { email: { $regex: new RegExp(`^${email}$`, 'i') } },
+      {
+        email: email.toLowerCase(),
+        hasPurchased: true
+      },
+      {
+        upsert: true,
+        new: true,
+        runValidators: true
+      }
     );
 
     console.log('Purchase record created/updated:', purchase);
-    res.json({ success: true, purchase });
+    res.json({
+      success: true,
+      purchase,
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     console.error('Error setting purchase:', error);
@@ -38,23 +45,28 @@ router.post('/api/purchases/set-purchase', async (req, res) => {
   }
 });
 
-// Add check-purchase route
+// Check purchase status
 router.get('/api/purchases/check-purchase', async (req, res) => {
   try {
     const { email } = req.query;
 
     if (!email) {
+      console.log('No email provided in request');
       return res.status(400).json({ error: 'Email is required' });
     }
 
     console.log('Checking purchase for email:', email);
 
-    const purchase = await Purchase.findOne({ email });
+    const purchase = await Purchase.findOne({
+      email: { $regex: new RegExp(`^${email}$`, 'i') }
+    });
+
     console.log('Purchase record found:', purchase);
 
     return res.json({
-      hasPurchased: Boolean(purchase),
-      timestamp: new Date().toISOString()
+      hasPurchased: Boolean(purchase?.hasPurchased),
+      timestamp: new Date().toISOString(),
+      email: email
     });
   } catch (error) {
     console.error('Error checking purchase:', error);
