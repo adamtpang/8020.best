@@ -21,6 +21,8 @@ import {
   FormControlLabel,
   Checkbox,
   TextField,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { Close as CloseIcon, ContentPaste, DeleteOutline, ContentCopy, HelpOutline, Add } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
@@ -67,6 +69,12 @@ const Product = () => {
 
   // Add new state for text input
   const [newTask, setNewTask] = useState('');
+
+  // Add new state for notification
+  const [notification, setNotification] = useState({
+    open: false,
+    message: ''
+  });
 
   // Add handler for adding tasks
   const handleAddTask = (e) => {
@@ -527,6 +535,33 @@ const Product = () => {
     if (list3.length > peakCount3) setPeakCount3(list3.length);
   }, [list3.length]);
 
+  // Add copy handler function
+  const handleTaskCopy = async (task) => {
+    try {
+      // Format task based on which list it's in
+      let textToCopy;
+      if (typeof task === 'string') {
+        textToCopy = task;  // List 1
+      } else if (task.urgencyValue !== undefined) {
+        textToCopy = `${task.importanceValue},${task.urgencyValue},${task.idea}`;  // List 3
+      } else {
+        textToCopy = `${task.importanceValue},${task.idea}`;  // List 2
+      }
+
+      await navigator.clipboard.writeText(textToCopy);
+      setNotification({
+        open: true,
+        message: 'Task copied to clipboard'
+      });
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to copy task'
+      });
+    }
+  };
+
   return (
     <Box sx={{
       height: '85vh',
@@ -691,6 +726,7 @@ const Product = () => {
                     mb: 0.5,
                     transition: 'all 0.2s ease',
                   }}
+                  onDoubleClick={() => handleTaskCopy(item)}
                 >
                   <ListItemText primary={item} />
                 </ListItem>
@@ -808,6 +844,7 @@ const Product = () => {
                         color: selectedIndex2 === index ? 'white !important' : 'text.disabled',
                       }
                     }}
+                    onDoubleClick={() => handleTaskCopy(item)}
                   >
                     <ListItemText primary={`${item.importanceValue}, ${item.idea}`} />
                   </ListItem>
@@ -930,6 +967,7 @@ const Product = () => {
                     mb: 0.5,
                     transition: 'all 0.2s ease',
                   }}
+                  onDoubleClick={() => handleTaskCopy(item)}
                 >
                   <ListItemText primary={`${item.importanceValue},${item.urgencyValue},${item.idea}`} />
                 </ListItem>
@@ -1253,6 +1291,28 @@ const Product = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Add Snackbar component at the end of your JSX */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={2000}
+        onClose={() => setNotification({ ...notification, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setNotification({ ...notification, open: false })}
+          severity="success"
+          sx={{
+            backgroundColor: 'black',
+            color: 'white',
+            '.MuiAlert-icon': {
+              color: 'white'
+            }
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
