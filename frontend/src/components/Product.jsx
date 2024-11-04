@@ -107,22 +107,31 @@ const Product = () => {
       const importanceValue = Number(sliderValue === 1);
       const importance = importanceValue === 1;
 
+      // Add new item and sort list2
       setList2(prevList => {
-        const newList = [{ importance, importanceValue, idea: selectedItem }, ...prevList];
+        const newList = [
+          ...prevList,
+          {
+            importance,
+            importanceValue,
+            idea: selectedItem
+          }
+        ].sort((a, b) => {
+          // Sort by importanceValue in descending order (1s first, then 0s)
+          return b.importanceValue - a.importanceValue;
+        });
+
         return newList;
       });
 
+      // Remove from list1
       setList1(prevList => {
         const newList = prevList.filter((_, idx) => idx !== selectedIndex1);
-        if (newList.length === 0) {
-          // If list1 is now empty, select first item in list2
-          setSelectedIndex1(null);
-          setSelectedIndex2(0);
-          setActiveList(2);
-        } else {
-          // If there are still items in list1, select the next one
+        if (newList.length > 0) {
           const nextIndex = selectedIndex1 < newList.length ? selectedIndex1 : newList.length - 1;
           setSelectedIndex1(nextIndex);
+        } else {
+          setSelectedIndex1(null);
         }
         return newList;
       });
