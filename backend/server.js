@@ -39,7 +39,7 @@ app.options('*', cors());
 app.use(express.json());
 
 // Handle raw body for Stripe webhooks
-app.use('/webhook', express.raw({ type: 'application/json' }));
+app.post('/webhook', express.raw({ type: 'application/json' }));
 
 // MongoDB connection with specific database
 const mongoConfig = {

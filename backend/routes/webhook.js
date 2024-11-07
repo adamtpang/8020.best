@@ -5,46 +5,44 @@ const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Purchase = require('../models/Purchase');
 
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  let event;
+router.post('/webhook', async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim(); // Remove any whitespace
+
+  console.log('Webhook called');
+  console.log('Signature:', sig);
+  console.log('Secret exists:', !!webhookSecret);
+  console.log('Body type:', typeof req.body);
+  console.log('Body is buffer:', Buffer.isBuffer(req.body));
 
   try {
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-    // Log for debugging
-    console.log('Webhook secret:', webhookSecret ? 'exists' : 'missing');
-    console.log('Stripe signature:', req.headers['stripe-signature']);
-
-    if (!webhookSecret) {
-      throw new Error('Webhook secret is not configured');
-    }
-
-    event = stripe.webhooks.constructEvent(
+    const event = stripe.webhooks.constructEvent(
       req.body,
-      req.headers['stripe-signature'],
+      sig,
       webhookSecret
     );
 
-    console.log('Webhook event received:', event.type);
+    console.log('Event received:', event.type);
 
-    // Handle any event that has customer email
-    if (event.type.includes('customer') && event.data.object.email) {
-      const customerEmail = event.data.object.email;
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const customerEmail = session.customer_email?.toLowerCase();
 
-      try {
+      console.log('Processing purchase for:', customerEmail);
+
+      if (customerEmail) {
         const purchase = await Purchase.findOneAndUpdate(
           { email: customerEmail },
           {
             email: customerEmail,
             hasPurchased: true,
-            purchaseDate: new Date()
+            purchaseDate: new Date(),
+            stripeSessionId: session.id
           },
           { upsert: true, new: true }
         );
 
         console.log('Purchase record updated:', purchase);
-      } catch (error) {
-        console.error('Error recording purchase:', error);
       }
     }
 
