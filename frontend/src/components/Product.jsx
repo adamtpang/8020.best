@@ -23,14 +23,15 @@ import {
   TextField,
   Snackbar,
   Alert,
+  Container,
 } from "@mui/material";
-import { Close as CloseIcon, ContentPaste, DeleteOutline, ContentCopy, HelpOutline, Add } from "@mui/icons-material";
+import { Close as CloseIcon, ContentPaste, DeleteOutline, ContentCopy, HelpOutline, Add, ArrowBack } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 import axios from "axios";
-import TaskList from './Product/TaskList';
-import TaskInput from './Product/TaskInput';
-import ExportStatsDialog from './Product/ExportStatsDialog';
+import ItemList from "./Product/ItemList";
+import ExportDialog from "./Product/ExportDialog";
+import ExportResultsDialog from "./Product/ExportResultsDialog";
 
 const Product = () => {
   const auth = getAuth();
@@ -49,7 +50,7 @@ const Product = () => {
   const [clipboardContent, setClipboardContent] = useState("");
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [listToClear, setListToClear] = useState(null);
-  const [isInstructionsOpen, setIsInstructionsOpen] = useState(true);
+  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
 
   // Add new state for import progress
   const [importProgress, setImportProgress] = useState(0);
@@ -71,46 +72,59 @@ const Product = () => {
   });
 
   // Add new state for text input
-  const [newTask, setNewTask] = useState('');
+  const [newItem, setNewItem] = useState('');
 
   // Add new state for notification
-  const [notification, setNotification] = useState({ open: false, message: '' });
+  const [notification, setNotification] = useState({
+    open: false,
+    message: ''
+  });
 
-  // Add handler for adding tasks
-  const handleAddTask = (e) => {
+  // Add new state
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportResultsOpen, setExportResultsOpen] = useState(false);
+  const [reductionPercent, setReductionPercent] = useState(0);
+
+  // Add to your state declarations
+  const [hasSeenInstructions, setHasSeenInstructions] = useState(() => {
+    return localStorage.getItem('hasSeenInstructions') === 'true'
+  });
+
+  // Add this useEffect near the top with other useEffects
+  useEffect(() => {
+    // Show instructions if user hasn't seen them
+    if (!hasSeenInstructions) {
+      setIsInstructionsOpen(true);
+    }
+  }, [hasSeenInstructions]);
+
+  // Add handler for adding items
+  const handleAddItem = (e) => {
     e.preventDefault();
-    if (newTask.trim()) {
-      setList1(prev => [newTask.trim(), ...prev]);
-      setNewTask('');
-      // Auto-highlight the new task
-      setSelectedIndex1(0);  // Select first item since we add to top
+    if (newItem.trim()) {
+      setList1(prev => [newItem.trim(), ...prev]);
+      setNewItem('');
+      setSelectedIndex1(0);
       setActiveList(1);
-
-      // If this is the first task, update peak count
-      if (list1.length === 0) {
-        setPeakCount1(1);
-      }
     }
   };
 
-  // Handle selecting an item
-  const handleSelectItem = (listNumber, index) => {
+  // Update handleSelectItem to handleItemSelect
+  const handleItemSelect = (listNumber, index) => {
     if (listNumber === 1) {
-      setActiveList(1);
+      setSelectedIndex1(index);
       setSelectedIndex2(null);
       setSelectedIndex3(null);
-      setSelectedIndex1(index);
     } else if (listNumber === 2) {
-      setActiveList(2);
       setSelectedIndex1(null);
-      setSelectedIndex3(null);
       setSelectedIndex2(index);
+      setSelectedIndex3(null);
     } else if (listNumber === 3) {
-      setActiveList(3);
       setSelectedIndex1(null);
       setSelectedIndex2(null);
       setSelectedIndex3(index);
     }
+    setActiveList(listNumber);
   };
 
   // Move items between lists
@@ -130,7 +144,7 @@ const Product = () => {
             idea: selectedItem
           }
         ].sort((a, b) => {
-          // Sort by importanceValue in descending order (1s first, then 0s)
+          // Sort by importance (1s first, then 0s)
           return b.importanceValue - a.importanceValue;
         });
 
@@ -154,28 +168,31 @@ const Product = () => {
   const handleMoveToList3 = () => {
     if (selectedIndex2 !== null) {
       const selectedItem = list2[selectedIndex2];
-      console.log('Moving to List 3 - Current slider value:', sliderValue);
       const urgencyValue = Number(sliderValue === 1);
       const urgency = urgencyValue === 1;
-      console.log('Calculated urgency value:', urgencyValue);
 
       // Add new item and sort list3
-      const newList3 = [...list3, {
-        importance: selectedItem.importance,
-        importanceValue: selectedItem.importanceValue,
-        urgency,
-        urgencyValue,
-        idea: selectedItem.idea
-      }].sort((a, b) => {
-        // First sort by importance
-        if (b.importanceValue !== a.importanceValue) {
-          return b.importanceValue - a.importanceValue;
-        }
-        // Then by urgency if importance is equal
-        return b.urgencyValue - a.urgencyValue;
-      });
+      setList3(prevList => {
+        const newList = [
+          ...prevList,
+          {
+            importance: selectedItem.importance,
+            importanceValue: selectedItem.importanceValue,
+            urgency,
+            urgencyValue,
+            idea: selectedItem.idea
+          }
+        ].sort((a, b) => {
+          // First sort by importance
+          if (b.importanceValue !== a.importanceValue) {
+            return b.importanceValue - a.importanceValue;
+          }
+          // Then by urgency if importance is equal
+          return b.urgencyValue - a.urgencyValue;
+        });
 
-      setList3(newList3);
+        return newList;
+      });
 
       // Remove item from list2 and update selection
       setList2(prevList => {
@@ -274,30 +291,41 @@ const Product = () => {
     }
   }, [list1, list2, list3]);
 
-  // Add clipboard import functions
+  // Update the clipboard import handler
   const handleClipboardImport = async () => {
     try {
       const text = await navigator.clipboard.readText();
       const newItems = text
         .split('\n')
         .map(line => line.trim())
-        .filter(line => line.length > 0);
+        .filter(line => line.length > 0);  // Filter out empty lines
 
       if (newItems.length > 0) {
-        setList1(prev => [...newItems, ...prev]);
-        // Auto-highlight the first imported task
+        // Add to beginning of list1, not replace it
+        setList1(prevList => [...newItems, ...prevList]);
+
+        // Update peak count if needed
+        setPeakCount1(prev => Math.max(prev, newItems.length + list1.length));
+
+        // Auto-select first item
         setSelectedIndex1(0);
         setActiveList(1);
 
-        // Update peak count if needed
-        setPeakCount1(prev => Math.max(prev, newItems.length));
+        setNotification({
+          open: true,
+          message: `Imported ${newItems.length} items`
+        });
       }
     } catch (error) {
       console.error('Error importing from clipboard:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to import items'
+      });
     }
   };
 
-  // Add effect to auto-select top task in List 1
+  // Add effect to auto-select top item in List 1
   useEffect(() => {
     if (list1.length > 0 && selectedIndex1 === null) {
       setSelectedIndex1(0);
@@ -337,14 +365,16 @@ const Product = () => {
     }, newItems.length * 50);
   };
 
-  // Helper function to get currently selected task text
-  const getSelectedTaskText = () => {
-    if (selectedIndex1 !== null) {
-      return list1[selectedIndex1];
-    } else if (selectedIndex2 !== null) {
-      return list2[selectedIndex2].idea;
-    } else if (selectedIndex3 !== null) {
-      return list3[selectedIndex3].idea;
+  // Helper function to get currently selected item text
+  const getSelectedItemText = () => {
+    if (selectedIndex1 !== null) return list1[selectedIndex1];
+    if (selectedIndex2 !== null) {
+      const item = list2[selectedIndex2];
+      return `${item.importanceValue}, ${item.idea}`;
+    }
+    if (selectedIndex3 !== null) {
+      const item = list3[selectedIndex3];
+      return `${item.importanceValue},${item.urgencyValue},${item.idea}`;
     }
     return null;
   };
@@ -434,56 +464,48 @@ const Product = () => {
           setActiveList(nextList);
         }
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        e.preventDefault(); // Prevent page scrolling
+        e.preventDefault();
 
-        // Determine which list is active and its current selection
-        let currentList, currentIndex, setIndex, maxIndex;
-        if (selectedIndex1 !== null) {
-          currentList = 1;
-          currentIndex = selectedIndex1;
-          setIndex = setSelectedIndex1;
-          maxIndex = list1.length - 1;
-        } else if (selectedIndex2 !== null) {
-          currentList = 2;
-          currentIndex = selectedIndex2;
-          setIndex = setSelectedIndex2;
-          maxIndex = list2.length - 1;
-        } else if (selectedIndex3 !== null) {
-          currentList = 3;
-          currentIndex = selectedIndex3;
-          setIndex = setSelectedIndex3;
-          maxIndex = list3.length - 1;
-        }
+        const getCurrentList = () => {
+          if (activeList === 1) return list1;
+          if (activeList === 2) return list2;
+          if (activeList === 3) return list3;
+          return [];
+        };
 
-        // If we have an active list, handle navigation
-        if (currentList) {
-          let newIndex;
+        const getCurrentIndex = () => {
+          if (activeList === 1) return selectedIndex1;
+          if (activeList === 2) return selectedIndex2;
+          if (activeList === 3) return selectedIndex3;
+          return null;
+        };
+
+        const setCurrentIndex = (newIndex) => {
+          console.log('Setting index:', newIndex, 'for list:', activeList);
+          if (activeList === 1) setSelectedIndex1(newIndex);
+          if (activeList === 2) setSelectedIndex2(newIndex);
+          if (activeList === 3) setSelectedIndex3(newIndex);
+        };
+
+        const currentList = getCurrentList();
+        const currentIndex = getCurrentIndex();
+
+        if (currentList.length > 0) {
           if (e.key === 'ArrowUp') {
-            // Move up (decrease index)
-            newIndex = currentIndex > 0 ? currentIndex - 1 : maxIndex;
+            const newIndex = currentIndex === 0 ? currentList.length - 1 : currentIndex - 1;
+            console.log('ArrowUp:', { currentIndex, newIndex, listLength: currentList.length });
+            setCurrentIndex(newIndex);
           } else {
-            // Move down (increase index)
-            newIndex = currentIndex < maxIndex ? currentIndex + 1 : 0;
+            const newIndex = currentIndex === currentList.length - 1 ? 0 : currentIndex + 1;
+            console.log('ArrowDown:', { currentIndex, newIndex, listLength: currentList.length });
+            setCurrentIndex(newIndex);
           }
-          setIndex(newIndex);
-
-          // Scroll the selected item into view
-          setTimeout(() => {
-            const selectedElement = document.querySelector(`#list-${currentList}-item-${newIndex}`);
-            if (selectedElement) {
-              selectedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-          }, 0);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     selectedIndex1,
     selectedIndex2,
@@ -492,7 +514,7 @@ const Product = () => {
     list2.length,
     list3.length,
     sliderValue,
-    activeList  // Add activeList to dependencies
+    activeList
   ]);
 
   const handleClearConfirm = () => {
@@ -514,517 +536,446 @@ const Product = () => {
     setListToClear(null);
   };
 
-  // Add to state
-  const [exportStats, setExportStats] = useState(null);
-  const [statsDialogOpen, setStatsDialogOpen] = useState(false);
+  // Update export handler
+  const handleExportList3 = () => {
+    setExportDialogOpen(true);
+  };
 
-  // Update handleExportList3 function
-  const handleExportList3 = async () => {
+  const handleExportConfirm = async (selectedItems, reductionPercent) => {
     try {
-      const exportText = list3
+      const exportText = selectedItems
         .map(item => `${item.importanceValue},${item.urgencyValue},${item.idea}`)
         .join('\n');
 
       await navigator.clipboard.writeText(exportText);
-
-      // Calculate stats
-      const totalOriginalTasks = peakCount1;
-      const finalTasks = list3.length;
-      const tasksReduced = totalOriginalTasks - finalTasks;
-      const percentageReduced = Math.round((tasksReduced / totalOriginalTasks) * 100);
-
-      setExportStats({
-        original: totalOriginalTasks,
-        final: finalTasks,
-        reduced: tasksReduced,
-        percentage: percentageReduced
-      });
-
-      setNotification({
-        open: true,
-        message: 'Tasks exported! Opening stats...'
-      });
-
-      setStatsDialogOpen(true);
+      setExportDialogOpen(false);
+      setReductionPercent(reductionPercent);
+      setExportResultsOpen(true);
     } catch (error) {
       console.error('Error exporting:', error);
       setNotification({
         open: true,
-        message: 'Failed to export tasks'
+        message: 'Failed to export items'
       });
     }
   };
 
-  // Stats Dialog component
-  <Dialog
-    open={Boolean(exportStats) && statsDialogOpen}
-    onClose={() => {
-      setStatsDialogOpen(false);
-      setExportStats(null);
-    }}
-    maxWidth="sm"
-    fullWidth
-  >
-    <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-      Task Reduction Results
-    </DialogTitle>
-    <DialogContent sx={{ mt: 2 }}>
-      <Box sx={{ textAlign: 'center', py: 2 }}>
-        <Typography variant="h4" gutterBottom sx={{ color: 'black' }}>
-          {exportStats?.percentage}% Reduced
-        </Typography>
-
-        <Typography variant="body1" sx={{ mb: 3 }}>
-          You started with <b>{exportStats?.original}</b> tasks and ended with <b>{exportStats?.final}</b> tasks.
-        </Typography>
-
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          That's <b>{exportStats?.reduced}</b> fewer tasks to focus on!
-        </Typography>
-
-        {exportStats?.percentage >= 50 ? (
-          <Typography variant="body1" sx={{ color: 'success.main' }}>
-            Great job cutting down your task list! 🎉
-          </Typography>
-        ) : (
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            Consider being more selective to reduce your task load further.
-          </Typography>
-        )}
-      </Box>
-    </DialogContent>
-    <DialogActions>
-      <Button
-        onClick={() => {
-          setStatsDialogOpen(false);
-          setExportStats(null);
-        }}
-        variant="contained"
-        sx={{
-          backgroundColor: 'black',
-          '&:hover': {
-            backgroundColor: '#333',
-          }
-        }}
-      >
-        Close
-      </Button>
-    </DialogActions>
-  </Dialog>
-
   // Add copy handler function
-  const handleTaskCopy = async (task) => {
+  const handleItemCopy = async (item) => {
     try {
-      // Format task based on which list it's in
       let textToCopy;
-      if (typeof task === 'string') {
-        textToCopy = task;  // List 1
-      } else if (task.urgencyValue !== undefined) {
-        textToCopy = `${task.importanceValue},${task.urgencyValue},${task.idea}`;  // List 3
+      if (typeof item === 'string') {
+        textToCopy = item;
+      } else if (item.urgencyValue !== undefined) {
+        textToCopy = `${item.importanceValue},${item.urgencyValue},${item.idea}`;
       } else {
-        textToCopy = `${task.importanceValue},${task.idea}`;  // List 2
+        textToCopy = `${item.importanceValue},${item.idea}`;
       }
 
       await navigator.clipboard.writeText(textToCopy);
       setNotification({
         open: true,
-        message: 'Task copied to clipboard'
+        message: 'Item copied to clipboard'
       });
     } catch (error) {
       console.error('Failed to copy:', error);
       setNotification({
         open: true,
-        message: 'Failed to copy task'
+        message: 'Failed to copy item'
       });
     }
   };
 
-  // Add this handler
-  const handleConfirmExport = async () => {
-    try {
-      const exportText = list3
-        .map(item => `${item.importanceValue},${item.urgencyValue},${item.idea}`)
-        .join('\n');
+  // Update useEffect to track peak counts
+  useEffect(() => {
+    if (list1.length > peakCount1) setPeakCount1(list1.length);
+  }, [list1.length]);
 
-      await navigator.clipboard.writeText(exportText);
+  useEffect(() => {
+    if (list2.length > peakCount2) setPeakCount2(list2.length);
+  }, [list2.length]);
 
-      // Calculate stats
-      const totalOriginalTasks = peakCount1;
-      const finalTasks = list3.length;
-      const tasksReduced = totalOriginalTasks - finalTasks;
-      const percentageReduced = Math.round((tasksReduced / totalOriginalTasks) * 100);
+  useEffect(() => {
+    if (list3.length > peakCount3) setPeakCount3(list3.length);
+  }, [list3.length]);
 
-      setExportStats({
-        original: totalOriginalTasks,
-        final: finalTasks,
-        reduced: tasksReduced,
-        percentage: percentageReduced
-      });
+  // Calculate total items for export dialog
+  const totalItemsAcrossAllLists = list1.length + list2.length + list3.length;
 
-      setNotification({
-        open: true,
-        message: 'Tasks exported! Opening stats...'
-      });
-
-      setStatsDialogOpen(true);
-    } catch (error) {
-      console.error('Error exporting:', error);
-      setNotification({
-        open: true,
-        message: 'Failed to export tasks'
-      });
-    }
+  // Update the instructions dialog close handler
+  const handleInstructionsClose = () => {
+    setIsInstructionsOpen(false);
+    setHasSeenInstructions(true);
+    localStorage.setItem('hasSeenInstructions', 'true');
   };
 
   return (
-    <Box sx={{
-      height: '85vh',
-      overflow: 'hidden',
-      display: "flex",
-      flexDirection: "column",
-      p: 2,
-      gap: 1.5,
-      position: 'relative'
-    }}>
-      {/* Slider */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-        <Slider
-          value={sliderValue}
-          onChange={(_, newValue) => setSliderValue(newValue)}
-          step={1}
-          marks
-          min={0}
-          max={1}
-          sx={{ width: 200 }}
-          size="small"
-        />
-      </Box>
-
-      {/* Lists Container */}
+    <Container maxWidth="xl" sx={{ height: '100vh', display: 'flex' }}>
       <Box sx={{
+        width: '100%',
+        maxWidth: '1400px',  // Adjust this value to control max width
+        margin: '0 auto',    // Center horizontally
+        height: { xs: '100vh', md: '85vh' },
+        overflow: 'hidden',
         display: "flex",
+        flexDirection: "column",
+        p: { xs: 1, md: 2 },
         gap: 2,
-        flex: 1,
-        minHeight: 0,
-        maxHeight: '60vh'
+        position: 'relative'
       }}>
-        <TaskList
-          tasks={list1}
-          selectedIndex={selectedIndex1}
-          onTaskSelect={(index) => handleSelectItem(1, index)}
-          onTaskCopy={handleTaskCopy}
-          peakCount={peakCount1}
-          listNumber={1}
-        />
-        <TaskList
-          tasks={list2}
-          selectedIndex={selectedIndex2}
-          onTaskSelect={(index) => handleSelectItem(2, index)}
-          onTaskCopy={handleTaskCopy}
-          peakCount={peakCount2}
-          listNumber={2}
-        />
-        <TaskList
-          tasks={list3}
-          selectedIndex={selectedIndex3}
-          onTaskSelect={(index) => handleSelectItem(3, index)}
-          onTaskCopy={handleTaskCopy}
-          peakCount={peakCount3}
-          listNumber={3}
-        />
-      </Box>
-
-      <ExportStatsDialog
-        open={Boolean(exportStats) && statsDialogOpen}
-        onClose={() => {
-          setStatsDialogOpen(false);
-          setExportStats(null);
-        }}
-        stats={exportStats}
-        onConfirm={handleConfirmExport}
-      />
-
-      {/* Add Import Dialog */}
-      <Dialog
-        open={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        aria-labelledby="clipboard-preview-dialog-title"
-      >
-        <DialogTitle id="clipboard-preview-dialog-title">
-          Import from Clipboard
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Do you want to add the following items to the top of List 1?
-          </DialogContentText>
-          <Box sx={{ mt: 2, maxHeight: 200, overflow: "auto" }}>
-            {clipboardContent.split("\n").map((line, index) => (
-              <Typography key={index} variant="body2">
-                {line}
-              </Typography>
-            ))}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setIsDialogOpen(false);
-              setImportProgress(0);
-              setTotalLines(0);
-              setRemainingLines(0);
-            }}
-            disabled={importProgress > 0}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirmImport}
-            autoFocus
-            disabled={importProgress > 0}
-          >
-            Confirm
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Add Clear Confirmation Dialog */}
-      <Dialog
-        open={clearConfirmOpen}
-        onClose={() => {
-          setClearConfirmOpen(false);
-          setListToClear(null);
-        }}
-      >
-        <DialogTitle>Clear List</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to clear this list?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setClearConfirmOpen(false);
-              setListToClear(null);
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleClearConfirm}
-            color="error"
-            autoFocus
-          >
-            Clear
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Help Button */}
-      <IconButton
-        onClick={() => setIsInstructionsOpen(true)}
-        size="small"
-        sx={{
-          position: 'absolute',
-          bottom: 16,
-          left: 16,
-          backgroundColor: 'black',
-          color: 'white',
-          '&:hover': {
-            backgroundColor: '#333'
-          },
-          boxShadow: 1,
-          width: 40,
-          height: 40
-        }}
-      >
-        <HelpOutline />
-      </IconButton>
-
-      {/* Instructions Dialog */}
-      <Dialog
-        open={isInstructionsOpen}
-        onClose={() => setIsInstructionsOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-          How to Use Hower
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Step by Step Guide</Typography>
-            <Box sx={{ pl: 2 }}>
-              <Typography paragraph>
-                1. <b>Import Tasks</b><br />
-                • Paste your tasks using the clipboard icon, or<br />
-                • Type tasks one by one in the input box
-              </Typography>
-
-              <Typography paragraph>
-                2. <b>Rate Tasks by Importance</b><br />
-                • Navigate tasks using Up/Down arrow keys<br />
-                • Use Left/Right arrow keys to set importance (0 or 1)<br />
-                • Press Enter to move task to next list
-              </Typography>
-
-              <Typography paragraph>
-                3. <b>Rate Tasks by Urgency</b><br />
-                • Navigate to second list using ] key<br />
-                • Use Left/Right arrow keys to set urgency (0 or 1)<br />
-                • Press Enter to move task to final list
-              </Typography>
-
-              <Typography paragraph>
-                4. <b>Review Final List</b><br />
-                • Tasks are automatically sorted by importance and urgency<br />
-                • Format: importance,urgency,task<br />
-                • Use the copy icon to export your prioritized tasks
-              </Typography>
-            </Box>
-
-            <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Keyboard Shortcuts</Typography>
-            <Box sx={{ pl: 2 }}>
-              <Typography>
-                • <b>[ and ]</b> - Move between lists<br />
-                • <b>↑/↓</b> - Navigate tasks<br />
-                • <b>←/→</b> - Toggle rating (0/1)<br />
-                • <b>Enter</b> - Move task forward<br />
-                • <b>Delete/Backspace</b> - Remove task
-              </Typography>
-            </Box>
-
-            <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Task Ratings</Typography>
-            <Box sx={{ pl: 2 }}>
-              <Typography>
-                • <b>1,1</b> - Important & Urgent<br />
-                • <b>1,0</b> - Important, Not Urgent<br />
-                • <b>0,1</b> - Not Important, Urgent<br />
-                • <b>0,0</b> - Not Important, Not Urgent
-              </Typography>
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setIsInstructionsOpen(false)}
-            variant="contained"
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          mb: 2
+        }}>
+          <IconButton
+            onClick={() => navigate('/')}
+            size="small"
             sx={{
-              backgroundColor: 'black',
+              color: 'black',
               '&:hover': {
-                backgroundColor: '#333',
+                backgroundColor: 'rgba(0,0,0,0.04)'
               }
             }}
           >
-            Got it
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <ArrowBack />
+          </IconButton>
+        </Box>
 
-      {/* Add Export Dialog */}
-      <Dialog
-        open={isExportDialogOpen}
-        onClose={() => setIsExportDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Export Tasks</DialogTitle>
-        <DialogContent>
-          <Typography gutterBottom sx={{ mb: 2 }}>
-            Select which tasks to export:
-          </Typography>
-          <FormGroup>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={exportOptions['1,1']}
-                  onChange={(e) => setExportOptions(prev => ({
-                    ...prev,
-                    '1,1': e.target.checked
-                  }))}
-                />
-              }
-              label="Important & Urgent (1,1)"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={exportOptions['1,0']}
-                  onChange={(e) => setExportOptions(prev => ({
-                    ...prev,
-                    '1,0': e.target.checked
-                  }))}
-                />
-              }
-              label="Important, Not Urgent (1,0)"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={exportOptions['0,1']}
-                  onChange={(e) => setExportOptions(prev => ({
-                    ...prev,
-                    '0,1': e.target.checked
-                  }))}
-                />
-              }
-              label="Not Important, Urgent (0,1)"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={exportOptions['0,0']}
-                  onChange={(e) => setExportOptions(prev => ({
-                    ...prev,
-                    '0,0': e.target.checked
-                  }))}
-                />
-              }
-              label="Not Important, Not Urgent (0,0)"
-            />
-          </FormGroup>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsExportDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirmExport}
-            variant="contained"
+        {/* Row 1: Slider */}
+        <Box sx={{
+          display: 'flex',
+          gap: 2,
+          alignItems: 'center',
+          width: '100%'
+        }}>
+          <Slider
+            value={sliderValue}
+            onChange={(_, newValue) => setSliderValue(newValue)}
+            step={1}
+            marks
+            min={0}
+            max={1}
             sx={{
-              backgroundColor: 'black',
-              '&:hover': {
-                backgroundColor: '#333',
+              width: '100%',
+              flexShrink: 0,
+              '& .MuiSlider-track': {
+                backgroundColor: 'black',
+              },
+              '& .MuiSlider-rail': {
+                backgroundColor: '#ccc',
+              },
+              '& .MuiSlider-thumb': {
+                backgroundColor: 'black',
+              },
+              '& .MuiSlider-mark': {
+                backgroundColor: '#bbb',
+              },
+              '& .MuiSlider-markActive': {
+                backgroundColor: 'black',
               }
             }}
-          >
-            Export Selected
-          </Button>
-        </DialogActions>
-      </Dialog>
+            size="small"
+          />
+        </Box>
 
-      {/* Add Snackbar component at the end of your JSX */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={2000}
-        onClose={() => setNotification({ ...notification, open: false })}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setNotification({ ...notification, open: false })}
-          severity="success"
+        {/* Row 2: Import/Export Controls */}
+        <Box sx={{
+          display: 'flex',
+          gap: 2,
+          alignItems: 'center'
+        }}>
+          <IconButton
+            onClick={handleClipboardImport}
+            size="small"
+            sx={{ color: 'black' }}
+          >
+            <ContentPaste />
+          </IconButton>
+
+          <Box component="form" onSubmit={handleAddItem} sx={{ flex: 1 }}>
+            <TextField
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              placeholder="Add new item..."
+              size="small"
+              fullWidth
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.stopPropagation();
+                }
+              }}
+            />
+          </Box>
+
+          <IconButton
+            onClick={handleExportList3}
+            size="small"
+            sx={{ color: 'black' }}
+          >
+            <ContentCopy />
+          </IconButton>
+        </Box>
+
+        {/* Row 3: Lists */}
+        <Box sx={{
+          display: "flex",
+          gap: 2,
+          flex: 1,
+          minHeight: 0,
+          justifyContent: 'center'  // Center lists horizontally
+        }}>
+          <ItemList
+            items={list1}
+            selectedIndex={selectedIndex1}
+            onItemSelect={(index) => handleItemSelect(1, index)}
+            onItemCopy={handleItemCopy}
+            peakCount={peakCount1}
+            listNumber={1}
+            onClearList={(listNum) => {
+              setListToClear(listNum);
+              setClearConfirmOpen(true);
+            }}
+          />
+          <ItemList
+            items={list2}
+            selectedIndex={selectedIndex2}
+            onItemSelect={(index) => handleItemSelect(2, index)}
+            onItemCopy={handleItemCopy}
+            peakCount={peakCount2}
+            listNumber={2}
+            onClearList={(listNum) => {
+              setListToClear(listNum);
+              setClearConfirmOpen(true);
+            }}
+          />
+          <ItemList
+            items={list3}
+            selectedIndex={selectedIndex3}
+            onItemSelect={(index) => handleItemSelect(3, index)}
+            onItemCopy={handleItemCopy}
+            peakCount={peakCount3}
+            listNumber={3}
+            onClearList={(listNum) => {
+              setListToClear(listNum);
+              setClearConfirmOpen(true);
+            }}
+          />
+        </Box>
+
+        {/* Help Button */}
+        <IconButton
+          onClick={() => setIsInstructionsOpen(true)}
+          size="small"
           sx={{
+            alignSelf: 'flex-start',
             backgroundColor: 'black',
             color: 'white',
-            '.MuiAlert-icon': {
-              color: 'white'
-            }
+            '&:hover': {
+              backgroundColor: '#333'
+            },
+            width: 40,
+            height: 40
           }}
         >
-          {notification.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+          <HelpOutline />
+        </IconButton>
+
+        {/* Instructions Dialog */}
+        <Dialog
+          open={isInstructionsOpen}
+          onClose={handleInstructionsClose}  // Use new handler
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+            How to Use Hower
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>Step by Step Guide</Typography>
+              <Box sx={{ pl: 2 }}>
+                <Typography paragraph>
+                  1. <b>Import Items</b><br />
+                  • Paste your items using the clipboard icon, or<br />
+                  • Type items one by one in the input box
+                </Typography>
+
+                <Typography paragraph>
+                  2. <b>Rate Items by Importance</b><br />
+                  • Navigate items using Up/Down arrow keys<br />
+                  • Use Left/Right arrow keys to set importance (0 or 1)<br />
+                  • Press Enter to move item to next list
+                </Typography>
+
+                <Typography paragraph>
+                  3. <b>Rate Items by Urgency</b><br />
+                  • Navigate to second list using ] key<br />
+                  • Use Left/Right arrow keys to set urgency (0 or 1)<br />
+                  • Press Enter to move item to final list
+                </Typography>
+
+                <Typography paragraph>
+                  4. <b>Review Final List</b><br />
+                  • Items are automatically sorted by importance and urgency<br />
+                  • Format: importance,urgency,item<br />
+                  • Use the copy icon to export your prioritized items
+                </Typography>
+              </Box>
+
+              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Keyboard Shortcuts</Typography>
+              <Box sx={{ pl: 2 }}>
+                <Typography>
+                  • <b>[ and ]</b> - Move between lists<br />
+                  • <b>↑/↓</b> - Navigate items<br />
+                  • <b>←/→</b> - Toggle rating (0/1)<br />
+                  • <b>Enter</b> - Move item forward<br />
+                  • <b>Delete/Backspace</b> - Remove item
+                </Typography>
+              </Box>
+
+              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Item Ratings</Typography>
+              <Box sx={{ pl: 2 }}>
+                <Typography>
+                  • <b>1,1</b> - Important & Urgent<br />
+                  • <b>1,0</b> - Important, Not Urgent<br />
+                  • <b>0,1</b> - Not Important, Urgent<br />
+                  • <b>0,0</b> - Not Important, Not Urgent
+                </Typography>
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={handleInstructionsClose}  // Use new handler
+              variant="contained"
+              sx={{
+                backgroundColor: 'black',
+                '&:hover': {
+                  backgroundColor: '#333',
+                }
+              }}
+            >
+              Got it
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Add Import Dialog */}
+        <Dialog
+          open={isDialogOpen}
+          onClose={() => setIsDialogOpen(false)}
+          aria-labelledby="clipboard-preview-dialog-title"
+        >
+          <DialogTitle id="clipboard-preview-dialog-title">
+            Import from Clipboard
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Do you want to add the following items to the top of List 1?
+            </DialogContentText>
+            <Box sx={{ mt: 2, maxHeight: 200, overflow: "auto" }}>
+              {clipboardContent.split("\n").map((line, index) => (
+                <Typography key={index} variant="body2">
+                  {line}
+                </Typography>
+              ))}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setIsDialogOpen(false);
+                setImportProgress(0);
+                setTotalLines(0);
+                setRemainingLines(0);
+              }}
+              disabled={importProgress > 0}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmImport}
+              autoFocus
+              disabled={importProgress > 0}
+            >
+              Confirm
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Add Clear Confirmation Dialog */}
+        <Dialog
+          open={clearConfirmOpen}
+          onClose={() => {
+            setClearConfirmOpen(false);
+            setListToClear(null);
+          }}
+        >
+          <DialogTitle>Clear List</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to clear this list?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setClearConfirmOpen(false);
+                setListToClear(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleClearConfirm}
+              color="error"
+              autoFocus
+            >
+              Clear
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Add Export Dialog */}
+        <ExportDialog
+          open={exportDialogOpen}
+          onClose={() => setExportDialogOpen(false)}
+          items={list3}
+          onExport={handleExportConfirm}
+          totalItemsAcrossAllLists={totalItemsAcrossAllLists}
+        />
+
+        <ExportResultsDialog
+          open={exportResultsOpen}
+          onClose={() => setExportResultsOpen(false)}
+          reductionPercent={reductionPercent}
+        />
+
+        {/* Add Snackbar component at the end of your JSX */}
+        <Snackbar
+          open={notification.open}
+          autoHideDuration={2000}
+          onClose={() => setNotification({ ...notification, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setNotification({ ...notification, open: false })}
+            severity="success"
+            sx={{
+              backgroundColor: 'black',
+              color: 'white',
+              '.MuiAlert-icon': {
+                color: 'white'
+              }
+            }}
+          >
+            {notification.message}
+          </Alert>
+        </Snackbar>
+      </Box>
+    </Container>
   );
 };
 

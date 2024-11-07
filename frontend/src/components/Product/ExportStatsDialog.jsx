@@ -22,7 +22,7 @@ const ExportStatsDialog = ({
       fullWidth
     >
       <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-        Task Reduction Results
+        Item Reduction Results
       </DialogTitle>
       <DialogContent sx={{ mt: 2 }}>
         <Box sx={{ textAlign: 'center', py: 2 }}>
@@ -31,20 +31,20 @@ const ExportStatsDialog = ({
           </Typography>
 
           <Typography variant="body1" sx={{ mb: 3 }}>
-            You started with <b>{stats?.original}</b> tasks and ended with <b>{stats?.final}</b> tasks.
+            You started with <b>{stats?.original}</b> Items and ended with <b>{stats?.final}</b> Items.
           </Typography>
 
           <Typography variant="body1" sx={{ mb: 2 }}>
-            That's <b>{stats?.reduced}</b> fewer tasks to focus on!
+            That's <b>{stats?.reduced}</b> fewer Items to focus on!
           </Typography>
 
           {stats?.percentage >= 50 ? (
             <Typography variant="body1" sx={{ color: 'success.main' }}>
-              Great job cutting down your task list! 🎉
+              Great job cutting down your Item list! 🎉
             </Typography>
           ) : (
             <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-              Consider being more selective to reduce your task load further.
+              Consider being more selective to reduce your Item load further.
             </Typography>
           )}
         </Box>
