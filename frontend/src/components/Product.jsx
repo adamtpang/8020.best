@@ -639,6 +639,43 @@ const Product = () => {
     }
   };
 
+  // Add this handler
+  const handleConfirmExport = async () => {
+    try {
+      const exportText = list3
+        .map(item => `${item.importanceValue},${item.urgencyValue},${item.idea}`)
+        .join('\n');
+
+      await navigator.clipboard.writeText(exportText);
+
+      // Calculate stats
+      const totalOriginalTasks = peakCount1;
+      const finalTasks = list3.length;
+      const tasksReduced = totalOriginalTasks - finalTasks;
+      const percentageReduced = Math.round((tasksReduced / totalOriginalTasks) * 100);
+
+      setExportStats({
+        original: totalOriginalTasks,
+        final: finalTasks,
+        reduced: tasksReduced,
+        percentage: percentageReduced
+      });
+
+      setNotification({
+        open: true,
+        message: 'Tasks exported! Opening stats...'
+      });
+
+      setStatsDialogOpen(true);
+    } catch (error) {
+      console.error('Error exporting:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to export tasks'
+      });
+    }
+  };
+
   return (
     <Box sx={{
       height: '85vh',
@@ -704,6 +741,7 @@ const Product = () => {
           setExportStats(null);
         }}
         stats={exportStats}
+        onConfirm={handleConfirmExport}
       />
 
       {/* Add Import Dialog */}
