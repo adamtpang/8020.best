@@ -7,22 +7,20 @@ const Purchase = require('../models/Purchase');
 
 router.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim(); // Remove any whitespace
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
   console.log('Webhook called');
+  console.log('Raw body exists:', !!req.rawBody);
   console.log('Signature:', sig);
-  console.log('Secret exists:', !!webhookSecret);
-  console.log('Body type:', typeof req.body);
-  console.log('Body is buffer:', Buffer.isBuffer(req.body));
 
   try {
     const event = stripe.webhooks.constructEvent(
-      req.body,
+      req.rawBody,
       sig,
       webhookSecret
     );
 
-    console.log('Event received:', event.type);
+    console.log('Event verified:', event.type);
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;

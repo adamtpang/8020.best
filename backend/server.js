@@ -36,27 +36,35 @@ app.use(cors({
 // Handle preflight
 app.options('*', cors());
 
-app.use(express.json());
+// Handle raw body for webhooks
+const rawBodyMiddleware = (req, res, next) => {
+  if (req.originalUrl === '/webhook') {
+    let rawBody = '';
+    req.setEncoding('utf8');
 
-// Handle raw body for Stripe webhooks
-app.post('/webhook', express.raw({ type: 'application/json' }));
+    req.on('data', chunk => {
+      rawBody += chunk;
+    });
 
-// MongoDB connection with specific database
-const mongoConfig = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  dbName: 'howerdotapp'  // Specify the database name
+    req.on('end', () => {
+      req.rawBody = rawBody;
+      next();
+    });
+  } else {
+    next();
+  }
 };
 
-mongoose.connect(process.env.MONGO_URI, mongoConfig)
-  .then(() => {
-    console.log('Connected to MongoDB - Database:', mongoConfig.dbName);
-    console.log('Collections:', mongoose.connection.collections);
-  })
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
-  });
+app.use(rawBodyMiddleware);
+
+// Regular JSON parsing for non-webhook routes
+app.use((req, res, next) => {
+  if (req.originalUrl !== '/webhook') {
+    express.json()(req, res, next);
+  } else {
+    next();
+  }
+});
 
 // Import routes
 const userDataRouter = require('./routes/userData');
