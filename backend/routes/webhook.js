@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Purchase = require('../models/Purchase');
+const mongoose = require('mongoose');
 
 router.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
@@ -29,18 +30,35 @@ router.post('/webhook', async (req, res) => {
       console.log('Processing purchase for:', customerEmail);
 
       if (customerEmail) {
-        const purchase = await Purchase.findOneAndUpdate(
-          { email: customerEmail },
-          {
-            email: customerEmail,
-            hasPurchased: true,
-            purchaseDate: new Date(),
-            stripeSessionId: session.id
-          },
-          { upsert: true, new: true }
-        );
+        try {
+          if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB not connected. Attempting to reconnect...');
+            await mongoose.connect(process.env.MONGO_URI);
+          }
 
-        console.log('Purchase record updated:', purchase);
+          const purchase = await Purchase.findOneAndUpdate(
+            { email: customerEmail },
+            {
+              email: customerEmail,
+              hasPurchased: true,
+              purchaseDate: new Date(),
+              stripeSessionId: session.id
+            },
+            {
+              upsert: true,
+              new: true,
+              maxTimeMS: 20000
+            }
+          );
+
+          console.log('Purchase record updated:', purchase);
+        } catch (dbError) {
+          console.error('Database error:', dbError);
+          return res.json({
+            received: true,
+            warning: 'Webhook received but database update failed'
+          });
+        }
       }
     }
 

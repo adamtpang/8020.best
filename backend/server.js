@@ -9,6 +9,35 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 
+// Configure MongoDB with better timeout and error handling
+mongoose.connect(process.env.MONGO_URI, {
+  serverSelectionTimeoutMS: 30000, // Increase timeout
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 30000,
+  keepAlive: true,
+  keepAliveInitialDelay: 300000
+})
+.then(() => {
+  console.log('Connected to MongoDB');
+})
+.catch((err) => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
+});
+
+// Monitor MongoDB connection
+mongoose.connection.on('error', err => {
+  console.error('MongoDB error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected. Attempting to reconnect...');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('MongoDB reconnected');
+});
+
 // Determine allowed origins based on environment
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? ['https://hower.app', 'https://www.hower.app', 'https://howerapp-production.up.railway.app']
