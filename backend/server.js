@@ -9,13 +9,15 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 
-// Configure MongoDB with better timeout and error handling
+// Configure MongoDB with supported options
 mongoose.connect(process.env.MONGO_URI, {
-  serverSelectionTimeoutMS: 30000, // Increase timeout
+  serverSelectionTimeoutMS: 30000,
   socketTimeoutMS: 45000,
   connectTimeoutMS: 30000,
-  keepAlive: true,
-  keepAliveInitialDelay: 300000
+  maxPoolSize: 10,
+  minPoolSize: 5,
+  retryWrites: true,
+  w: 'majority'
 })
 .then(() => {
   console.log('Connected to MongoDB');
@@ -31,11 +33,11 @@ mongoose.connection.on('error', err => {
 });
 
 mongoose.connection.on('disconnected', () => {
-  console.log('MongoDB disconnected. Attempting to reconnect...');
+  console.log('MongoDB disconnected');
 });
 
-mongoose.connection.on('reconnected', () => {
-  console.log('MongoDB reconnected');
+mongoose.connection.on('connected', () => {
+  console.log('MongoDB connected');
 });
 
 // Determine allowed origins based on environment
