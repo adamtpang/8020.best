@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, TextField, IconButton } from '@mui/material';
 import { ContentPaste } from '@mui/icons-material';
 
-const TaskInput = ({
+const ItemInput = ({
   value,
   onChange,
   onSubmit,
@@ -25,7 +25,7 @@ const TaskInput = ({
         <TextField
           value={value}
           onChange={onChange}
-          placeholder="Add new task..."
+          placeholder="Add new item..."
           size="small"
           fullWidth
           onKeyDown={(e) => {
@@ -39,4 +39,4 @@ const TaskInput = ({
   );
 };
 
-export default TaskInput;
+export default ItemInput;

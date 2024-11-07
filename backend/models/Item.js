@@ -1,8 +1,8 @@
-// models/Task.js
+// models/Item.js
 
 const mongoose = require('mongoose');
 
-const taskSchema = new mongoose.Schema({
+const itemSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   list1: [{ type: String }],
   list2: [
@@ -20,4 +20,4 @@ const taskSchema = new mongoose.Schema({
   ],
 });
 
-module.exports = mongoose.model('Task', taskSchema);
+module.exports = mongoose.model('Item', iteSchema);

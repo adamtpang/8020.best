@@ -1,21 +1,11 @@
 // src/components/Landing.jsx
 
-import React, { useEffect, useState } from 'react';
-import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth, provider } from '../firebase-config';
+import React, { useState, useEffect } from 'react';
+import { Container, Grid, Typography, Button, Box, Avatar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { auth, provider } from '../firebase-config';
+import { signInWithPopup, signOut } from 'firebase/auth';
 import axios from 'axios';
-
-// Import MUI components
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Box,
-  Grid,
-  Container,
-} from '@mui/material';
 
 const Landing = () => {
   const [user, setUser] = useState(null);
@@ -23,220 +13,147 @@ const Landing = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      setUser(user);
       if (user) {
-        setUser(user);
         checkPurchaseStatus(user);
-      } else {
-        setUser(null);
-        setHasPurchased(false);
       }
     });
 
-    // Load Stripe Buy Button script
-    const loadStripe = () => {
-      try {
-        const script = document.createElement('script');
-        script.src = 'https://js.stripe.com/v3/buy-button.js';
-        script.async = true;
-        script.defer = true;
+    return () => unsubscribe();
+  }, []);
 
-        // Handle script load with Promise
-        script.onload = () => {
-          console.log('Stripe script loaded successfully');
-        };
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://js.stripe.com/v3/buy-button.js';
+    script.async = true;
+    document.head.appendChild(script);
 
-        script.onerror = (error) => {
-          console.error('Error loading Stripe script:', error);
-        };
-
-        document.head.appendChild(script);
-      } catch (error) {
-        console.error('Error setting up Stripe script:', error);
-      }
-    };
-
-    loadStripe();
-
-    // Cleanup
     return () => {
-      const script = document.querySelector('script[src="https://js.stripe.com/v3/buy-button.js"]');
-      if (script) {
-        document.head.removeChild(script);
+      const existingScript = document.querySelector('script[src="https://js.stripe.com/v3/buy-button.js"]');
+      if (existingScript) {
+        document.head.removeChild(existingScript);
       }
     };
   }, []);
 
-  useEffect(() => {
-    let pollInterval;
-
-    const pollPurchaseStatus = async () => {
-      if (user?.email) {
-        try {
-          const response = await axios.get(
-            `${import.meta.env.VITE_API_URL}/api/purchases/check-purchase`,
-            {
-              params: { email: user.email }
-            }
-          );
-
-          console.log('Poll purchase status:', response.data);
-
-          if (response.data.hasPurchased) {
-            setHasPurchased(true);
-            clearInterval(pollInterval);
-          }
-        } catch (error) {
-          console.error('Error polling purchase status:', error);
-        }
-      }
-    };
-
-    // Start polling when user is logged in and hasn't purchased
-    if (user && !hasPurchased) {
-      pollPurchaseStatus(); // Check immediately
-      pollInterval = setInterval(pollPurchaseStatus, 2000); // Then every 2 seconds
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      console.log('Sign in successful:', result.user.email);
+    } catch (error) {
+      console.error('Error during sign-in:', error);
     }
+  };
 
-    // Cleanup
-    return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-    };
-  }, [user, hasPurchased]);
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   const checkPurchaseStatus = async (user) => {
     try {
-      console.log('Checking purchase status for:', user.email);
-
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/api/purchases/check-purchase`,
         {
           params: { email: user.email }
         }
       );
-
-      console.log('Purchase status response:', response.data);
       setHasPurchased(Boolean(response.data.hasPurchased));
     } catch (error) {
       console.error('Error checking purchase status:', error);
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      console.log('Sign in successful:', result.user.email);
-      if (result.user?.email) {
-        checkPurchaseStatus(result.user);
-      }
-    } catch (error) {
-      console.error('Error during sign-in:', error);
-      // Handle specific error cases if needed
-      if (error.code === 'auth/popup-closed-by-user') {
-        console.log('Sign-in cancelled by user');
-      }
-    }
-  };
-
-  const handleLogout = () => {
-    signOut(auth)
-      .then(() => {
-        setUser(null);
-        setHasPurchased(false);
-      })
-      .catch((error) => {
-        console.error('Error during logout:', error);
-      });
-  };
-
-  const handleContinueToHower = () => {
-    navigate('/product');
-  };
-
-  const NavBar = () => (
-    <AppBar position="static" sx={{ backgroundColor: 'black' }}>
-      <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1, textAlign: 'center' }}>
-          hower.app
-        </Typography>
-        {user && (
+  return (
+    <Container>
+      {/* Auth Controls - Only show Sign Out here */}
+      {user && (
+        <Box sx={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <Avatar
+            src={user.photoURL}
+            alt={user.displayName}
+            sx={{ width: 40, height: 40 }}
+          />
           <Button
-            color="inherit"
-            onClick={handleLogout}
+            onClick={handleSignOut}
+            variant="outlined"
             sx={{
-              textTransform: 'none',  // Prevents all-caps
-              fontSize: '1rem'
+              color: 'black',
+              borderColor: 'black',
+              '&:hover': {
+                borderColor: '#333',
+                backgroundColor: 'rgba(0,0,0,0.04)'
+              }
             }}
           >
-            Logout
+            Sign Out
           </Button>
-        )}
-      </Toolbar>
-    </AppBar>
-  );
+        </Box>
+      )}
 
-  return (
-    <div>
-      <NavBar />
-      <Container sx={{ mt: 8 }}>
-        <Grid container spacing={4} justifyContent="center">
-          {/* Main Content */}
-          <Grid item xs={12} md={8}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography
-                variant="h3"
-                component="h1"
-                gutterBottom
-                sx={{
-                  fontWeight: 'bold',
-                  mb: 3,
-                  fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
-                  lineHeight: 1.2
-                }}
-              >
-                Are you an overwhelmed achiever?
-              </Typography>
-              <Typography
-                variant="h4"
-                component="h2"
-                gutterBottom
-                sx={{
-                  color: 'text.secondary',
-                  mb: 6,
-                  fontSize: { xs: '1.7rem', sm: '2rem', md: '2.5rem' },
-                  lineHeight: 1.2
-                }}
-              >
-                Cut your todo list by 80% with hower.app
-              </Typography>
+      {/* Content */}
+      <Grid container spacing={4} justifyContent="center" sx={{ mt: { xs: 8, md: 12 } }}>
+        <Grid item xs={12} md={8} textAlign="center">
+          <Typography
+            variant="h3"
+            component="h1"
+            gutterBottom
+            sx={{
+              fontWeight: 'bold',
+              mb: 3
+            }}
+          >
+            Are you an overwhelmed achiever?
+          </Typography>
 
-              {!user && (
-                <Button
-                  variant="contained"
-                  onClick={handleGoogleSignIn}
-                  size="large"
-                  sx={{
-                    mt: 4,
-                    py: 2,
-                    px: 6,
-                    fontSize: '1.25rem',
-                    backgroundColor: 'black',
-                    '&:hover': {
-                      backgroundColor: '#333'
-                    }
-                  }}
-                >
-                  Continue with Google
-                </Button>
-              )}
-            </Box>
-          </Grid>
+          <Typography
+            variant="h4"
+            component="h2"
+            gutterBottom
+            sx={{
+              color: 'text.secondary',
+              mb: 6
+            }}
+          >
+            Cut your todolist by 80% with hower.app
+          </Typography>
 
-          {/* Purchase or Continue Section */}
+          {/* Show Google Sign In if not signed in */}
+          {!user && (
+            <Button
+              onClick={handleGoogleSignIn}
+              variant="contained"
+              size="large"
+              sx={{
+                mt: 4,
+                backgroundColor: 'black',
+                py: 2,
+                px: 4,
+                fontSize: '1.2rem',
+                '&:hover': {
+                  backgroundColor: '#333'
+                }
+              }}
+            >
+              Continue with Google
+            </Button>
+          )}
+
+          {/* Show Stripe button if signed in but hasn't purchased */}
           {user && !hasPurchased && (
-            <Grid item xs={12} sx={{ textAlign: 'center', mt: 4 }}>
+            <Box sx={{ mt: 4 }}>
               <stripe-buy-button
                 buy-button-id="buy_btn_1Q8WGpFL7C10dNyGiDnbvoQB"
                 publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
@@ -246,53 +163,53 @@ const Landing = () => {
                 cancel-url={window.location.origin}
               >
               </stripe-buy-button>
-            </Grid>
+            </Box>
           )}
+
+          {/* Show proceed button if purchased */}
           {user && hasPurchased && (
-            <Grid item xs={12} sx={{ textAlign: 'center', mt: 4 }}>
-              <Button
-                variant="contained"
-                onClick={() => navigate('/product')}
-                size="large"
-                sx={{
-                  py: 2.5,
-                  px: 8,
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  backgroundColor: 'black',
-                  position: 'relative',
-                  '&:hover': {
-                    backgroundColor: '#333',
+            <Button
+              variant="contained"
+              onClick={() => navigate('/product')}
+              size="large"
+              sx={{
+                py: 2.5,
+                px: 8,
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                backgroundColor: 'black',
+                position: 'relative',
+                '&:hover': {
+                  backgroundColor: '#333',
+                },
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: -3,
+                  left: -3,
+                  right: -3,
+                  bottom: -3,
+                  background: 'linear-gradient(45deg, #ff0000, #ff8800, #ffd000, #00ff88, #00ffff, #0066ff, #9900ff)',
+                  borderRadius: '8px',
+                  zIndex: -1,
+                  animation: 'borderAnimation 4s linear infinite',
+                },
+                '@keyframes borderAnimation': {
+                  '0%': {
+                    filter: 'hue-rotate(0deg)',
                   },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: -3,
-                    left: -3,
-                    right: -3,
-                    bottom: -3,
-                    background: 'linear-gradient(45deg, #ff0000, #ff8800, #ffd000, #00ff88, #00ffff, #0066ff, #9900ff)',
-                    borderRadius: '8px',
-                    zIndex: -1,
-                    animation: 'borderAnimation 4s linear infinite',
-                  },
-                  '@keyframes borderAnimation': {
-                    '0%': {
-                      filter: 'hue-rotate(0deg)',
-                    },
-                    '100%': {
-                      filter: 'hue-rotate(360deg)',
-                    }
+                  '100%': {
+                    filter: 'hue-rotate(360deg)',
                   }
-                }}
-              >
-                Ready to 10x your productivity?
-              </Button>
-            </Grid>
+                }
+              }}
+            >
+              Ready to 10x your productivity?
+            </Button>
           )}
         </Grid>
-      </Container>
-    </div>
+      </Grid>
+    </Container>
   );
 };
 
