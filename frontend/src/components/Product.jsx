@@ -28,6 +28,9 @@ import { Close as CloseIcon, ContentPaste, DeleteOutline, ContentCopy, HelpOutli
 import { useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 import axios from "axios";
+import TaskList from './Product/TaskList';
+import TaskInput from './Product/TaskInput';
+import ExportStatsDialog from './Product/ExportStatsDialog';
 
 const Product = () => {
   const auth = getAuth();
@@ -71,10 +74,7 @@ const Product = () => {
   const [newTask, setNewTask] = useState('');
 
   // Add new state for notification
-  const [notification, setNotification] = useState({
-    open: false,
-    message: ''
-  });
+  const [notification, setNotification] = useState({ open: false, message: '' });
 
   // Add handler for adding tasks
   const handleAddTask = (e) => {
@@ -82,9 +82,14 @@ const Product = () => {
     if (newTask.trim()) {
       setList1(prev => [newTask.trim(), ...prev]);
       setNewTask('');
-      // Auto-select the new task
-      setSelectedIndex1(0);
+      // Auto-highlight the new task
+      setSelectedIndex1(0);  // Select first item since we add to top
       setActiveList(1);
+
+      // If this is the first task, update peak count
+      if (list1.length === 0) {
+        setPeakCount1(1);
+      }
     }
   };
 
@@ -273,11 +278,22 @@ const Product = () => {
   const handleClipboardImport = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      setClipboardContent(text);
-      setIsDialogOpen(true);
-      document.activeElement.blur();
+      const newItems = text
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      if (newItems.length > 0) {
+        setList1(prev => [...newItems, ...prev]);
+        // Auto-highlight the first imported task
+        setSelectedIndex1(0);
+        setActiveList(1);
+
+        // Update peak count if needed
+        setPeakCount1(prev => Math.max(prev, newItems.length));
+      }
     } catch (error) {
-      console.error('Error reading clipboard:', error);
+      console.error('Error importing from clipboard:', error);
     }
   };
 
@@ -498,42 +514,103 @@ const Product = () => {
     setListToClear(null);
   };
 
-  // Update the export handler
+  // Add to state
+  const [exportStats, setExportStats] = useState(null);
+  const [statsDialogOpen, setStatsDialogOpen] = useState(false);
+
+  // Update handleExportList3 function
   const handleExportList3 = async () => {
-    setIsExportDialogOpen(true);
-  };
-
-  // Add handler for actual export
-  const handleConfirmExport = async () => {
     try {
-      const selectedTasks = list3.filter(item => {
-        const key = `${item.importanceValue},${item.urgencyValue}`;
-        return exportOptions[key];
-      });
-
-      const exportText = selectedTasks
+      const exportText = list3
         .map(item => `${item.importanceValue},${item.urgencyValue},${item.idea}`)
         .join('\n');
 
       await navigator.clipboard.writeText(exportText);
-      setIsExportDialogOpen(false);
+
+      // Calculate stats
+      const totalOriginalTasks = peakCount1;
+      const finalTasks = list3.length;
+      const tasksReduced = totalOriginalTasks - finalTasks;
+      const percentageReduced = Math.round((tasksReduced / totalOriginalTasks) * 100);
+
+      setExportStats({
+        original: totalOriginalTasks,
+        final: finalTasks,
+        reduced: tasksReduced,
+        percentage: percentageReduced
+      });
+
+      setNotification({
+        open: true,
+        message: 'Tasks exported! Opening stats...'
+      });
+
+      setStatsDialogOpen(true);
     } catch (error) {
-      console.error('Error copying to clipboard:', error);
+      console.error('Error exporting:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to export tasks'
+      });
     }
   };
 
-  // Update useEffect to track peak counts
-  useEffect(() => {
-    if (list1.length > peakCount1) setPeakCount1(list1.length);
-  }, [list1.length]);
+  // Stats Dialog component
+  <Dialog
+    open={Boolean(exportStats) && statsDialogOpen}
+    onClose={() => {
+      setStatsDialogOpen(false);
+      setExportStats(null);
+    }}
+    maxWidth="sm"
+    fullWidth
+  >
+    <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+      Task Reduction Results
+    </DialogTitle>
+    <DialogContent sx={{ mt: 2 }}>
+      <Box sx={{ textAlign: 'center', py: 2 }}>
+        <Typography variant="h4" gutterBottom sx={{ color: 'black' }}>
+          {exportStats?.percentage}% Reduced
+        </Typography>
 
-  useEffect(() => {
-    if (list2.length > peakCount2) setPeakCount2(list2.length);
-  }, [list2.length]);
+        <Typography variant="body1" sx={{ mb: 3 }}>
+          You started with <b>{exportStats?.original}</b> tasks and ended with <b>{exportStats?.final}</b> tasks.
+        </Typography>
 
-  useEffect(() => {
-    if (list3.length > peakCount3) setPeakCount3(list3.length);
-  }, [list3.length]);
+        <Typography variant="body1" sx={{ mb: 2 }}>
+          That's <b>{exportStats?.reduced}</b> fewer tasks to focus on!
+        </Typography>
+
+        {exportStats?.percentage >= 50 ? (
+          <Typography variant="body1" sx={{ color: 'success.main' }}>
+            Great job cutting down your task list! 🎉
+          </Typography>
+        ) : (
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+            Consider being more selective to reduce your task load further.
+          </Typography>
+        )}
+      </Box>
+    </DialogContent>
+    <DialogActions>
+      <Button
+        onClick={() => {
+          setStatsDialogOpen(false);
+          setExportStats(null);
+        }}
+        variant="contained"
+        sx={{
+          backgroundColor: 'black',
+          '&:hover': {
+            backgroundColor: '#333',
+          }
+        }}
+      >
+        Close
+      </Button>
+    </DialogActions>
+  </Dialog>
 
   // Add copy handler function
   const handleTaskCopy = async (task) => {
@@ -572,35 +649,6 @@ const Product = () => {
       gap: 1.5,
       position: 'relative'
     }}>
-      {/* Selected Task Bar */}
-      <Paper
-        sx={{
-          p: 1.5,
-          backgroundColor: 'black',
-          color: 'white',
-          minHeight: '35px',
-          display: 'flex',
-          alignItems: 'center',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-        }}
-      >
-        <Typography
-          variant="h6"
-          sx={{
-            fontSize: '1rem',
-            fontWeight: 500,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'normal',
-            wordBreak: 'break-word',
-            maxHeight: '100px',
-            overflowY: 'auto',
-          }}
-        >
-          {getSelectedTaskText() || "No task selected"}
-        </Typography>
-      </Paper>
-
       {/* Slider */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         <Slider
@@ -610,27 +658,7 @@ const Product = () => {
           marks
           min={0}
           max={1}
-          sx={{
-            width: 200,
-            '& .MuiSlider-track': {
-              backgroundColor: 'black',
-            },
-            '& .MuiSlider-rail': {
-              backgroundColor: '#ccc',
-            },
-            '& .MuiSlider-thumb': {
-              backgroundColor: 'black',
-              '&:hover, &.Mui-focusVisible': {
-                boxShadow: '0 0 0 8px rgba(0, 0, 0, 0.16)',
-              },
-            },
-            '& .MuiSlider-mark': {
-              backgroundColor: '#bbb',
-            },
-            '& .MuiSlider-markActive': {
-              backgroundColor: 'black',
-            }
-          }}
+          sx={{ width: 200 }}
           size="small"
         />
       </Box>
@@ -643,395 +671,40 @@ const Product = () => {
         minHeight: 0,
         maxHeight: '60vh'
       }}>
-        {/* List 1: Initial Tasks */}
-        <Paper sx={{
-          flex: 1,
-          p: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: '65vh'
-        }}>
-          {/* Top Controls Container */}
-          <Box sx={{
-            display: 'flex',
-            gap: 1,
-            mb: 2,
-            alignItems: 'center'  // Align items vertically
-          }}>
-            {/* Import Button */}
-            <IconButton
-              onClick={handleClipboardImport}
-              size="small"
-              sx={{ flexShrink: 0 }}  // Prevent button from shrinking
-            >
-              <ContentPaste />
-            </IconButton>
-
-            {/* Add Task Form */}
-            <Box
-              component="form"
-              onSubmit={handleAddTask}
-              sx={{ flex: 1 }}  // Take remaining space
-            >
-              <TextField
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                placeholder="Add new task..."
-                size="small"
-                fullWidth
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.stopPropagation();
-                  }
-                }}
-              />
-            </Box>
-          </Box>
-
-          <List sx={{
-            flex: 1,
-            overflow: 'auto',
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: '#f1f1f1',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#888',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb:hover': {
-              background: '#555',
-            },
-          }}>
-            {list1.length > 0 ? (
-              list1.map((item, index) => (
-                <ListItem
-                  id={`list-1-item-${index}`}
-                  key={index}
-                  selected={selectedIndex1 === index}
-                  onClick={() => handleSelectItem(1, index)}
-                  sx={{
-                    cursor: 'pointer',
-                    backgroundColor: selectedIndex1 === index ? 'black !important' : 'transparent',
-                    color: selectedIndex1 === index ? 'white !important' : 'inherit',
-                    borderLeft: selectedIndex1 === index ? '6px solid #333' : '6px solid transparent',
-                    boxShadow: selectedIndex1 === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
-                    '&:hover': {
-                      backgroundColor: selectedIndex1 === index ? 'black !important' : 'rgba(0, 0, 0, 0.04)',
-                    },
-                    borderRadius: 1,
-                    mb: 0.5,
-                    transition: 'all 0.2s ease',
-                  }}
-                  onDoubleClick={() => handleTaskCopy(item)}
-                >
-                  <ListItemText primary={item} />
-                </ListItem>
-              ))
-            ) : (
-              <ListItem
-                sx={{
-                  color: 'text.disabled',
-                  fontStyle: 'italic',
-                  cursor: 'pointer',
-                  backgroundColor: selectedIndex1 === 0 ? 'black !important' : 'transparent',
-                  borderLeft: selectedIndex1 === 0 ? '6px solid #333' : '6px solid transparent',
-                  boxShadow: selectedIndex1 === 0 ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
-                  borderRadius: 1,
-                  transition: 'all 0.2s ease',
-                  '& .MuiListItemText-root': {
-                    color: selectedIndex1 === 0 ? 'white !important' : 'text.disabled',
-                  }
-                }}
-              >
-                <ListItemText primary="Empty list" />
-              </ListItem>
-            )}
-          </List>
-
-          {/* Clear Button */}
-          <IconButton
-            onClick={() => {
-              setListToClear(1);
-              setClearConfirmOpen(true);
-              document.activeElement.blur();
-            }}
-            size="small"
-            color="default"
-            sx={{ mt: 1, alignSelf: 'center', color: 'black', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
-          >
-            <DeleteOutline />
-          </IconButton>
-
-          {/* Progress Line */}
-          <Box
-            sx={{
-              width: '100%',
-              height: 2,
-              mb: 1,
-              bgcolor: 'rgba(0,0,0,0.05)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                height: '100%',
-                width: `${peakCount1 ? (list1.length / peakCount1) * 100 : 0}%`,
-                bgcolor: 'black',
-                transition: 'width 0.3s ease'
-              }}
-            />
-          </Box>
-        </Paper>
-
-        {/* List 2: With Importance */}
-        <Paper sx={{
-          flex: 1,
-          p: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: '65vh'
-        }}>
-          <List sx={{
-            flex: 1,
-            overflow: 'auto',
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: '#f1f1f1',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#888',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb:hover': {
-              background: '#555',
-            },
-          }}>
-            {list2.map((item, index, array) => {
-              // Check if this item is the last '1' before the '0's start
-              const isLastImportantItem =
-                item.importanceValue === 1 &&
-                (array[index + 1]?.importanceValue === 0);
-
-              return (
-                <React.Fragment key={index}>
-                  <ListItem
-                    id={`list-2-item-${index}`}
-                    selected={selectedIndex2 === index}
-                    onClick={() => handleSelectItem(2, index)}
-                    sx={{
-                      cursor: 'pointer',
-                      backgroundColor: selectedIndex2 === index ? 'black !important' : 'transparent',
-                      borderLeft: selectedIndex2 === index ? '6px solid #333' : '6px solid transparent',
-                      boxShadow: selectedIndex2 === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
-                      '&:hover': {
-                        backgroundColor: selectedIndex2 === index ? 'black !important' : 'rgba(0, 0, 0, 0.04)',
-                      },
-                      borderRadius: 1,
-                      mb: isLastImportantItem ? 0 : 0.5,
-                      transition: 'all 0.2s ease',
-                      '& .MuiListItemText-root': {
-                        color: selectedIndex2 === index ? 'white !important' : 'text.disabled',
-                      }
-                    }}
-                    onDoubleClick={() => handleTaskCopy(item)}
-                  >
-                    <ListItemText primary={`${item.importanceValue}, ${item.idea}`} />
-                  </ListItem>
-                  {isLastImportantItem && (
-                    <Box
-                      sx={{
-                        my: 2,
-                        height: '2px',
-                        background: 'linear-gradient(to right, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.1) 100%)',
-                        position: 'relative',
-                        '&::after': {
-                          content: '"Not Important"',
-                          position: 'absolute',
-                          top: '-10px',
-                          right: 0,
-                          fontSize: '0.75rem',
-                          color: 'text.secondary',
-                          backgroundColor: 'white',
-                          padding: '0 8px'
-                        }
-                      }}
-                    />
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </List>
-
-          {/* Clear Button */}
-          <IconButton
-            onClick={() => {
-              setListToClear(2);
-              setClearConfirmOpen(true);
-              document.activeElement.blur();
-            }}
-            size="small"
-            color="default"
-            sx={{ mt: 1, alignSelf: 'center', color: 'black', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
-          >
-            <DeleteOutline />
-          </IconButton>
-
-          {/* Progress Line */}
-          <Box
-            sx={{
-              width: '100%',
-              height: 2,
-              mb: 1,
-              bgcolor: 'rgba(0,0,0,0.05)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                height: '100%',
-                width: `${peakCount2 ? (list2.length / peakCount2) * 100 : 0}%`,
-                bgcolor: 'black',
-                transition: 'width 0.3s ease'
-              }}
-            />
-          </Box>
-        </Paper>
-
-        {/* List 3: Final List */}
-        <Paper sx={{
-          flex: 1,
-          p: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: '65vh'
-        }}>
-          {/* Add Export Button at top */}
-          <IconButton
-            onClick={handleExportList3}
-            size="small"
-            sx={{ alignSelf: 'flex-start', mb: 1, color: 'black', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
-          >
-            <ContentCopy />
-          </IconButton>
-
-          <List sx={{
-            flex: 1,
-            overflow: 'auto',
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: '#f1f1f1',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#888',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb:hover': {
-              background: '#555',
-            },
-          }}>
-            {list3.length > 0 ? (
-              list3.map((item, index) => (
-                <ListItem
-                  id={`list-3-item-${index}`}
-                  key={index}
-                  selected={selectedIndex3 === index}
-                  onClick={() => handleSelectItem(3, index)}
-                  sx={{
-                    cursor: 'pointer',
-                    backgroundColor: selectedIndex3 === index ? 'black !important' : 'transparent',
-                    color: selectedIndex3 === index ? 'white !important' : 'inherit',
-                    borderLeft: selectedIndex3 === index ? '6px solid #333' : '6px solid transparent',
-                    boxShadow: selectedIndex3 === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
-                    '&:hover': {
-                      backgroundColor: selectedIndex3 === index ? 'black !important' : 'rgba(0, 0, 0, 0.04)',
-                    },
-                    borderRadius: 1,
-                    mb: 0.5,
-                    transition: 'all 0.2s ease',
-                  }}
-                  onDoubleClick={() => handleTaskCopy(item)}
-                >
-                  <ListItemText primary={`${item.importanceValue},${item.urgencyValue},${item.idea}`} />
-                </ListItem>
-              ))
-            ) : (
-              <ListItem
-                sx={{
-                  color: 'text.disabled',
-                  fontStyle: 'italic',
-                  cursor: 'pointer',
-                  backgroundColor: selectedIndex3 === 0 ? 'black !important' : 'transparent',
-                  borderLeft: selectedIndex3 === 0 ? '6px solid #333' : '6px solid transparent',
-                  boxShadow: selectedIndex3 === 0 ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
-                  borderRadius: 1,
-                  transition: 'all 0.2s ease',
-                  '& .MuiListItemText-root': {
-                    color: selectedIndex3 === 0 ? 'white !important' : 'text.disabled',
-                  }
-                }}
-              >
-                <ListItemText primary="Empty list" />
-              </ListItem>
-            )}
-          </List>
-
-          {/* Clear Button */}
-          <IconButton
-            onClick={() => {
-              setListToClear(3);
-              setClearConfirmOpen(true);
-              document.activeElement.blur();
-            }}
-            size="small"
-            color="default"
-            sx={{ mt: 1, alignSelf: 'center', color: 'black', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
-          >
-            <DeleteOutline />
-          </IconButton>
-
-          {/* Progress Line */}
-          <Box
-            sx={{
-              width: '100%',
-              height: 2,
-              mb: 1,
-              bgcolor: 'rgba(0,0,0,0.05)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                height: '100%',
-                width: `${peakCount3 ? (list3.length / peakCount3) * 100 : 0}%`,
-                bgcolor: 'black',
-                transition: 'width 0.3s ease'
-              }}
-            />
-          </Box>
-        </Paper>
+        <TaskList
+          tasks={list1}
+          selectedIndex={selectedIndex1}
+          onTaskSelect={(index) => handleSelectItem(1, index)}
+          onTaskCopy={handleTaskCopy}
+          peakCount={peakCount1}
+          listNumber={1}
+        />
+        <TaskList
+          tasks={list2}
+          selectedIndex={selectedIndex2}
+          onTaskSelect={(index) => handleSelectItem(2, index)}
+          onTaskCopy={handleTaskCopy}
+          peakCount={peakCount2}
+          listNumber={2}
+        />
+        <TaskList
+          tasks={list3}
+          selectedIndex={selectedIndex3}
+          onTaskSelect={(index) => handleSelectItem(3, index)}
+          onTaskCopy={handleTaskCopy}
+          peakCount={peakCount3}
+          listNumber={3}
+        />
       </Box>
+
+      <ExportStatsDialog
+        open={Boolean(exportStats) && statsDialogOpen}
+        onClose={() => {
+          setStatsDialogOpen(false);
+          setExportStats(null);
+        }}
+        stats={exportStats}
+      />
 
       {/* Add Import Dialog */}
       <Dialog

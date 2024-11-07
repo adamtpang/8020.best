@@ -58,6 +58,7 @@ mongoose.connect(process.env.MONGO_URI, mongoConfig)
 // Import routes
 const userDataRouter = require('./routes/userData');
 const purchasesRouter = require('./routes/purchases');
+const webhookRouter = require('./routes/webhook');
 
 // Root route
 app.get('/', (req, res) => {
@@ -73,6 +74,7 @@ app.get('/', (req, res) => {
 // Use routes
 app.use(userDataRouter);
 app.use(purchasesRouter);
+app.use(webhookRouter);
 
 // Stripe webhook handler
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {

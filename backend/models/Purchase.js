@@ -9,7 +9,8 @@ const purchaseSchema = new mongoose.Schema({
   },
   hasPurchased: {
     type: Boolean,
-    default: false
+    default: false,
+    required: true
   },
   purchaseDate: {
     type: Date
