@@ -25,87 +25,220 @@ import {
   Alert,
   Container,
 } from "@mui/material";
-import { Close as CloseIcon, ContentPaste, DeleteOutline, ContentCopy, HelpOutline, Add, ArrowBack } from "@mui/icons-material";
+import { Close as CloseIcon, ContentPaste, DeleteOutline, ContentCopy, HelpOutline, Add, ArrowBack, DeleteOutlined } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 import axios from "axios";
 import ItemList from "./Product/ItemList";
 import ExportDialog from "./Product/ExportDialog";
 import ExportResultsDialog from "./Product/ExportResultsDialog";
+import TrashDialog from './Product/TrashDialog';
 
 const Product = () => {
   const auth = getAuth();
   const navigate = useNavigate();
 
-  // Core state
-  const [list1, setList1] = useState([]);  // Initial list
-  const [list2, setList2] = useState([]); // With importance
-  const [list3, setList3] = useState([]); // With importance & urgency
+  // Initialize all state at the top
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [list1, setList1] = useState([]);
+  const [list2, setList2] = useState([]);
+  const [list3, setList3] = useState([]);
   const [selectedIndex1, setSelectedIndex1] = useState(null);
   const [selectedIndex2, setSelectedIndex2] = useState(null);
   const [selectedIndex3, setSelectedIndex3] = useState(null);
   const [sliderValue, setSliderValue] = useState(0);
   const [activeList, setActiveList] = useState(1);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [clipboardContent, setClipboardContent] = useState("");
-  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
-  const [listToClear, setListToClear] = useState(null);
-  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
-
-  // Add new state for import progress
-  const [importProgress, setImportProgress] = useState(0);
-  const [totalLines, setTotalLines] = useState(0);
-  const [remainingLines, setRemainingLines] = useState(0);
-
-  // Add new state for peak counts
-  const [peakCount1, setPeakCount1] = useState(0);
-  const [peakCount2, setPeakCount2] = useState(0);
-  const [peakCount3, setPeakCount3] = useState(0);
-
-  // Add new state for export dialog and options
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [exportOptions, setExportOptions] = useState({
-    '1,1': true,  // 11s checked by default
-    '1,0': false,
-    '0,1': false,
-    '0,0': false
-  });
-
-  // Add new state for text input
   const [newItem, setNewItem] = useState('');
-
-  // Add new state for notification
+  const [trashedItems, setTrashedItems] = useState([]);
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportResultsOpen, setExportResultsOpen] = useState(false);
+  const [reductionPercent, setReductionPercent] = useState(0);
+  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
+  const [hasSeenInstructions, setHasSeenInstructions] = useState(() => {
+    return localStorage.getItem('hasSeenInstructions') === 'true'
+  });
   const [notification, setNotification] = useState({
     open: false,
     message: ''
   });
+  const [peakCount1, setPeakCount1] = useState(0);
+  const [peakCount2, setPeakCount2] = useState(0);
+  const [peakCount3, setPeakCount3] = useState(0);
+  const [listToClear, setListToClear] = useState(null);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
-  // Add new state
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [exportResultsOpen, setExportResultsOpen] = useState(false);
-  const [reductionPercent, setReductionPercent] = useState(0);
-
-  // Add to your state declarations
-  const [hasSeenInstructions, setHasSeenInstructions] = useState(() => {
-    return localStorage.getItem('hasSeenInstructions') === 'true'
-  });
-
-  // Add this useEffect near the top with other useEffects
+  // Show instructions on first visit
   useEffect(() => {
-    // Show instructions if user hasn't seen them
     if (!hasSeenInstructions) {
       setIsInstructionsOpen(true);
     }
   }, [hasSeenInstructions]);
 
+  // Track peak counts
+  useEffect(() => {
+    if (list1.length > peakCount1) setPeakCount1(list1.length);
+  }, [list1.length, peakCount1]);
+
+  useEffect(() => {
+    if (list2.length > peakCount2) setPeakCount2(list2.length);
+  }, [list2.length, peakCount2]);
+
+  useEffect(() => {
+    if (list3.length > peakCount3) setPeakCount3(list3.length);
+  }, [list3.length, peakCount3]);
+
+  // Keyboard handler
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (isInputFocused) return;
+
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+
+        const getCurrentList = () => {
+          if (activeList === 1) return list1;
+          if (activeList === 2) return list2;
+          if (activeList === 3) return list3;
+          return [];
+        };
+
+        const getCurrentIndex = () => {
+          if (activeList === 1) return selectedIndex1;
+          if (activeList === 2) return selectedIndex2;
+          if (activeList === 3) return selectedIndex3;
+          return null;
+        };
+
+        const setCurrentIndex = (newIndex) => {
+          if (activeList === 1) setSelectedIndex1(newIndex);
+          if (activeList === 2) setSelectedIndex2(newIndex);
+          if (activeList === 3) setSelectedIndex3(newIndex);
+
+          setTimeout(() => {
+            const listElement = document.querySelector(`#list-${activeList} .MuiList-root`);
+            const itemElement = listElement?.children[newIndex];
+
+            if (listElement && itemElement) {
+              const listRect = listElement.getBoundingClientRect();
+              const itemRect = itemElement.getBoundingClientRect();
+
+              // Check if item is outside visible area
+              if (itemRect.top < listRect.top || itemRect.bottom > listRect.bottom) {
+                itemElement.scrollIntoView({
+                  block: 'nearest',
+                  behavior: 'auto'
+                });
+              }
+            }
+          }, 0);
+        };
+
+        const currentList = getCurrentList();
+        const currentIndex = getCurrentIndex();
+
+        if (currentList.length > 0) {
+          if (e.key === 'ArrowUp') {
+            const newIndex = currentIndex === null || currentIndex === 0
+              ? currentList.length - 1
+              : currentIndex - 1;
+            setCurrentIndex(newIndex);
+          } else {
+            const newIndex = currentIndex === null || currentIndex === currentList.length - 1
+              ? 0
+              : currentIndex + 1;
+            setCurrentIndex(newIndex);
+          }
+        }
+      } else if (e.key === 'ArrowLeft') {
+        setSliderValue(0);
+      } else if (e.key === 'ArrowRight') {
+        setSliderValue(1);
+      } else if (e.key === 'Enter') {
+        if (selectedIndex1 !== null) {
+          handleMoveToList2();
+        } else if (selectedIndex2 !== null) {
+          handleMoveToList3();
+        }
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (activeList === 1 && selectedIndex1 !== null) {
+          handleRemoveItem(1);
+        } else if (activeList === 2 && selectedIndex2 !== null) {
+          handleRemoveItem(2);
+        } else if (activeList === 3 && selectedIndex3 !== null) {
+          handleRemoveItem(3);
+        }
+      } else if (e.key === '[' || e.key === ']') {
+        if (e.key === '[') {
+          const newList = Math.max(1, activeList - 1);
+          setActiveList(newList);
+          // Clear other selections and select top item of new list
+          if (newList === 1) {
+            setSelectedIndex1(list1.length > 0 ? 0 : null);
+            setSelectedIndex2(null);
+            setSelectedIndex3(null);
+          } else if (newList === 2) {
+            setSelectedIndex1(null);
+            setSelectedIndex2(list2.length > 0 ? 0 : null);
+            setSelectedIndex3(null);
+          } else {
+            setSelectedIndex1(null);
+            setSelectedIndex2(null);
+            setSelectedIndex3(list3.length > 0 ? 0 : null);
+          }
+        } else {
+          const newList = Math.min(3, activeList + 1);
+          setActiveList(newList);
+          // Clear other selections and select top item of new list
+          if (newList === 1) {
+            setSelectedIndex1(list1.length > 0 ? 0 : null);
+            setSelectedIndex2(null);
+            setSelectedIndex3(null);
+          } else if (newList === 2) {
+            setSelectedIndex1(null);
+            setSelectedIndex2(list2.length > 0 ? 0 : null);
+            setSelectedIndex3(null);
+          } else {
+            setSelectedIndex1(null);
+            setSelectedIndex2(null);
+            setSelectedIndex3(list3.length > 0 ? 0 : null);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    selectedIndex1,
+    selectedIndex2,
+    selectedIndex3,
+    list1.length,
+    list2.length,
+    list3.length,
+    sliderValue,
+    activeList,
+    isInputFocused
+  ]);
+
   // Add handler for adding items
   const handleAddItem = (e) => {
     e.preventDefault();
-    if (newItem.trim()) {
-      setList1(prev => [newItem.trim(), ...prev]);
-      setNewItem('');
-      setSelectedIndex1(0);
-      setActiveList(1);
+    const item = newItem.trim();
+    if (item) {
+      // Check if item looks like a rated item
+      const ratedPattern = /^[01],[01],/;
+      if (!ratedPattern.test(item)) {
+        setList1(prev => [item, ...prev]);
+        setNewItem('');
+        setSelectedIndex1(0);
+        setActiveList(1);
+      } else {
+        setNotification({
+          open: true,
+          message: 'Cannot add rated items to List 1'
+        });
+      }
     }
   };
 
@@ -136,18 +269,30 @@ const Product = () => {
 
       // Add new item and sort list2
       setList2(prevList => {
-        const newList = [
-          ...prevList,
-          {
-            importance,
-            importanceValue,
-            idea: selectedItem
-          }
-        ].sort((a, b) => {
-          // Sort by importance (1s first, then 0s)
-          return b.importanceValue - a.importanceValue;
-        });
+        const newItem = {
+          importance,
+          importanceValue,
+          idea: selectedItem
+        };
 
+        // Find where this importance group starts
+        const groupStartIndex = prevList.findIndex(item =>
+          item.importanceValue === newItem.importanceValue
+        );
+
+        // If no items with this importance value exist
+        if (groupStartIndex === -1) {
+          // If it's importance 1, add to start of list
+          if (newItem.importanceValue === 1) {
+            return [newItem, ...prevList];
+          }
+          // If it's importance 0, add to end of list
+          return [...prevList, newItem];
+        }
+
+        // Insert at the start of its importance group
+        const newList = [...prevList];
+        newList.splice(groupStartIndex, 0, newItem);
         return newList;
       });
 
@@ -173,28 +318,58 @@ const Product = () => {
 
       // Add new item and sort list3
       setList3(prevList => {
-        const newList = [
-          ...prevList,
-          {
-            importance: selectedItem.importance,
-            importanceValue: selectedItem.importanceValue,
-            urgency,
-            urgencyValue,
-            idea: selectedItem.idea
-          }
-        ].sort((a, b) => {
-          // First sort by importance
-          if (b.importanceValue !== a.importanceValue) {
-            return b.importanceValue - a.importanceValue;
-          }
-          // Then by urgency if importance is equal
-          return b.urgencyValue - a.urgencyValue;
-        });
+        const newItem = {
+          importance: selectedItem.importance,
+          importanceValue: selectedItem.importanceValue,
+          urgency,
+          urgencyValue,
+          idea: selectedItem.idea
+        };
 
+        // Find the start of the appropriate priority group
+        const findGroupStart = (imp, urg) => {
+          return prevList.findIndex(item =>
+            item.importanceValue === imp && item.urgencyValue === urg
+          );
+        };
+
+        // Determine where to insert based on priority
+        let insertIndex;
+        if (newItem.importanceValue === 1 && newItem.urgencyValue === 1) {
+          // 1,1 goes at the very top
+          insertIndex = findGroupStart(1, 1);
+          if (insertIndex === -1) insertIndex = 0;
+        } else if (newItem.importanceValue === 1 && newItem.urgencyValue === 0) {
+          // 1,0 goes after 1,1 group
+          insertIndex = findGroupStart(1, 0);
+          if (insertIndex === -1) {
+            insertIndex = prevList.findIndex(item =>
+              item.importanceValue === 0
+            );
+            if (insertIndex === -1) insertIndex = prevList.length;
+          }
+        } else if (newItem.importanceValue === 0 && newItem.urgencyValue === 1) {
+          // 0,1 goes after 1,0 group
+          insertIndex = findGroupStart(0, 1);
+          if (insertIndex === -1) {
+            insertIndex = prevList.findIndex(item =>
+              item.importanceValue === 0 && item.urgencyValue === 0
+            );
+            if (insertIndex === -1) insertIndex = prevList.length;
+          }
+        } else {
+          // 0,0 goes at the end
+          insertIndex = findGroupStart(0, 0);
+          if (insertIndex === -1) insertIndex = prevList.length;
+        }
+
+        // Insert at the determined position
+        const newList = [...prevList];
+        newList.splice(insertIndex, 0, newItem);
         return newList;
       });
 
-      // Remove item from list2 and update selection
+      // Remove from list2
       setList2(prevList => {
         const newList = prevList.filter((_, idx) => idx !== selectedIndex2);
         if (newList.length > 0) {
@@ -210,24 +385,50 @@ const Product = () => {
 
   // Remove items
   const handleRemoveItem = (listNumber) => {
+    console.log('Removing item from list:', listNumber); // Debug log
+
     if (listNumber === 1 && selectedIndex1 !== null) {
+      const itemToTrash = list1[selectedIndex1];
+      console.log('Adding to trash:', itemToTrash); // Debug log
+      setTrashedItems(prev => [itemToTrash, ...prev]);
+
       setList1(prevList => {
         const newList = prevList.filter((_, idx) => idx !== selectedIndex1);
         if (newList.length > 0) {
-          if (selectedIndex1 >= newList.length) {
-            setSelectedIndex1(newList.length - 1);
-          }
+          setSelectedIndex1(selectedIndex1 >= newList.length ? newList.length - 1 : selectedIndex1);
         } else {
           setSelectedIndex1(null);
         }
         return newList;
       });
     } else if (listNumber === 2 && selectedIndex2 !== null) {
-      setList2(list2.filter((_, idx) => idx !== selectedIndex2));
-      setSelectedIndex2(null);
+      const itemToTrash = list2[selectedIndex2];
+      console.log('Adding to trash:', itemToTrash); // Debug log
+      setTrashedItems(prev => [itemToTrash, ...prev]);
+
+      setList2(prevList => {
+        const newList = prevList.filter((_, idx) => idx !== selectedIndex2);
+        if (newList.length > 0) {
+          setSelectedIndex2(selectedIndex2 >= newList.length ? newList.length - 1 : selectedIndex2);
+        } else {
+          setSelectedIndex2(null);
+        }
+        return newList;
+      });
     } else if (listNumber === 3 && selectedIndex3 !== null) {
-      setList3(list3.filter((_, idx) => idx !== selectedIndex3));
-      setSelectedIndex3(null);
+      const itemToTrash = list3[selectedIndex3];
+      console.log('Adding to trash:', itemToTrash); // Debug log
+      setTrashedItems(prev => [itemToTrash, ...prev]);
+
+      setList3(prevList => {
+        const newList = prevList.filter((_, idx) => idx !== selectedIndex3);
+        if (newList.length > 0) {
+          setSelectedIndex3(selectedIndex3 >= newList.length ? newList.length - 1 : selectedIndex3);
+        } else {
+          setSelectedIndex3(null);
+        }
+        return newList;
+      });
     }
   };
 
@@ -298,23 +499,38 @@ const Product = () => {
       const newItems = text
         .split('\n')
         .map(line => line.trim())
-        .filter(line => line.length > 0);  // Filter out empty lines
+        // Filter out empty lines, rated items, and duplicates
+        .filter((line, index, self) => {
+          if (line.length === 0) return false;
+          // Check if line starts with "1,1", "1,0", "0,1", "0,0"
+          const ratedPattern = /^[01],[01],/;
+          if (ratedPattern.test(line)) return false;
+          // Remove duplicates
+          return self.indexOf(line) === index;
+        })
+        // Sort by length (shortest to longest)
+        .sort((a, b) => a.length - b.length);
 
       if (newItems.length > 0) {
-        // Add to beginning of list1, not replace it
-        setList1(prevList => [...newItems, ...prevList]);
+        // Check for duplicates with existing items in list1
+        const uniqueNewItems = newItems.filter(item => !list1.includes(item));
 
-        // Update peak count if needed
-        setPeakCount1(prev => Math.max(prev, newItems.length + list1.length));
+        if (uniqueNewItems.length > 0) {
+          setList1(prevList => [...uniqueNewItems, ...prevList]);
+          setPeakCount1(prev => Math.max(prev, uniqueNewItems.length + list1.length));
+          setSelectedIndex1(0);
+          setActiveList(1);
 
-        // Auto-select first item
-        setSelectedIndex1(0);
-        setActiveList(1);
-
-        setNotification({
-          open: true,
-          message: `Imported ${newItems.length} items`
-        });
+          setNotification({
+            open: true,
+            message: `Imported ${uniqueNewItems.length} items`
+          });
+        } else {
+          setNotification({
+            open: true,
+            message: 'No new items to import'
+          });
+        }
       }
     } catch (error) {
       console.error('Error importing from clipboard:', error);
@@ -382,88 +598,9 @@ const Product = () => {
   // Update the keyboard event handler
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'ArrowLeft') {
-        setSliderValue(0);
-      } else if (e.key === 'ArrowRight') {
-        setSliderValue(1);
-      } else if (e.key === 'Enter') {
-        if (selectedIndex1 !== null) {
-          handleMoveToList2();
-        } else if (selectedIndex2 !== null) {
-          handleMoveToList3();
-        }
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedIndex1 !== null) {
-          setList1(prevList => {
-            const newList = prevList.filter((_, idx) => idx !== selectedIndex1);
-            if (newList.length > 0) {
-              if (selectedIndex1 >= newList.length) {
-                setSelectedIndex1(newList.length - 1);
-              }
-            } else {
-              setSelectedIndex1(null);
-            }
-            return newList;
-          });
-        } else if (selectedIndex2 !== null) {
-          setList2(prevList => {
-            const newList = prevList.filter((_, idx) => idx !== selectedIndex2);
-            if (newList.length > 0) {
-              if (selectedIndex2 >= newList.length) {
-                setSelectedIndex2(newList.length - 1);
-              }
-            } else {
-              setSelectedIndex2(null);
-            }
-            return newList;
-          });
-        } else if (selectedIndex3 !== null) {
-          setList3(prevList => {
-            const newList = prevList.filter((_, idx) => idx !== selectedIndex3);
-            if (newList.length > 0) {
-              if (selectedIndex3 >= newList.length) {
-                setSelectedIndex3(newList.length - 1);
-              }
-            } else {
-              setSelectedIndex3(null);
-            }
-            return newList;
-          });
-        }
-      } else if (e.key === '[' || e.key === ']') {
-        // Handle bracket key navigation between lists
-        let nextList;
-        if (e.key === '[') {
-          // Move left
-          if (selectedIndex2 !== null || activeList === 2) {
-            nextList = 1;
-            setSelectedIndex2(null);
-            // Don't set selection if list is empty
-            setSelectedIndex1(list1.length > 0 ? 0 : null);
-          } else if (selectedIndex3 !== null || activeList === 3) {
-            nextList = 2;
-            setSelectedIndex3(null);
-            // Don't set selection if list is empty
-            setSelectedIndex2(list2.length > 0 ? 0 : null);
-          }
-        } else {
-          // Move right (])
-          if (selectedIndex1 !== null || activeList === 1) {
-            nextList = 2;
-            setSelectedIndex1(null);
-            // Don't set selection if list is empty
-            setSelectedIndex2(list2.length > 0 ? 0 : null);
-          } else if (selectedIndex2 !== null || activeList === 2) {
-            nextList = 3;
-            setSelectedIndex2(null);
-            // Don't set selection if list is empty
-            setSelectedIndex3(list3.length > 0 ? 0 : null);
-          }
-        }
-        if (nextList) {
-          setActiveList(nextList);
-        }
-      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      if (isInputFocused) return;
+
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
 
         const getCurrentList = () => {
@@ -481,7 +618,6 @@ const Product = () => {
         };
 
         const setCurrentIndex = (newIndex) => {
-          console.log('Setting index:', newIndex, 'for list:', activeList);
           if (activeList === 1) setSelectedIndex1(newIndex);
           if (activeList === 2) setSelectedIndex2(newIndex);
           if (activeList === 3) setSelectedIndex3(newIndex);
@@ -492,13 +628,83 @@ const Product = () => {
 
         if (currentList.length > 0) {
           if (e.key === 'ArrowUp') {
-            const newIndex = currentIndex === 0 ? currentList.length - 1 : currentIndex - 1;
-            console.log('ArrowUp:', { currentIndex, newIndex, listLength: currentList.length });
+            // If at top or no selection, go to bottom
+            const newIndex = currentIndex === null || currentIndex === 0
+              ? currentList.length - 1
+              : currentIndex - 1;
             setCurrentIndex(newIndex);
+
+            // Scroll into view if needed
+            const element = document.getElementById(`list-${activeList}-item-${newIndex}`);
+            if (element) {
+              element.scrollIntoView({ block: 'nearest' });
+            }
           } else {
-            const newIndex = currentIndex === currentList.length - 1 ? 0 : currentIndex + 1;
-            console.log('ArrowDown:', { currentIndex, newIndex, listLength: currentList.length });
+            // If at bottom or no selection, go to top
+            const newIndex = currentIndex === null || currentIndex === currentList.length - 1
+              ? 0
+              : currentIndex + 1;
             setCurrentIndex(newIndex);
+
+            // Scroll into view if needed
+            const element = document.getElementById(`list-${activeList}-item-${newIndex}`);
+            if (element) {
+              element.scrollIntoView({ block: 'nearest' });
+            }
+          }
+        }
+      } else if (e.key === 'ArrowLeft') {
+        setSliderValue(0);
+      } else if (e.key === 'ArrowRight') {
+        setSliderValue(1);
+      } else if (e.key === 'Enter') {
+        if (selectedIndex1 !== null) {
+          handleMoveToList2();
+        } else if (selectedIndex2 !== null) {
+          handleMoveToList3();
+        }
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (activeList === 1 && selectedIndex1 !== null) {
+          handleRemoveItem(1);
+        } else if (activeList === 2 && selectedIndex2 !== null) {
+          handleRemoveItem(2);
+        } else if (activeList === 3 && selectedIndex3 !== null) {
+          handleRemoveItem(3);
+        }
+      } else if (e.key === '[' || e.key === ']') {
+        if (e.key === '[') {
+          const newList = Math.max(1, activeList - 1);
+          setActiveList(newList);
+          // Clear other selections and select top item of new list
+          if (newList === 1) {
+            setSelectedIndex1(list1.length > 0 ? 0 : null);
+            setSelectedIndex2(null);
+            setSelectedIndex3(null);
+          } else if (newList === 2) {
+            setSelectedIndex1(null);
+            setSelectedIndex2(list2.length > 0 ? 0 : null);
+            setSelectedIndex3(null);
+          } else {
+            setSelectedIndex1(null);
+            setSelectedIndex2(null);
+            setSelectedIndex3(list3.length > 0 ? 0 : null);
+          }
+        } else {
+          const newList = Math.min(3, activeList + 1);
+          setActiveList(newList);
+          // Clear other selections and select top item of new list
+          if (newList === 1) {
+            setSelectedIndex1(list1.length > 0 ? 0 : null);
+            setSelectedIndex2(null);
+            setSelectedIndex3(null);
+          } else if (newList === 2) {
+            setSelectedIndex1(null);
+            setSelectedIndex2(list2.length > 0 ? 0 : null);
+            setSelectedIndex3(null);
+          } else {
+            setSelectedIndex1(null);
+            setSelectedIndex2(null);
+            setSelectedIndex3(list3.length > 0 ? 0 : null);
           }
         }
       }
@@ -514,7 +720,8 @@ const Product = () => {
     list2.length,
     list3.length,
     sliderValue,
-    activeList
+    activeList,
+    isInputFocused
   ]);
 
   const handleClearConfirm = () => {
@@ -586,19 +793,6 @@ const Product = () => {
     }
   };
 
-  // Update useEffect to track peak counts
-  useEffect(() => {
-    if (list1.length > peakCount1) setPeakCount1(list1.length);
-  }, [list1.length]);
-
-  useEffect(() => {
-    if (list2.length > peakCount2) setPeakCount2(list2.length);
-  }, [list2.length]);
-
-  useEffect(() => {
-    if (list3.length > peakCount3) setPeakCount3(list3.length);
-  }, [list3.length]);
-
   // Calculate total items for export dialog
   const totalItemsAcrossAllLists = list1.length + list2.length + list3.length;
 
@@ -609,47 +803,46 @@ const Product = () => {
     localStorage.setItem('hasSeenInstructions', 'true');
   };
 
+  // Add restore handler
+  const handleRestoreItem = (index) => {
+    const item = trashedItems[index];
+
+    // Convert any item type back to a simple string for list1
+    const itemText = typeof item === 'string' ? item : item.idea;
+
+    // Add to beginning of list1
+    setList1(prev => [itemText, ...prev]);
+
+    // Remove from trash
+    setTrashedItems(prev => prev.filter((_, i) => i !== index));
+    setNotification({
+      open: true,
+      message: 'Item restored to List 1'
+    });
+  };
+
   return (
     <Container maxWidth="xl" sx={{ height: '100vh', display: 'flex' }}>
       <Box sx={{
         width: '100%',
-        maxWidth: '1400px',  // Adjust this value to control max width
-        margin: '0 auto',    // Center horizontally
+        maxWidth: '1400px',
+        margin: '0 auto',
         height: { xs: '100vh', md: '85vh' },
         overflow: 'hidden',
         display: "flex",
         flexDirection: "column",
         p: { xs: 1, md: 2 },
-        gap: 2,
-        position: 'relative'
+        gap: 2
       }}>
-        <Box sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          mb: 2
-        }}>
-          <IconButton
-            onClick={() => navigate('/')}
-            size="small"
-            sx={{
-              color: 'black',
-              '&:hover': {
-                backgroundColor: 'rgba(0,0,0,0.04)'
-              }
-            }}
-          >
+        {/* Row 1: Back Button */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <IconButton onClick={() => navigate('/')} size="small" sx={{ color: 'black' }}>
             <ArrowBack />
           </IconButton>
         </Box>
 
-        {/* Row 1: Slider */}
-        <Box sx={{
-          display: 'flex',
-          gap: 2,
-          alignItems: 'center',
-          width: '100%'
-        }}>
+        {/* Row 2: Slider */}
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
           <Slider
             value={sliderValue}
             onChange={(_, newValue) => setSliderValue(newValue)}
@@ -680,12 +873,8 @@ const Product = () => {
           />
         </Box>
 
-        {/* Row 2: Import/Export Controls */}
-        <Box sx={{
-          display: 'flex',
-          gap: 2,
-          alignItems: 'center'
-        }}>
+        {/* Row 3: Import/Export Controls */}
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <IconButton
             onClick={handleClipboardImport}
             size="small"
@@ -701,6 +890,17 @@ const Product = () => {
               placeholder="Add new item..."
               size="small"
               fullWidth
+              onFocus={() => {
+                setIsInputFocused(true);
+                // Clear ALL selections when focusing input
+                setSelectedIndex1(null);
+                setSelectedIndex2(null);
+                setSelectedIndex3(null);
+                setActiveList(1);  // Reset to list 1
+              }}
+              onBlur={() => {
+                setIsInputFocused(false);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.stopPropagation();
@@ -718,13 +918,13 @@ const Product = () => {
           </IconButton>
         </Box>
 
-        {/* Row 3: Lists */}
+        {/* Row 4: Lists */}
         <Box sx={{
           display: "flex",
           gap: 2,
           flex: 1,
           minHeight: 0,
-          justifyContent: 'center'  // Center lists horizontally
+          justifyContent: 'center'
         }}>
           <ItemList
             items={list1}
@@ -764,146 +964,45 @@ const Product = () => {
           />
         </Box>
 
-        {/* Help Button */}
-        <IconButton
-          onClick={() => setIsInstructionsOpen(true)}
-          size="small"
-          sx={{
-            alignSelf: 'flex-start',
-            backgroundColor: 'black',
-            color: 'white',
-            '&:hover': {
-              backgroundColor: '#333'
-            },
-            width: 40,
-            height: 40
-          }}
-        >
-          <HelpOutline />
-        </IconButton>
-
-        {/* Instructions Dialog */}
-        <Dialog
-          open={isInstructionsOpen}
-          onClose={handleInstructionsClose}  // Use new handler
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-            How to Use Hower
-          </DialogTitle>
-          <DialogContent>
-            <Box sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>Step by Step Guide</Typography>
-              <Box sx={{ pl: 2 }}>
-                <Typography paragraph>
-                  1. <b>Import Items</b><br />
-                  • Paste your items using the clipboard icon, or<br />
-                  • Type items one by one in the input box
-                </Typography>
-
-                <Typography paragraph>
-                  2. <b>Rate Items by Importance</b><br />
-                  • Navigate items using Up/Down arrow keys<br />
-                  • Use Left/Right arrow keys to set importance (0 or 1)<br />
-                  • Press Enter to move item to next list
-                </Typography>
-
-                <Typography paragraph>
-                  3. <b>Rate Items by Urgency</b><br />
-                  • Navigate to second list using ] key<br />
-                  • Use Left/Right arrow keys to set urgency (0 or 1)<br />
-                  • Press Enter to move item to final list
-                </Typography>
-
-                <Typography paragraph>
-                  4. <b>Review Final List</b><br />
-                  • Items are automatically sorted by importance and urgency<br />
-                  • Format: importance,urgency,item<br />
-                  • Use the copy icon to export your prioritized items
-                </Typography>
-              </Box>
-
-              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Keyboard Shortcuts</Typography>
-              <Box sx={{ pl: 2 }}>
-                <Typography>
-                  • <b>[ and ]</b> - Move between lists<br />
-                  • <b>↑/↓</b> - Navigate items<br />
-                  • <b>←/→</b> - Toggle rating (0/1)<br />
-                  • <b>Enter</b> - Move item forward<br />
-                  • <b>Delete/Backspace</b> - Remove item
-                </Typography>
-              </Box>
-
-              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Item Ratings</Typography>
-              <Box sx={{ pl: 2 }}>
-                <Typography>
-                  • <b>1,1</b> - Important & Urgent<br />
-                  • <b>1,0</b> - Important, Not Urgent<br />
-                  • <b>0,1</b> - Not Important, Urgent<br />
-                  • <b>0,0</b> - Not Important, Not Urgent
-                </Typography>
-              </Box>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={handleInstructionsClose}  // Use new handler
-              variant="contained"
-              sx={{
-                backgroundColor: 'black',
-                '&:hover': {
-                  backgroundColor: '#333',
-                }
-              }}
-            >
-              Got it
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Add Import Dialog */}
-        <Dialog
-          open={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          aria-labelledby="clipboard-preview-dialog-title"
-        >
-          <DialogTitle id="clipboard-preview-dialog-title">
-            Import from Clipboard
-          </DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Do you want to add the following items to the top of List 1?
-            </DialogContentText>
-            <Box sx={{ mt: 2, maxHeight: 200, overflow: "auto" }}>
-              {clipboardContent.split("\n").map((line, index) => (
-                <Typography key={index} variant="body2">
-                  {line}
-                </Typography>
-              ))}
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() => {
-                setIsDialogOpen(false);
-                setImportProgress(0);
-                setTotalLines(0);
-                setRemainingLines(0);
-              }}
-              disabled={importProgress > 0}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmImport}
-              autoFocus
-              disabled={importProgress > 0}
-            >
-              Confirm
-            </Button>
-          </DialogActions>
-        </Dialog>
+        {/* Row 5: Help and Trash Buttons */}
+        <Box sx={{
+          position: 'fixed',
+          bottom: 16,
+          left: 16,
+          display: 'flex',
+          gap: 2
+        }}>
+          <IconButton
+            onClick={() => setIsInstructionsOpen(true)}
+            size="small"
+            sx={{
+              backgroundColor: 'black',
+              color: 'white',
+              '&:hover': {
+                backgroundColor: '#333'
+              },
+              width: 40,
+              height: 40
+            }}
+          >
+            <HelpOutline />
+          </IconButton>
+          <IconButton
+            onClick={() => setIsTrashOpen(true)}
+            size="small"
+            sx={{
+              backgroundColor: 'black',
+              color: 'white',
+              '&:hover': {
+                backgroundColor: '#333'
+              },
+              width: 40,
+              height: 40
+            }}
+          >
+            <DeleteOutlined />
+          </IconButton>
+        </Box>
 
         {/* Add Clear Confirmation Dialog */}
         <Dialog
@@ -944,7 +1043,10 @@ const Product = () => {
           onClose={() => setExportDialogOpen(false)}
           items={list3}
           onExport={handleExportConfirm}
-          totalItemsAcrossAllLists={totalItemsAcrossAllLists}
+          list1Length={list1.length}
+          list2Length={list2.length}
+          list3Length={list3.length}
+          trashedItemsLength={trashedItems.length}
         />
 
         <ExportResultsDialog
@@ -974,7 +1076,103 @@ const Product = () => {
             {notification.message}
           </Alert>
         </Snackbar>
+
+        {/* Add Trash Dialog */}
+        <TrashDialog
+          open={isTrashOpen}
+          onClose={() => setIsTrashOpen(false)}
+          trashedItems={trashedItems}
+          onRestore={handleRestoreItem}
+          onClearTrash={() => {
+            setTrashedItems([]);
+            setIsTrashOpen(false);
+            setNotification({
+              open: true,
+              message: 'Trash cleared'
+            });
+          }}
+        />
       </Box>
+
+      {/* Instructions Dialog */}
+      <Dialog
+        open={isInstructionsOpen}
+        onClose={handleInstructionsClose}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+          How to Use Hower
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>Step by Step Guide</Typography>
+            <Box sx={{ pl: 2 }}>
+              <Typography paragraph>
+                1. <b>Import Items</b><br />
+                • Paste your items using the clipboard icon, or<br />
+                • Type items one by one in the input box
+              </Typography>
+
+              <Typography paragraph>
+                2. <b>Rate Items by Importance</b><br />
+                • Navigate items using Up/Down arrow keys<br />
+                • Use Left/Right arrow keys to set importance (0 or 1)<br />
+                • Press Enter to move item to next list
+              </Typography>
+
+              <Typography paragraph>
+                3. <b>Rate Items by Urgency</b><br />
+                • Navigate to second list using ] key<br />
+                • Use Left/Right arrow keys to set urgency (0 or 1)<br />
+                • Press Enter to move item to final list
+              </Typography>
+
+              <Typography paragraph>
+                4. <b>Review Final List</b><br />
+                • Items are automatically sorted by importance and urgency<br />
+                • Format: importance,urgency,item<br />
+                • Use the copy icon to export your prioritized items
+              </Typography>
+            </Box>
+
+            <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Keyboard Shortcuts</Typography>
+            <Box sx={{ pl: 2 }}>
+              <Typography>
+                • <b>[ and ]</b> - Move between lists<br />
+                • <b>↑/↓</b> - Navigate items<br />
+                • <b>←/→</b> - Toggle rating (0/1)<br />
+                • <b>Enter</b> - Move item forward<br />
+                • <b>Delete/Backspace</b> - Remove item
+              </Typography>
+            </Box>
+
+            <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Item Ratings</Typography>
+            <Box sx={{ pl: 2 }}>
+              <Typography>
+                • <b>1,1</b> - Important & Urgent<br />
+                • <b>1,0</b> - Important, Not Urgent<br />
+                • <b>0,1</b> - Not Important, Urgent<br />
+                • <b>0,0</b> - Not Important, Not Urgent
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleInstructionsClose}
+            variant="contained"
+            sx={{
+              backgroundColor: 'black',
+              '&:hover': {
+                backgroundColor: '#333',
+              }
+            }}
+          >
+            Got it
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

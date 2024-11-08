@@ -21,33 +21,49 @@ const ItemList = ({
   return (
     <Box sx={{
       flex: 1,
-      height: { xs: 'auto', md: '100%' },
-      minHeight: { xs: '300px', md: 'auto' },
       display: 'flex',
       flexDirection: 'column',
     }}>
-      <List sx={{
-        flex: 1,
-        overflow: 'auto',
-        border: '1px solid rgba(0, 0, 0, 0.12)',
-        borderRadius: 1,
-        p: 1,
-        position: 'relative',
-        '&::-webkit-scrollbar': {
-          width: '8px',
-        },
-        '&::-webkit-scrollbar-track': {
-          background: '#f1f1f1',
-          borderRadius: '4px',
-        },
-        '&::-webkit-scrollbar-thumb': {
-          background: '#888',
-          borderRadius: '4px',
-        },
-        '&::-webkit-scrollbar-thumb:hover': {
-          background: '#555',
-        },
-      }}>
+      {/* List Label */}
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+          mb: 1,
+          fontSize: '0.75rem',
+          opacity: 0.7
+        }}
+      >
+        {listNumber === 1 ? "Important?" :
+         listNumber === 2 ? "Urgent?" :
+         "Calendar?"}
+      </Typography>
+
+      <List
+        id={`list-${listNumber}`}
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+          border: '1px solid rgba(0, 0, 0, 0.12)',
+          borderRadius: 1,
+          p: 1,
+          position: 'relative',
+          '&::-webkit-scrollbar': {
+            width: '8px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: '#f1f1f1',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#888',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            background: '#555',
+          },
+        }}
+      >
         {items.map((item, index) => (
           <ListItem
             key={index}
