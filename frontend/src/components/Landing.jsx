@@ -170,7 +170,7 @@ const Landing = () => {
           {user && hasPurchased && (
             <Button
               variant="contained"
-              onClick={() => navigate('/product')}
+              onClick={() => navigate('/app')}
               size="large"
               sx={{
                 py: 2.5,

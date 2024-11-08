@@ -23,6 +23,9 @@ const ItemList = ({
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
+      height: '100%',
+      maxHeight: '65vh',
+      position: 'relative',
     }}>
       {/* List Label */}
       <Typography
@@ -36,7 +39,7 @@ const ItemList = ({
       >
         {listNumber === 1 ? "Important?" :
          listNumber === 2 ? "Urgent?" :
-         "Calendar?"}
+         "Final List"}
       </Typography>
 
       <List
@@ -48,6 +51,7 @@ const ItemList = ({
           borderRadius: 1,
           p: 1,
           position: 'relative',
+          height: '100%',
           '&::-webkit-scrollbar': {
             width: '8px',
           },
@@ -64,47 +68,53 @@ const ItemList = ({
           },
         }}
       >
-        {items.map((item, index) => (
-          <ListItem
-            key={index}
-            selected={selectedIndex === index}
-            onClick={() => onItemSelect(index)}
-            onDoubleClick={() => onItemCopy(item)}
-            sx={{
-              cursor: 'pointer',
-              backgroundColor: selectedIndex === index ? 'black !important' :
-                listNumber === 1 ? 'transparent' :
-                listNumber === 2 ?
-                  (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)') :
-                (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.35)' :
-                (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.35)' :
-                (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.15)' :
-                'rgba(244, 67, 54, 0.15)',
-              color: selectedIndex === index ? 'white !important' : 'inherit',
-              borderLeft: selectedIndex === index ? '6px solid #333' : '6px solid transparent',
-              boxShadow: selectedIndex === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
-              '&:hover': {
+        <Box sx={{
+          position: 'relative',
+          minHeight: '100%'
+        }}>
+          {items.map((item, index) => (
+            <ListItem
+              key={index}
+              data-index={index}
+              selected={selectedIndex === index}
+              onClick={() => onItemSelect(index)}
+              onDoubleClick={() => onItemCopy(item)}
+              sx={{
+                cursor: 'pointer',
                 backgroundColor: selectedIndex === index ? 'black !important' :
-                  listNumber === 1 ? 'rgba(0, 0, 0, 0.04)' :
+                  listNumber === 1 ? 'transparent' :
                   listNumber === 2 ?
-                    (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)') :
-                  (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.45)' :
-                  (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.45)' :
-                  (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.2)' :
-                  'rgba(244, 67, 54, 0.2)',
-              },
-              borderRadius: 1,
-              mb: 0.5,
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <ListItemText
-              primary={listNumber === 1 ? item :
-                listNumber === 2 ? `${item.importanceValue}, ${item.idea}` :
-                `${item.importanceValue},${item.urgencyValue},${item.idea}`}
-            />
-          </ListItem>
-        ))}
+                    (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)') :
+                  (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.35)' :
+                  (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.35)' :
+                  (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.15)' :
+                  'rgba(244, 67, 54, 0.15)',
+                color: selectedIndex === index ? 'white !important' : 'inherit',
+                borderLeft: selectedIndex === index ? '6px solid #333' : '6px solid transparent',
+                boxShadow: selectedIndex === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+                '&:hover': {
+                  backgroundColor: selectedIndex === index ? 'black !important' :
+                    listNumber === 1 ? 'rgba(0, 0, 0, 0.04)' :
+                    listNumber === 2 ?
+                      (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)') :
+                    (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.45)' :
+                    (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.45)' :
+                    (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.2)' :
+                    'rgba(244, 67, 54, 0.2)',
+                },
+                borderRadius: 1,
+                mb: 0.5,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <ListItemText
+                primary={listNumber === 1 ? item :
+                  listNumber === 2 ? `${item.importanceValue}, ${item.idea}` :
+                  `${item.importanceValue},${item.urgencyValue},${item.idea}`}
+              />
+            </ListItem>
+          ))}
+        </Box>
       </List>
 
       {/* Bottom Controls */}
@@ -113,7 +123,8 @@ const ItemList = ({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        px: 1
+        px: 1,
+        position: 'relative',
       }}>
         <Typography
           variant="caption"
