@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -9,7 +9,8 @@ import {
   Box,
   FormGroup,
   FormControlLabel,
-  Checkbox
+  Checkbox,
+  Divider
 } from '@mui/material';
 
 const ExportDialog = ({
@@ -17,24 +18,34 @@ const ExportDialog = ({
   onClose,
   items,
   onExport,
-  totalItemsAcrossAllLists
+  list1Length,
+  list2Length,
+  list3Length,
+  trashedItemsLength
 }) => {
   const [exportOptions, setExportOptions] = useState({
-    '1,1': true,  // Important & Urgent checked by default
+    '1,1': true,
     '1,0': false,
     '0,1': false,
     '0,0': false
   });
 
-  const handleExport = () => {
-    const selectedItems = items.filter(item => {
+  const totalStartingItems = list1Length + list2Length + list3Length + trashedItemsLength;
+
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  useEffect(() => {
+    const newSelectedItems = items.filter(item => {
       const key = `${item.importanceValue},${item.urgencyValue}`;
       return exportOptions[key];
     });
+    setSelectedItems(newSelectedItems);
+  }, [items, exportOptions]);
 
-    const reductionPercent = Math.round(
-      ((totalItemsAcrossAllLists - selectedItems.length) / totalItemsAcrossAllLists) * 100
-    );
+  const handleExport = () => {
+    const itemsKept = selectedItems.length;
+    const itemsCurated = totalStartingItems - itemsKept;
+    const reductionPercent = Math.round((itemsCurated / totalStartingItems) * 100);
 
     onExport(selectedItems, reductionPercent);
   };
@@ -51,10 +62,22 @@ const ExportDialog = ({
       </DialogTitle>
       <DialogContent>
         <Box sx={{ mt: 2 }}>
-          <Typography gutterBottom>
-            Select which items to export:
-          </Typography>
-          <FormGroup>
+          {/* Current Status */}
+          <Typography variant="h6" gutterBottom>Current Item Distribution</Typography>
+          <Box sx={{ pl: 2, mb: 3 }}>
+            <Typography>List 1: {list1Length} items</Typography>
+            <Typography>List 2: {list2Length} items</Typography>
+            <Typography>List 3: {list3Length} items</Typography>
+            <Typography>Trash: {trashedItemsLength} items</Typography>
+            <Divider sx={{ my: 1 }} />
+            <Typography fontWeight="bold">
+              Total Items Processed: {totalStartingItems} items
+            </Typography>
+          </Box>
+
+          {/* Export Options */}
+          <Typography variant="h6" gutterBottom>Select Items to Export</Typography>
+          <FormGroup sx={{ pl: 2 }}>
             <FormControlLabel
               control={
                 <Checkbox
@@ -104,6 +127,19 @@ const ExportDialog = ({
               label="Not Important, Not Urgent (0,0)"
             />
           </FormGroup>
+
+          {/* Curation Score Preview */}
+          <Box sx={{ mt: 3, p: 2, bgcolor: 'rgba(0,0,0,0.04)', borderRadius: 1 }}>
+            <Typography variant="h6" gutterBottom>Curation Score Preview</Typography>
+            <Typography>
+              Starting Items: {totalStartingItems}<br />
+              Items to Keep: {selectedItems.length}<br />
+              Items Curated Away: {totalStartingItems - selectedItems.length}<br />
+              <Box sx={{ mt: 1, fontWeight: 'bold' }}>
+                Curation Score: {Math.round((totalStartingItems - selectedItems.length) / totalStartingItems * 100)}%
+              </Box>
+            </Typography>
+          </Box>
         </Box>
       </DialogContent>
       <DialogActions>
