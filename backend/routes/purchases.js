@@ -49,57 +49,113 @@ router.post('/api/purchases/set-purchase', async (req, res) => {
 router.get('/api/purchases/check-purchase', async (req, res) => {
   try {
     const { email } = req.query;
-
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
-
-    console.log('Checking purchase for email:', email);
-
-    // Case-insensitive email search
-    const purchase = await Purchase.findOne({
-      email: { $regex: new RegExp(`^${email}$`, 'i') }
-    });
-
-    console.log('Purchase record found:', purchase);
-
-    return res.json({
-      hasPurchased: Boolean(purchase?.hasPurchased),
-      timestamp: new Date().toISOString()
-    });
+    const purchase = await Purchase.findOne({ email });
+    return res.json({ hasPurchased: Boolean(purchase?.hasPurchased) });
   } catch (error) {
     console.error('Error checking purchase:', error);
     return res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Add this new endpoint
-router.post('/api/purchases/reset-purchase', async (req, res) => {
+// Load lists
+router.get('/api/purchases/load-lists', async (req, res) => {
   try {
-    const { email } = req.body;
-
+    const { email } = req.query;
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    console.log('Resetting purchase for email:', email);
+    console.log('Loading lists for:', email);
+    const purchase = await Purchase.findOne({ email });
 
+    res.json({
+      success: true,
+      lists: purchase?.lists || { list1: [], list2: [], list3: [] }
+    });
+  } catch (error) {
+    console.error('Error loading lists:', error);
+    res.status(500).json({ error: 'Failed to load lists' });
+  }
+});
+
+// Save lists
+router.post('/api/purchases/save-lists', async (req, res) => {
+  try {
+    const { email, lists } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    console.log('Saving lists for:', email);
     const purchase = await Purchase.findOneAndUpdate(
-      { email: { $regex: new RegExp(`^${email}$`, 'i') } },
+      { email },
       {
-        email: email.toLowerCase(),
-        hasPurchased: false,
-        purchaseDate: null
+        $set: { lists }
       },
       { upsert: true, new: true }
     );
 
-    console.log('Purchase record reset:', purchase);
     res.json({ success: true, purchase });
-
   } catch (error) {
-    console.error('Error resetting purchase:', error);
-    res.status(500).json({ error: 'Failed to reset purchase', details: error.message });
+    console.error('Error saving lists:', error);
+    res.status(500).json({ error: 'Failed to save lists' });
+  }
+});
+
+// Get user data
+router.get('/api/get-user-data/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    console.log('Getting user data for:', userId);
+    const purchase = await Purchase.findOne({ userId });
+
+    res.json({
+      success: true,
+      userData: purchase || { lists: { list1: [], list2: [], list3: [] } }
+    });
+  } catch (error) {
+    console.error('Error getting user data:', error);
+    res.status(500).json({ error: 'Failed to get user data' });
+  }
+});
+
+// Add save user data route
+router.post('/api/save-user-data', async (req, res) => {
+  try {
+    const { userId, data } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    console.log('Saving user data for:', userId);
+    console.log('Data:', data);
+
+    const purchase = await Purchase.findOneAndUpdate(
+      { userId },
+      {
+        $set: {
+          userId,
+          ...data
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({
+      success: true,
+      purchase
+    });
+  } catch (error) {
+    console.error('Error saving user data:', error);
+    res.status(500).json({ error: 'Failed to save user data' });
   }
 });
 

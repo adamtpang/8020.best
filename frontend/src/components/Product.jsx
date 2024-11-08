@@ -33,6 +33,11 @@ import ItemList from "./Product/ItemList";
 import ExportDialog from "./Product/ExportDialog";
 import ExportResultsDialog from "./Product/ExportResultsDialog";
 import TrashDialog from './Product/TrashDialog';
+import { auth } from '../firebase-config';
+import MainLayout from './Product/components/MainLayout';
+import useDataPersistence from './Product/hooks/useDataPersistence';
+import ClearConfirmDialog from './Product/dialogs/ClearConfirmDialog';
+import InstructionsDialog from './Product/dialogs/InstructionsDialog';
 
 const Product = () => {
   const auth = getAuth();
@@ -55,25 +60,36 @@ const Product = () => {
   const [exportResultsOpen, setExportResultsOpen] = useState(false);
   const [reductionPercent, setReductionPercent] = useState(0);
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
-  const [hasSeenInstructions, setHasSeenInstructions] = useState(() => {
-    return localStorage.getItem('hasSeenInstructions') === 'true'
-  });
+  const [hasSeenInstructions, setHasSeenInstructions] = useState(false);
   const [notification, setNotification] = useState({
     open: false,
-    message: ''
+    message: '',
+    severity: 'success'
   });
   const [peakCount1, setPeakCount1] = useState(0);
   const [peakCount2, setPeakCount2] = useState(0);
   const [peakCount3, setPeakCount3] = useState(0);
   const [listToClear, setListToClear] = useState(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
+
+  const { isSyncing, isSyncError } = useDataPersistence({
+    user,
+    list1,
+    list2,
+    list3,
+    setList1,
+    setList2,
+    setList3,
+    setIsLoading
+  });
 
   // Show instructions on first visit
   useEffect(() => {
-    if (!hasSeenInstructions) {
-      setIsInstructionsOpen(true);
-    }
-  }, [hasSeenInstructions]);
+    // Always show instructions when component mounts
+    setIsInstructionsOpen(true);
+  }, []);
 
   // Track peak counts
   useEffect(() => {
@@ -115,23 +131,26 @@ const Product = () => {
           if (activeList === 2) setSelectedIndex2(newIndex);
           if (activeList === 3) setSelectedIndex3(newIndex);
 
-          setTimeout(() => {
-            const listElement = document.querySelector(`#list-${activeList} .MuiList-root`);
-            const itemElement = listElement?.children[newIndex];
+          requestAnimationFrame(() => {
+            const listElement = document.querySelector(`#list-${activeList}`);
+            const itemElement = listElement?.querySelector(`[data-index="${newIndex}"]`);
 
             if (listElement && itemElement) {
               const listRect = listElement.getBoundingClientRect();
               const itemRect = itemElement.getBoundingClientRect();
 
-              // Check if item is outside visible area
-              if (itemRect.top < listRect.top || itemRect.bottom > listRect.bottom) {
+              // Calculate if item is outside visible area
+              const isAbove = itemRect.top < listRect.top;
+              const isBelow = itemRect.bottom > listRect.bottom;
+
+              if (isAbove || isBelow) {
                 itemElement.scrollIntoView({
-                  block: 'nearest',
+                  block: isAbove ? 'start' : 'end',
                   behavior: 'auto'
                 });
               }
             }
-          }, 0);
+          });
         };
 
         const currentList = getCurrentList();
@@ -434,63 +453,11 @@ const Product = () => {
 
   // Load data on mount
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const user = auth.currentUser;
-        if (user) {
-          console.log('Loading data for user:', user.uid);
-          const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/get-user-data/${user.uid}`);
-          const userData = response.data;
-
-          if (userData) {
-            console.log('Loaded user data:', userData);
-            setList1(userData.list1 || []);
-            setList2(userData.list2 || []);
-            setList3(userData.list3 || []);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      }
-    };
-
-    // Add auth state listener
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        loadUserData();
-      }
+      setUser(user);
     });
-
-    // Initial load
-    loadUserData();
-
-    // Cleanup
     return () => unsubscribe();
   }, []);
-
-  // Save data when it changes
-  useEffect(() => {
-    const saveUserData = async () => {
-      try {
-        const user = auth.currentUser;
-        if (user) {
-          await axios.post(`${import.meta.env.VITE_API_URL}/api/save-user-data`, {
-            userId: user.uid,
-            list1,
-            list2,
-            list3
-          });
-        }
-      } catch (error) {
-        console.error('Error saving user data:', error);
-      }
-    };
-
-    if (list1.length > 0 || list2.length > 0 || list3.length > 0) {
-      const debounceTimer = setTimeout(saveUserData, 1000);
-      return () => clearTimeout(debounceTimer);
-    }
-  }, [list1, list2, list3]);
 
   // Update the clipboard import handler
   const handleClipboardImport = async () => {
@@ -499,45 +466,47 @@ const Product = () => {
       const newItems = text
         .split('\n')
         .map(line => line.trim())
-        // Filter out empty lines, rated items, and duplicates
+        // Filter out empty lines and duplicates
         .filter((line, index, self) => {
           if (line.length === 0) return false;
-          // Check if line starts with "1,1", "1,0", "0,1", "0,0"
+          // Check if it's a duplicate in the new items
+          if (self.indexOf(line) !== index) return false;
+          // Check if it already exists in list1
+          if (list1.includes(line)) return false;
+          // Check if it's a rated item (1,1 or 1,0 etc)
           const ratedPattern = /^[01],[01],/;
-          if (ratedPattern.test(line)) return false;
-          // Remove duplicates
-          return self.indexOf(line) === index;
+          return !ratedPattern.test(line);
         })
-        // Sort by length (shortest to longest)
-        .sort((a, b) => a.length - b.length);
+        // Sort by character length
+        .sort((a, b) => {
+          // First by length
+          const lengthDiff = a.length - b.length;
+          // If same length, sort alphabetically
+          if (lengthDiff === 0) {
+            return a.localeCompare(b);
+          }
+          return lengthDiff;
+        });
 
       if (newItems.length > 0) {
-        // Check for duplicates with existing items in list1
-        const uniqueNewItems = newItems.filter(item => !list1.includes(item));
+        setList1(prevList => [...newItems, ...prevList]);
+        setPeakCount1(prev => Math.max(prev, newItems.length + list1.length));
+        setSelectedIndex1(0);
+        setActiveList(1);
 
-        if (uniqueNewItems.length > 0) {
-          setList1(prevList => [...uniqueNewItems, ...prevList]);
-          setPeakCount1(prev => Math.max(prev, uniqueNewItems.length + list1.length));
-          setSelectedIndex1(0);
-          setActiveList(1);
-
-          setNotification({
-            open: true,
-            message: `Imported ${uniqueNewItems.length} items`
-          });
-        } else {
-          setNotification({
-            open: true,
-            message: 'No new items to import'
-          });
-        }
+        handleNotification(
+          `Imported ${newItems.length} unique items${
+            text.split('\n').filter(line => line.trim().length > 0).length > newItems.length
+              ? ' (duplicates removed)'
+              : ''
+          }`
+        );
+      } else {
+        handleNotification('No new items to import', 'info');
       }
     } catch (error) {
       console.error('Error importing from clipboard:', error);
-      setNotification({
-        open: true,
-        message: 'Failed to import items'
-      });
+      handleNotification('Failed to import items', 'error');
     }
   };
 
@@ -725,22 +694,28 @@ const Product = () => {
   ]);
 
   const handleClearConfirm = () => {
-    switch(listToClear) {
-      case 1:
-        setList1([]);
-        setSelectedIndex1(null);
-        break;
-      case 2:
-        setList2([]);
-        setSelectedIndex2(null);
-        break;
-      case 3:
-        setList3([]);
-        setSelectedIndex3(null);
-        break;
+    if (listToClear === 1) {
+      // Move items to trash before clearing
+      setTrashedItems(prev => [...list1, ...prev]);
+      setList1([]);
+      setSelectedIndex1(null);
+    } else if (listToClear === 2) {
+      setTrashedItems(prev => [...list2, ...prev]);
+      setList2([]);
+      setSelectedIndex2(null);
+    } else if (listToClear === 3) {
+      setTrashedItems(prev => [...list3, ...prev]);
+      setList3([]);
+      setSelectedIndex3(null);
     }
+
     setClearConfirmOpen(false);
     setListToClear(null);
+
+    setNotification({
+      open: true,
+      message: `List ${listToClear} cleared`
+    });
   };
 
   // Update export handler
@@ -800,7 +775,6 @@ const Product = () => {
   const handleInstructionsClose = () => {
     setIsInstructionsOpen(false);
     setHasSeenInstructions(true);
-    localStorage.setItem('hasSeenInstructions', 'true');
   };
 
   // Add restore handler
@@ -821,104 +795,37 @@ const Product = () => {
     });
   };
 
+  // Update notification handling
+  const handleNotification = (message, severity = 'success') => {
+    setNotification({
+      open: true,
+      message,
+      severity
+    });
+  };
+
   return (
-    <Container maxWidth="xl" sx={{ height: '100vh', display: 'flex' }}>
-      <Box sx={{
-        width: '100%',
-        maxWidth: '1400px',
-        margin: '0 auto',
-        height: { xs: '100vh', md: '85vh' },
-        overflow: 'hidden',
-        display: "flex",
-        flexDirection: "column",
-        p: { xs: 1, md: 2 },
-        gap: 2
-      }}>
-        {/* Row 1: Back Button */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <IconButton onClick={() => navigate('/')} size="small" sx={{ color: 'black' }}>
-            <ArrowBack />
-          </IconButton>
-        </Box>
-
-        {/* Row 2: Slider */}
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
-          <Slider
-            value={sliderValue}
-            onChange={(_, newValue) => setSliderValue(newValue)}
-            step={1}
-            marks
-            min={0}
-            max={1}
-            sx={{
-              width: '100%',
-              flexShrink: 0,
-              '& .MuiSlider-track': {
-                backgroundColor: 'black',
-              },
-              '& .MuiSlider-rail': {
-                backgroundColor: '#ccc',
-              },
-              '& .MuiSlider-thumb': {
-                backgroundColor: 'black',
-              },
-              '& .MuiSlider-mark': {
-                backgroundColor: '#bbb',
-              },
-              '& .MuiSlider-markActive': {
-                backgroundColor: 'black',
-              }
-            }}
-            size="small"
-          />
-        </Box>
-
-        {/* Row 3: Import/Export Controls */}
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <IconButton
-            onClick={handleClipboardImport}
-            size="small"
-            sx={{ color: 'black' }}
-          >
-            <ContentPaste />
-          </IconButton>
-
-          <Box component="form" onSubmit={handleAddItem} sx={{ flex: 1 }}>
-            <TextField
-              value={newItem}
-              onChange={(e) => setNewItem(e.target.value)}
-              placeholder="Add new item..."
-              size="small"
-              fullWidth
-              onFocus={() => {
-                setIsInputFocused(true);
-                // Clear ALL selections when focusing input
-                setSelectedIndex1(null);
-                setSelectedIndex2(null);
-                setSelectedIndex3(null);
-                setActiveList(1);  // Reset to list 1
-              }}
-              onBlur={() => {
-                setIsInputFocused(false);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.stopPropagation();
-                }
-              }}
-            />
-          </Box>
-
-          <IconButton
-            onClick={handleExportList3}
-            size="small"
-            sx={{ color: 'black' }}
-          >
-            <ContentCopy />
-          </IconButton>
-        </Box>
-
-        {/* Row 4: Lists */}
+    <>
+      <MainLayout
+        navigate={navigate}
+        sliderValue={sliderValue}
+        setSliderValue={setSliderValue}
+        newItem={newItem}
+        setNewItem={setNewItem}
+        handleClipboardImport={handleClipboardImport}
+        handleAddItem={handleAddItem}
+        handleExportList3={handleExportList3}
+        setIsInputFocused={setIsInputFocused}
+        setSelectedIndex1={setSelectedIndex1}
+        setSelectedIndex2={setSelectedIndex2}
+        setSelectedIndex3={setSelectedIndex3}
+        setActiveList={setActiveList}
+        setIsInstructionsOpen={setIsInstructionsOpen}
+        setIsTrashOpen={setIsTrashOpen}
+        isSyncing={isSyncing}
+        isSyncError={isSyncError}
+      >
+        {/* Lists Container */}
         <Box sx={{
           display: "flex",
           gap: 2,
@@ -963,81 +870,29 @@ const Product = () => {
             }}
           />
         </Box>
-
-        {/* Row 5: Help and Trash Buttons */}
-        <Box sx={{
-          position: 'fixed',
-          bottom: 16,
-          left: 16,
-          display: 'flex',
-          gap: 2
-        }}>
-          <IconButton
-            onClick={() => setIsInstructionsOpen(true)}
-            size="small"
-            sx={{
-              backgroundColor: 'black',
-              color: 'white',
-              '&:hover': {
-                backgroundColor: '#333'
-              },
-              width: 40,
-              height: 40
-            }}
-          >
-            <HelpOutline />
-          </IconButton>
-          <IconButton
-            onClick={() => setIsTrashOpen(true)}
-            size="small"
-            sx={{
-              backgroundColor: 'black',
-              color: 'white',
-              '&:hover': {
-                backgroundColor: '#333'
-              },
-              width: 40,
-              height: 40
-            }}
-          >
-            <DeleteOutlined />
-          </IconButton>
-        </Box>
-
-        {/* Add Clear Confirmation Dialog */}
-        <Dialog
+        <ClearConfirmDialog
           open={clearConfirmOpen}
-          onClose={() => {
-            setClearConfirmOpen(false);
-            setListToClear(null);
+          onClose={() => setClearConfirmOpen(false)}
+          onConfirm={handleClearConfirm}
+          listNumber={listToClear}
+        />
+        <InstructionsDialog
+          open={isInstructionsOpen}
+          onClose={handleInstructionsClose}
+        />
+        <TrashDialog
+          open={isTrashOpen}
+          onClose={() => setIsTrashOpen(false)}
+          trashedItems={trashedItems}
+          onRestore={handleRestoreItem}
+          onClearTrash={() => {
+            setTrashedItems([]);
+            setNotification({
+              open: true,
+              message: 'Trash cleared'
+            });
           }}
-        >
-          <DialogTitle>Clear List</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Are you sure you want to clear this list?
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() => {
-                setClearConfirmOpen(false);
-                setListToClear(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleClearConfirm}
-              color="error"
-              autoFocus
-            >
-              Clear
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Add Export Dialog */}
+        />
         <ExportDialog
           open={exportDialogOpen}
           onClose={() => setExportDialogOpen(false)}
@@ -1048,133 +903,31 @@ const Product = () => {
           list3Length={list3.length}
           trashedItemsLength={trashedItems.length}
         />
-
         <ExportResultsDialog
           open={exportResultsOpen}
           onClose={() => setExportResultsOpen(false)}
           reductionPercent={reductionPercent}
         />
+      </MainLayout>
 
-        {/* Add Snackbar component at the end of your JSX */}
-        <Snackbar
-          open={notification.open}
-          autoHideDuration={2000}
-          onClose={() => setNotification({ ...notification, open: false })}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <Alert
-            onClose={() => setNotification({ ...notification, open: false })}
-            severity="success"
-            sx={{
-              backgroundColor: 'black',
-              color: 'white',
-              '.MuiAlert-icon': {
-                color: 'white'
-              }
-            }}
-          >
-            {notification.message}
-          </Alert>
-        </Snackbar>
-
-        {/* Add Trash Dialog */}
-        <TrashDialog
-          open={isTrashOpen}
-          onClose={() => setIsTrashOpen(false)}
-          trashedItems={trashedItems}
-          onRestore={handleRestoreItem}
-          onClearTrash={() => {
-            setTrashedItems([]);
-            setIsTrashOpen(false);
-            setNotification({
-              open: true,
-              message: 'Trash cleared'
-            });
-          }}
-        />
-      </Box>
-
-      {/* Instructions Dialog */}
-      <Dialog
-        open={isInstructionsOpen}
-        onClose={handleInstructionsClose}
-        maxWidth="md"
-        fullWidth
+      {/* Unified Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={3000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}  // Position at top
       >
-        <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-          How to Use Hower
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Step by Step Guide</Typography>
-            <Box sx={{ pl: 2 }}>
-              <Typography paragraph>
-                1. <b>Import Items</b><br />
-                • Paste your items using the clipboard icon, or<br />
-                • Type items one by one in the input box
-              </Typography>
-
-              <Typography paragraph>
-                2. <b>Rate Items by Importance</b><br />
-                • Navigate items using Up/Down arrow keys<br />
-                • Use Left/Right arrow keys to set importance (0 or 1)<br />
-                • Press Enter to move item to next list
-              </Typography>
-
-              <Typography paragraph>
-                3. <b>Rate Items by Urgency</b><br />
-                • Navigate to second list using ] key<br />
-                • Use Left/Right arrow keys to set urgency (0 or 1)<br />
-                • Press Enter to move item to final list
-              </Typography>
-
-              <Typography paragraph>
-                4. <b>Review Final List</b><br />
-                • Items are automatically sorted by importance and urgency<br />
-                • Format: importance,urgency,item<br />
-                • Use the copy icon to export your prioritized items
-              </Typography>
-            </Box>
-
-            <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Keyboard Shortcuts</Typography>
-            <Box sx={{ pl: 2 }}>
-              <Typography>
-                • <b>[ and ]</b> - Move between lists<br />
-                • <b>↑/↓</b> - Navigate items<br />
-                • <b>←/→</b> - Toggle rating (0/1)<br />
-                • <b>Enter</b> - Move item forward<br />
-                • <b>Delete/Backspace</b> - Remove item
-              </Typography>
-            </Box>
-
-            <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Item Ratings</Typography>
-            <Box sx={{ pl: 2 }}>
-              <Typography>
-                • <b>1,1</b> - Important & Urgent<br />
-                • <b>1,0</b> - Important, Not Urgent<br />
-                • <b>0,1</b> - Not Important, Urgent<br />
-                • <b>0,0</b> - Not Important, Not Urgent
-              </Typography>
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={handleInstructionsClose}
-            variant="contained"
-            sx={{
-              backgroundColor: 'black',
-              '&:hover': {
-                backgroundColor: '#333',
-              }
-            }}
-          >
-            Got it
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+        <Alert
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+          elevation={6}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 
-export default Product;
+export default Product; 
