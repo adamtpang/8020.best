@@ -25,35 +25,27 @@ console.log('Allowed Origins:', allowedOrigins);
 // Webhook handling - MUST come first
 app.post(
   '/webhook',
-  express.raw({ type: '*/*' }),
+  express.raw({ type: 'application/json' }),
   async (req, res) => {
     try {
-      console.log('Webhook received');
-
-      // Log request details
-      console.log('Request details:', {
-        contentType: req.headers['content-type'],
-        contentLength: req.headers['content-length'],
-        isBuffer: Buffer.isBuffer(req.body),
-        bodyLength: req.body?.length
-      });
-
       const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
       const sig = req.headers['stripe-signature'];
-      const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
-      // Log signature details (safely)
-      console.log('Signature details:', {
+      // Log request details (safely)
+      console.log('Webhook received:', {
+        hasBody: !!req.body,
+        bodyLength: req.body?.length,
         hasSignature: !!sig,
         signatureLength: sig?.length,
-        secretLength: endpointSecret?.length
+        secretLength: webhookSecret?.length
       });
 
       // Verify webhook
       const event = stripe.webhooks.constructEvent(
         req.body,
         sig,
-        endpointSecret
+        webhookSecret
       );
 
       console.log('Event verified:', event.type);
@@ -79,8 +71,7 @@ app.post(
         console.log('Purchase recorded for:', session.customer_email);
       }
 
-      // Send success response
-      res.json({ received: true });
+      res.status(200).send('Success');
 
     } catch (err) {
       console.error('Webhook error:', {
