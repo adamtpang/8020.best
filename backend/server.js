@@ -22,18 +22,17 @@ const allowedOrigins = [
 
 console.log('Allowed Origins:', allowedOrigins);
 
-// Custom middleware to handle raw body
-const getRawBody = (req, res, next) => {
+// Create a buffer parser middleware
+const bufferParser = (req, res, next) => {
   if (req.url === '/webhook' && req.method === 'POST') {
-    let data = '';
-    req.setEncoding('utf8');
-
+    const chunks = [];
+    
     req.on('data', chunk => {
-      data += chunk;
+      chunks.push(chunk);
     });
 
     req.on('end', () => {
-      req.rawBody = data;
+      req.rawBody = Buffer.concat(chunks);
       next();
     });
   } else {
@@ -41,61 +40,62 @@ const getRawBody = (req, res, next) => {
   }
 };
 
-// Use raw body middleware FIRST
-app.use(getRawBody);
+// Use buffer parser FIRST
+app.use(bufferParser);
 
-// Webhook handling - MUST be first
-app.post(
-  '/webhook',
-  express.raw({ type: 'application/json' }),
-  async (request, response) => {
-    console.log('Webhook received');
+// Webhook handling
+app.post('/webhook', async (request, response) => {
+  console.log('Webhook received');
+  
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const sig = request.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-    const sig = request.headers['stripe-signature'];
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  console.log('Webhook details:', {
+    hasBody: !!request.rawBody,
+    bodyLength: request.rawBody?.length,
+    hasSignature: !!sig,
+    signatureLength: sig?.length
+  });
 
-    console.log('Request headers:', request.headers);
-    console.log('Body type:', typeof request.body);
-    console.log('Body is buffer:', Buffer.isBuffer(request.body));
-    console.log('Signature:', sig);
+  let event;
 
-    let event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      request.rawBody,
+      sig,
+      endpointSecret
+    );
 
-    try {
-      event = stripe.webhooks.constructEvent(
-        request.body,
-        sig,
-        endpointSecret
+    // Handle the event
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      
+      const Purchase = require('./models/Purchase');
+      await Purchase.findOneAndUpdate(
+        { email: session.customer_email },
+        { 
+          $set: { 
+            hasPurchased: true,
+            purchaseDate: new Date(),
+            stripeSessionId: session.id
+          }
+        },
+        { upsert: true }
       );
 
-      // Handle the event
-      if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-
-        const Purchase = require('./models/Purchase');
-        await Purchase.findOneAndUpdate(
-          { email: session.customer_email },
-          {
-            $set: {
-              hasPurchased: true,
-              purchaseDate: new Date(),
-              stripeSessionId: session.id
-            }
-          },
-          { upsert: true }
-        );
-
-        console.log('Purchase recorded for:', session.customer_email);
-      }
-
-      response.send({ received: true });
-    } catch (err) {
-      console.log('Webhook error:', err.message);
-      return response.status(400).send(`Webhook Error: ${err.message}`);
+      console.log('Purchase recorded for:', session.customer_email);
     }
+
+    response.send({ received: true });
+  } catch (err) {
+    console.log('Webhook error:', {
+      message: err.message,
+      bodyPreview: request.rawBody?.toString().slice(0, 50)
+    });
+    return response.status(400).send(`Webhook Error: ${err.message}`);
   }
-);
+});
 
 // CORS and other middleware MUST come after webhook
 app.use(cors({
