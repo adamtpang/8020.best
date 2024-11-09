@@ -46,9 +46,9 @@ app.use(getRawBody);
 
 // Webhook handling
 app.post('/webhook', async (request, response) => {
-  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
   const sig = request.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
   // Debug logging
   console.log('Webhook received:', {
@@ -57,16 +57,26 @@ app.post('/webhook', async (request, response) => {
     signatureExists: !!sig,
     secretExists: !!endpointSecret,
     secretFirstChar: endpointSecret?.[0],
-    secretLength: endpointSecret?.length
+    secretLength: endpointSecret?.length,
+    secretFirstChars: endpointSecret?.slice(0, 5).split('').map(c => c.charCodeAt(0))
   });
 
   let event;
 
   try {
+    const cleanSecret = endpointSecret?.replace(/\s+/g, '');
+
+    console.log('Clean secret info:', {
+      originalLength: endpointSecret?.length,
+      cleanLength: cleanSecret?.length,
+      firstChar: cleanSecret?.[0],
+      firstCharCode: cleanSecret?.[0]?.charCodeAt(0)
+    });
+
     event = stripe.webhooks.constructEvent(
       request.rawBody,
       sig,
-      endpointSecret
+      cleanSecret
     );
 
     console.log('Webhook verified:', event.type);
