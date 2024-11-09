@@ -1,7 +1,15 @@
 import React from 'react';
 import { Box, Container, IconButton, Slider, TextField } from '@mui/material';
-import { ArrowBack, ContentPaste, ContentCopy, HelpOutline, DeleteOutlined } from '@mui/icons-material';
-import SyncIndicator from './SyncIndicator';
+import {
+  ArrowBack,
+  ContentPaste,
+  ContentCopy,
+  HelpOutline,
+  DeleteOutlined,
+  Check,
+  SyncProblem
+} from '@mui/icons-material';
+import CircularProgress from '@mui/material/CircularProgress';
 
 const MainLayout = ({
   navigate,
@@ -24,14 +32,7 @@ const MainLayout = ({
   children
 }) => {
   return (
-    <Container
-      maxWidth="xl"
-      disableGutters
-      sx={{
-        height: '100vh',
-        display: 'flex',
-      }}
-    >
+    <Container maxWidth="xl" sx={{ height: '100vh', display: 'flex' }}>
       <Box sx={{
         width: '100%',
         maxWidth: '1400px',
@@ -43,100 +44,127 @@ const MainLayout = ({
         gap: 2,
         position: 'relative'
       }}>
-        {/* Top Controls Container */}
+        {/* Row 1: Back Button and Sync Status */}
         <Box sx={{
-          position: 'relative',
-          zIndex: 2,
-          backgroundColor: 'white'
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2
         }}>
-          {/* Back Button Row */}
-          <Box sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            mb: 2
-          }}>
-            <IconButton onClick={() => navigate('/')} size="small" sx={{ color: 'black' }}>
-              <ArrowBack />
-            </IconButton>
-          </Box>
+          <IconButton
+            onClick={() => navigate('/')}
+            size="small"
+            sx={{ color: 'black' }}
+          >
+            <ArrowBack />
+          </IconButton>
 
-          {/* Slider Row */}
+          {/* Sync Status Indicator */}
           <Box sx={{
             display: 'flex',
-            gap: 2,
             alignItems: 'center',
-            width: '100%',
-            mb: 2
+            opacity: 0.7,
+            transition: 'opacity 0.3s ease'
           }}>
-            <Slider
-              value={sliderValue}
-              onChange={(_, newValue) => setSliderValue(newValue)}
-              step={1}
-              marks
-              min={0}
-              max={1}
-              sx={{
-                width: '100%',
-                flexShrink: 0,
-                '& .MuiSlider-track': { backgroundColor: 'black' },
-                '& .MuiSlider-rail': { backgroundColor: '#ccc' },
-                '& .MuiSlider-thumb': { backgroundColor: 'black' },
-                '& .MuiSlider-mark': { backgroundColor: '#bbb' },
-                '& .MuiSlider-markActive': { backgroundColor: 'black' }
-              }}
+            {isSyncing ? (
+              <CircularProgress
+                size={16}
+                thickness={6}
+                sx={{ color: 'black' }}
+              />
+            ) : isSyncError ? (
+              <SyncProblem
+                sx={{
+                  color: 'error.main',
+                  fontSize: 18
+                }}
+              />
+            ) : (
+              <Check
+                sx={{
+                  color: 'success.main',
+                  fontSize: 18,
+                  animation: 'fadeIn 0.3s ease'
+                }}
+              />
+            )}
+          </Box>
+        </Box>
+
+        {/* Slider Row */}
+        <Box sx={{
+          display: 'flex',
+          gap: 2,
+          alignItems: 'center',
+          width: '100%',
+          mb: 2
+        }}>
+          <Slider
+            value={sliderValue}
+            onChange={(_, newValue) => setSliderValue(newValue)}
+            step={1}
+            marks
+            min={0}
+            max={1}
+            sx={{
+              width: '100%',
+              flexShrink: 0,
+              '& .MuiSlider-track': { backgroundColor: 'black' },
+              '& .MuiSlider-rail': { backgroundColor: '#ccc' },
+              '& .MuiSlider-thumb': { backgroundColor: 'black' },
+              '& .MuiSlider-mark': { backgroundColor: '#bbb' },
+              '& .MuiSlider-markActive': { backgroundColor: 'black' }
+            }}
+            size="small"
+          />
+        </Box>
+
+        {/* Import/Export Controls Row */}
+        <Box sx={{
+          display: 'flex',
+          gap: 2,
+          alignItems: 'center',
+          mb: 2
+        }}>
+          <IconButton
+            onClick={handleClipboardImport}
+            size="small"
+            sx={{ color: 'black' }}
+          >
+            <ContentPaste />
+          </IconButton>
+
+          <Box component="form" onSubmit={handleAddItem} sx={{ flex: 1 }}>
+            <TextField
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              placeholder="Add new item..."
               size="small"
+              fullWidth
+              onFocus={() => {
+                setIsInputFocused(true);
+                setSelectedIndex1(null);
+                setSelectedIndex2(null);
+                setSelectedIndex3(null);
+                setActiveList(1);
+              }}
+              onBlur={() => {
+                setIsInputFocused(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.stopPropagation();
+                }
+              }}
             />
           </Box>
 
-          {/* Import/Export Controls Row */}
-          <Box sx={{
-            display: 'flex',
-            gap: 2,
-            alignItems: 'center',
-            mb: 2
-          }}>
-            <IconButton
-              onClick={handleClipboardImport}
-              size="small"
-              sx={{ color: 'black' }}
-            >
-              <ContentPaste />
-            </IconButton>
-
-            <Box component="form" onSubmit={handleAddItem} sx={{ flex: 1 }}>
-              <TextField
-                value={newItem}
-                onChange={(e) => setNewItem(e.target.value)}
-                placeholder="Add new item..."
-                size="small"
-                fullWidth
-                onFocus={() => {
-                  setIsInputFocused(true);
-                  setSelectedIndex1(null);
-                  setSelectedIndex2(null);
-                  setSelectedIndex3(null);
-                  setActiveList(1);
-                }}
-                onBlur={() => {
-                  setIsInputFocused(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.stopPropagation();
-                  }
-                }}
-              />
-            </Box>
-
-            <IconButton
-              onClick={handleExportList3}
-              size="small"
-              sx={{ color: 'black' }}
-            >
-              <ContentCopy />
-            </IconButton>
-          </Box>
+          <IconButton
+            onClick={handleExportList3}
+            size="small"
+            sx={{ color: 'black' }}
+          >
+            <ContentCopy />
+          </IconButton>
         </Box>
 
         {/* Lists Container */}

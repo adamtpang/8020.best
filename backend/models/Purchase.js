@@ -9,7 +9,7 @@ const purchaseSchema = new mongoose.Schema({
   },
   userId: {
     type: String,
-    sparse: true  // Allow multiple null values
+    sparse: true
   },
   hasPurchased: {
     type: Boolean,
@@ -21,19 +21,20 @@ const purchaseSchema = new mongoose.Schema({
   stripeSessionId: {
     type: String
   },
-  lists: {
-    list1: [String],
-    list2: [{
-      importanceValue: Number,
-      idea: String
-    }],
-    list3: [{
-      importanceValue: Number,
-      urgencyValue: Number,
-      idea: String
-    }]
-  },
-  trashedItems: [mongoose.Schema.Types.Mixed]  // Store any type of item
+  list1: [String],
+  list2: [{
+    importanceValue: Number,
+    idea: String
+  }],
+  list3: [{
+    importanceValue: Number,
+    urgencyValue: Number,
+    idea: String
+  }],
+  list4: {
+    type: Array,
+    default: []
+  }
 }, {
   timestamps: true
 });
