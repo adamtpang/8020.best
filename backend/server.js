@@ -1,6 +1,5 @@
 // server.js
 
-require('web-streams-polyfill');
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -11,6 +10,14 @@ const app = express();
 // Environment setup
 const environment = process.env.NODE_ENV || 'development';
 console.log('Environment:', environment);
+
+// Allowed Origins for CORS
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://hower.app',
+  'https://go.hower.app'
+];
 
 // Import webhook router FIRST
 const webhookRouter = require('./routes/webhook');
