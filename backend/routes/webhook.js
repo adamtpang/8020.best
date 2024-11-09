@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
 
 router.post(
   '/',
-  express.raw({ type: '*/*' }),
+  express.raw({ type: 'application/json' }),
   async (req, res) => {
     try {
       console.log('Webhook received');
 
-      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
       const sig = req.headers['stripe-signature'];
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
@@ -19,7 +19,8 @@ router.post(
         isBuffer: Buffer.isBuffer(req.body),
         hasSignature: !!sig,
         signatureLength: sig?.length,
-        secretLength: webhookSecret?.length
+        secretLength: webhookSecret?.length,
+        contentType: req.headers['content-type']
       });
 
       // Verify webhook
