@@ -20,62 +20,11 @@ const app = express();
 const environment = process.env.NODE_ENV || 'development';
 console.log('Environment:', environment);
 
-// Webhook handling - MUST come first
-app.post(
-  '/webhook',
-  express.raw({ type: 'application/json' }),  // Match Stripe's content type exactly
-  async (req, res) => {
-    try {
-      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
-      const sig = req.headers['stripe-signature'];
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+// Import webhook router FIRST
+const webhookRouter = require('./routes/webhook');
 
-      // Log request details
-      console.log('Webhook details:', {
-        hasBody: !!req.body,
-        bodyLength: req.body?.length,
-        isBuffer: Buffer.isBuffer(req.body),
-        hasSignature: !!sig,
-        signatureLength: sig?.length,
-        secretLength: webhookSecret?.length,
-        contentType: req.headers['content-type']
-      });
-
-      // Verify webhook
-      const event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        webhookSecret
-      );
-
-      // Handle the event
-      if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        const Purchase = require('./models/Purchase');
-        await Purchase.findOneAndUpdate(
-          { email: session.customer_email },
-          {
-            $set: {
-              hasPurchased: true,
-              purchaseDate: new Date(),
-              stripeSessionId: session.id
-            }
-          },
-          { upsert: true }
-        );
-      }
-
-      res.status(200).send('Success');
-
-    } catch (err) {
-      console.error('Webhook error:', {
-        message: err.message,
-        stack: err.stack?.split('\n')[0]
-      });
-      res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-  }
-);
+// Use webhook router BEFORE other middleware
+app.use('/webhook', webhookRouter);
 
 // CORS and other middleware AFTER webhook
 app.use(cors({
