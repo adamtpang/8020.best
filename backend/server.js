@@ -26,7 +26,7 @@ console.log('Allowed Origins:', allowedOrigins);
 const bufferParser = (req, res, next) => {
   if (req.url === '/webhook' && req.method === 'POST') {
     const chunks = [];
-    
+
     req.on('data', chunk => {
       chunks.push(chunk);
     });
@@ -44,56 +44,113 @@ const bufferParser = (req, res, next) => {
 app.use(bufferParser);
 
 // Webhook handling
-app.post('/webhook', async (request, response) => {
-  console.log('Webhook received');
-  
-  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-  const sig = request.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
 
-  console.log('Webhook details:', {
-    hasBody: !!request.rawBody,
-    bodyLength: request.rawBody?.length,
-    hasSignature: !!sig,
-    signatureLength: sig?.length
+// Debug middleware to log request details
+const logRequest = (req, res, next) => {
+  if (req.path === '/webhook') {
+    console.log('\nWebhook request received:', {
+      path: req.path,
+      method: req.method,
+      contentType: req.headers['content-type'],
+      contentLength: req.headers['content-length'],
+      stripeSignature: req.headers['stripe-signature']?.substring(0, 20) + '...',
+    });
+  }
+  next();
+};
+
+// Raw body handler for webhooks
+const webhookBodyParser = (req, res, next) => {
+  if (req.path === '/webhook' && req.method === 'POST') {
+    let data = '';
+
+    req.on('data', chunk => {
+      data += chunk;
+    });
+
+    req.on('end', () => {
+      req.rawBody = data;
+      console.log('Raw body captured:', {
+        length: data.length,
+        preview: data.substring(0, 50) + '...'
+      });
+      next();
+    });
+  } else {
+    next();
+  }
+};
+
+// Use middleware in correct order
+app.use(logRequest);
+app.use(webhookBodyParser);
+
+// Webhook endpoint
+app.post('/webhook', async (req, res) => {
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  const signature = req.headers['stripe-signature'];
+
+  console.log('Processing webhook:', {
+    hasSignature: !!signature,
+    signatureLength: signature?.length,
+    hasSecret: !!endpointSecret,
+    secretLength: endpointSecret?.length,
+    bodyLength: req.rawBody?.length
   });
 
-  let event;
-
   try {
-    event = stripe.webhooks.constructEvent(
-      request.rawBody,
-      sig,
+    // Verify webhook
+    const event = stripe.webhooks.constructEvent(
+      req.rawBody,
+      signature,
       endpointSecret
     );
 
-    // Handle the event
+    console.log('Webhook verified:', event.type);
+
+    // Handle checkout completion
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
-      
-      const Purchase = require('./models/Purchase');
-      await Purchase.findOneAndUpdate(
-        { email: session.customer_email },
-        { 
-          $set: { 
-            hasPurchased: true,
-            purchaseDate: new Date(),
-            stripeSessionId: session.id
-          }
-        },
-        { upsert: true }
-      );
 
-      console.log('Purchase recorded for:', session.customer_email);
+      try {
+        const Purchase = require('./models/Purchase');
+        const result = await Purchase.findOneAndUpdate(
+          { email: session.customer_email },
+          {
+            $set: {
+              hasPurchased: true,
+              purchaseDate: new Date(),
+              stripeSessionId: session.id
+            }
+          },
+          { upsert: true, new: true }
+        );
+
+        console.log('Purchase recorded:', {
+          email: session.customer_email,
+          success: true,
+          purchaseId: result._id
+        });
+
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        return res.status(500).send('Database error');
+      }
     }
 
-    response.send({ received: true });
+    res.json({ received: true });
+
   } catch (err) {
-    console.log('Webhook error:', {
-      message: err.message,
-      bodyPreview: request.rawBody?.toString().slice(0, 50)
+    console.error('Webhook verification failed:', {
+      error: err.message,
+      type: err.type,
+      bodyPreview: req.rawBody?.substring(0, 50) + '...',
+      signaturePreview: signature?.substring(0, 20) + '...',
+      secretPreview: endpointSecret?.substring(0, 5) + '...'
     });
-    return response.status(400).send(`Webhook Error: ${err.message}`);
+
+    res.status(400).send(`Webhook Error: ${err.message}`);
   }
 });
 
