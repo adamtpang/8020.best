@@ -43,79 +43,46 @@ const bufferParser = (req, res, next) => {
 // Use buffer parser FIRST
 app.use(bufferParser);
 
-// Webhook handling
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
-
-// Debug middleware to log request details
-const logRequest = (req, res, next) => {
-  if (req.path === '/webhook') {
-    console.log('\nWebhook request received:', {
-      path: req.path,
-      method: req.method,
-      contentType: req.headers['content-type'],
-      contentLength: req.headers['content-length'],
-      stripeSignature: req.headers['stripe-signature']?.substring(0, 20) + '...',
-    });
-  }
-  next();
-};
-
-// Raw body handler for webhooks
-const webhookBodyParser = (req, res, next) => {
-  if (req.path === '/webhook' && req.method === 'POST') {
-    let data = '';
-
-    req.on('data', chunk => {
-      data += chunk;
+// Simple webhook handler
+app.post(
+  '/webhook',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    // Set response timeout
+    res.setTimeout(5000, () => {
+      console.log('Response timeout - sending 408');
+      res.status(408).send('Request timeout');
     });
 
-    req.on('end', () => {
-      req.rawBody = data;
-      console.log('Raw body captured:', {
-        length: data.length,
-        preview: data.substring(0, 50) + '...'
-      });
-      next();
-    });
-  } else {
-    next();
-  }
-};
+    try {
+      console.log('Webhook received');
 
-// Use middleware in correct order
-app.use(logRequest);
-app.use(webhookBodyParser);
+      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
+      const sig = req.headers['stripe-signature'];
+      const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
-// Webhook endpoint
-app.post('/webhook', async (req, res) => {
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
-  const signature = req.headers['stripe-signature'];
+      // Quick response if missing data
+      if (!sig || !endpointSecret) {
+        console.log('Missing signature or secret');
+        return res.status(400).send('Missing signature or secret');
+      }
 
-  console.log('Processing webhook:', {
-    hasSignature: !!signature,
-    signatureLength: signature?.length,
-    hasSecret: !!endpointSecret,
-    secretLength: endpointSecret?.length,
-    bodyLength: req.rawBody?.length
-  });
+      // Verify webhook
+      const event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        endpointSecret
+      );
 
-  try {
-    // Verify webhook
-    const event = stripe.webhooks.constructEvent(
-      req.rawBody,
-      signature,
-      endpointSecret
-    );
+      console.log('Event verified:', event.type);
 
-    console.log('Webhook verified:', event.type);
+      // Handle the event
+      if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        console.log('Processing session:', session.id);
 
-    // Handle checkout completion
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-
-      try {
         const Purchase = require('./models/Purchase');
-        const result = await Purchase.findOneAndUpdate(
+        await Purchase.findOneAndUpdate(
           { email: session.customer_email },
           {
             $set: {
@@ -124,35 +91,21 @@ app.post('/webhook', async (req, res) => {
               stripeSessionId: session.id
             }
           },
-          { upsert: true, new: true }
+          { upsert: true }
         );
 
-        console.log('Purchase recorded:', {
-          email: session.customer_email,
-          success: true,
-          purchaseId: result._id
-        });
-
-      } catch (dbError) {
-        console.error('Database error:', dbError);
-        return res.status(500).send('Database error');
+        console.log('Purchase recorded');
       }
+
+      // Send success response
+      res.json({ received: true });
+
+    } catch (err) {
+      console.error('Webhook error:', err.message);
+      res.status(400).send(`Webhook Error: ${err.message}`);
     }
-
-    res.json({ received: true });
-
-  } catch (err) {
-    console.error('Webhook verification failed:', {
-      error: err.message,
-      type: err.type,
-      bodyPreview: req.rawBody?.substring(0, 50) + '...',
-      signaturePreview: signature?.substring(0, 20) + '...',
-      secretPreview: endpointSecret?.substring(0, 5) + '...'
-    });
-
-    res.status(400).send(`Webhook Error: ${err.message}`);
   }
-});
+);
 
 // CORS and other middleware MUST come after webhook
 app.use(cors({
