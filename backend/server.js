@@ -22,91 +22,87 @@ const allowedOrigins = [
 
 console.log('Allowed Origins:', allowedOrigins);
 
-// Create a new router for the webhook
-const webhookRouter = express.Router();
+// Custom middleware to handle raw body
+const getRawBody = (req, res, next) => {
+  if (req.url === '/webhook' && req.method === 'POST') {
+    let data = '';
+    req.setEncoding('utf8');
 
-// Webhook handling - MUST come before other middleware
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-app.post('/webhook',
-  express.raw({type: 'application/json'}),
-  async (request, response) => {
-    const buf = request.body;
-    const sig = request.headers['stripe-signature'];
-
-    // Debug logging
-    console.log('Webhook received:', {
-      bodyType: typeof buf,
-      bodyLength: buf?.length,
-      isBuffer: Buffer.isBuffer(buf),
-      signature: sig?.substring(0, 20) + '...',
-      secretLength: endpointSecret?.length
+    req.on('data', chunk => {
+      data += chunk;
     });
 
-    let event;
+    req.on('end', () => {
+      req.rawBody = data;
+      next();
+    });
+  } else {
+    next();
+  }
+};
 
-    try {
-      // Verify exactly as Stripe docs show
-      event = stripe.webhooks.constructEvent(
-        buf,
-        sig,
-        endpointSecret
+// Use raw body middleware FIRST
+app.use(getRawBody);
+
+// Webhook handling
+app.post('/webhook', async (request, response) => {
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const sig = request.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  // Debug logging
+  console.log('Webhook received:', {
+    hasRawBody: !!request.rawBody,
+    rawBodyLength: request.rawBody?.length,
+    signatureExists: !!sig,
+    secretExists: !!endpointSecret,
+    secretFirstChar: endpointSecret?.[0],
+    secretLength: endpointSecret?.length
+  });
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      request.rawBody,
+      sig,
+      endpointSecret
+    );
+
+    console.log('Webhook verified:', event.type);
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      console.log('Processing checkout:', session.customer_email);
+
+      const Purchase = require('./models/Purchase');
+      const result = await Purchase.findOneAndUpdate(
+        { email: session.customer_email },
+        {
+          $set: {
+            hasPurchased: true,
+            purchaseDate: new Date(),
+            stripeSessionId: session.id
+          }
+        },
+        { upsert: true, new: true }
       );
 
-      // Handle the checkout.session.completed event
-      if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-
-        // Log the session data
-        console.log('Processing checkout session:', {
-          id: session.id,
-          email: session.customer_email
-        });
-
-        try {
-          const Purchase = require('./models/Purchase');
-          const result = await Purchase.findOneAndUpdate(
-            { email: session.customer_email },
-            {
-              $set: {
-                hasPurchased: true,
-                purchaseDate: new Date(),
-                stripeSessionId: session.id
-              }
-            },
-            { upsert: true, new: true }
-          );
-
-          console.log('Purchase recorded:', {
-            email: session.customer_email,
-            success: true
-          });
-        } catch (dbError) {
-          console.error('Database error:', dbError);
-          return response.status(500).send('Database error');
-        }
-      }
-
-      // Send success response
-      response.json({received: true});
-
-    } catch (err) {
-      // Log the full error details
-      console.error('Webhook Error:', {
-        message: err.message,
-        type: err.type,
-        bodyPreview: buf?.toString().substring(0, 50) + '...',
-        signatureHeader: sig,
-        secretPreview: endpointSecret?.substring(0, 5) + '...'
-      });
-
-      response.status(400).send(`Webhook Error: ${err.message}`);
+      console.log('Purchase recorded for:', session.customer_email);
     }
-  }
-);
 
-// CORS and other middleware MUST come AFTER webhook route
+    response.json({received: true});
+  } catch (err) {
+    console.error('Webhook Error:', {
+      error: err.message,
+      rawBody: request.rawBody?.substring(0, 50) + '...',
+      signature: sig?.substring(0, 20) + '...'
+    });
+    response.status(400).send(`Webhook Error: ${err.message}`);
+  }
+});
+
+// CORS and other middleware AFTER webhook
 app.use(cors({
   origin: function(origin, callback) {
     console.log('Request origin:', origin);
