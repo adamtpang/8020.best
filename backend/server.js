@@ -29,64 +29,82 @@ const webhookRouter = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-app.post('/webhook', express.raw({type: 'application/json'}), async (request, response) => {
-  const sig = request.headers['stripe-signature'];
+app.post('/webhook',
+  express.raw({type: 'application/json'}),
+  async (request, response) => {
+    const buf = request.body;
+    const sig = request.headers['stripe-signature'];
 
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
-    console.log('Webhook verified:', event.type);
-  } catch (err) {
-    console.error('Webhook verification failed:', {
-      error: err.message,
-      signature: sig?.slice(0, 20) + '...',  // Log part of signature for debugging
-      bodyLength: request.body?.length,
+    // Debug logging
+    console.log('Webhook received:', {
+      bodyType: typeof buf,
+      bodyLength: buf?.length,
+      isBuffer: Buffer.isBuffer(buf),
+      signature: sig?.substring(0, 20) + '...',
       secretLength: endpointSecret?.length
     });
-    response.status(400).send(`Webhook Error: ${err.message}`);
-    return;
-  }
 
-  // Handle the event
-  switch (event.type) {
-    case 'checkout.session.completed':
-      const session = event.data.object;
-      console.log('Processing checkout session:', {
-        sessionId: session.id,
-        customerEmail: session.customer_email
+    let event;
+
+    try {
+      // Verify exactly as Stripe docs show
+      event = stripe.webhooks.constructEvent(
+        buf,
+        sig,
+        endpointSecret
+      );
+
+      // Handle the checkout.session.completed event
+      if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+
+        // Log the session data
+        console.log('Processing checkout session:', {
+          id: session.id,
+          email: session.customer_email
+        });
+
+        try {
+          const Purchase = require('./models/Purchase');
+          const result = await Purchase.findOneAndUpdate(
+            { email: session.customer_email },
+            {
+              $set: {
+                hasPurchased: true,
+                purchaseDate: new Date(),
+                stripeSessionId: session.id
+              }
+            },
+            { upsert: true, new: true }
+          );
+
+          console.log('Purchase recorded:', {
+            email: session.customer_email,
+            success: true
+          });
+        } catch (dbError) {
+          console.error('Database error:', dbError);
+          return response.status(500).send('Database error');
+        }
+      }
+
+      // Send success response
+      response.json({received: true});
+
+    } catch (err) {
+      // Log the full error details
+      console.error('Webhook Error:', {
+        message: err.message,
+        type: err.type,
+        bodyPreview: buf?.toString().substring(0, 50) + '...',
+        signatureHeader: sig,
+        secretPreview: endpointSecret?.substring(0, 5) + '...'
       });
 
-      try {
-        const Purchase = require('./models/Purchase');
-        const result = await Purchase.findOneAndUpdate(
-          { email: session.customer_email },
-          {
-            $set: {
-              hasPurchased: true,
-              purchaseDate: new Date(),
-              stripeSessionId: session.id
-            }
-          },
-          { upsert: true, new: true }
-        );
-
-        console.log('Purchase recorded:', {
-          email: session.customer_email,
-          hasPurchased: result.hasPurchased
-        });
-      } catch (error) {
-        console.error('Database error:', error);
-      }
-      break;
-
-    default:
-      console.log(`Unhandled event type ${event.type}`);
+      response.status(400).send(`Webhook Error: ${err.message}`);
+    }
   }
-
-  // Return a 200 response to acknowledge receipt of the event
-  response.send();
-});
+);
 
 // CORS and other middleware MUST come AFTER webhook route
 app.use(cors({
