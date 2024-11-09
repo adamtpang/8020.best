@@ -12,76 +12,11 @@ const app = express();
 const environment = process.env.NODE_ENV || 'development';
 console.log('Environment:', environment);
 
-// CORS setup
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'https://hower.app',
-  'https://go.hower.app'
-];
+// Import webhook router FIRST
+const webhookRouter = require('./routes/webhook');
 
-console.log('Allowed Origins:', allowedOrigins);
-
-// Webhook handling - MUST come first
-app.post(
-  '/webhook',
-  express.raw({ type: 'application/json' }),
-  async (req, res) => {
-    try {
-      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
-      const sig = req.headers['stripe-signature'];
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
-
-      // Log request details (safely)
-      console.log('Webhook received:', {
-        hasBody: !!req.body,
-        bodyLength: req.body?.length,
-        hasSignature: !!sig,
-        signatureLength: sig?.length,
-        secretLength: webhookSecret?.length
-      });
-
-      // Verify webhook
-      const event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        webhookSecret
-      );
-
-      console.log('Event verified:', event.type);
-
-      // Handle the event
-      if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        console.log('Processing session:', session.id);
-
-        const Purchase = require('./models/Purchase');
-        await Purchase.findOneAndUpdate(
-          { email: session.customer_email },
-          {
-            $set: {
-              hasPurchased: true,
-              purchaseDate: new Date(),
-              stripeSessionId: session.id
-            }
-          },
-          { upsert: true }
-        );
-
-        console.log('Purchase recorded for:', session.customer_email);
-      }
-
-      res.status(200).send('Success');
-
-    } catch (err) {
-      console.error('Webhook error:', {
-        message: err.message,
-        stack: err.stack?.split('\n')[0]
-      });
-      res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-  }
-);
+// Use webhook router BEFORE other middleware
+app.use('/webhook', webhookRouter);
 
 // CORS and other middleware AFTER webhook
 app.use(cors({
