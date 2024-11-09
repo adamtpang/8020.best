@@ -5,7 +5,6 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const mongoose = require('mongoose');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 
@@ -35,8 +34,58 @@ app.use(cors({
   credentials: true
 }));
 
-// Body parser middleware - IMPORTANT: Order matters!
-app.use(express.json());  // This needs to be before routes
+// Webhook route must come BEFORE body parser middleware
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  const sig = req.headers['stripe-signature'];
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+    console.log('Webhook event received:', event.type);
+  } catch (err) {
+    console.error('Webhook error:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const session = event.data.object;
+      console.log('Checkout session completed:', session);
+
+      try {
+        const Purchase = require('./models/Purchase');
+        await Purchase.findOneAndUpdate(
+          { email: session.customer_email },
+          {
+            $set: {
+              hasPurchased: true,
+              purchaseDate: new Date(),
+              stripeSessionId: session.id
+            }
+          },
+          { upsert: true }
+        );
+        console.log('Purchase recorded for:', session.customer_email);
+      } catch (error) {
+        console.error('Error recording purchase:', error);
+      }
+      break;
+    default:
+      console.log(`Unhandled event type ${event.type}`);
+  }
+
+  res.json({ received: true });
+});
+
+// Regular body parser middleware for other routes - MUST come AFTER webhook route
+app.use(express.json());
 
 // MongoDB connection
 const connectDB = async () => {
@@ -57,9 +106,6 @@ connectDB();
 console.log('Registering purchase routes...');
 const purchasesRouter = require('./routes/purchases');
 app.use('/', purchasesRouter);
-
-// Webhook handling
-app.post('/webhook', express.raw({ type: 'application/json' }));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
