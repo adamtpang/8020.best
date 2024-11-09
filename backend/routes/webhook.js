@@ -5,9 +5,7 @@ const crypto = require('crypto');
 
 router.post(
   '/',
-  express.raw({
-    type: (req) => req.headers['content-type'].startsWith('application/json'),
-  }),
+  express.raw({ type: '*/*' }),
   async (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
@@ -15,15 +13,16 @@ router.post(
     // Log the signature header
     console.log('Signature header:', sig);
 
-    // Log the raw request body
-    const rawBodyLength = req.body.length;
-    const rawBodyHash = crypto.createHash('sha256').update(req.body).digest('hex');
+    // Log the request body
+    const rawBody = req.body;
+    const rawBodyLength = rawBody.length;
+    const rawBodyHash = crypto.createHash('sha256').update(rawBody).digest('hex');
 
     console.log('Request body:', {
-      isBuffer: Buffer.isBuffer(req.body),
+      isBuffer: Buffer.isBuffer(rawBody),
       length: rawBodyLength,
       hash: rawBodyHash,
-      type: typeof req.body,
+      type: typeof rawBody,
     });
 
     // Log the webhook secret details
@@ -36,22 +35,39 @@ router.post(
 
     try {
       // Verify the webhook signature
-      const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
 
       console.log('Event verified:', event.type);
 
       // Handle the event
       res.status(200).send('Success');
     } catch (err) {
-      console.error('Webhook error:', {
+      // Extract received signatures
+      const receivedSignatures = sig.split(',').reduce((acc, item) => {
+        const [key, value] = item.split('=');
+        acc[key] = value;
+        return acc;
+      }, {});
+
+      // Compute expected signature
+      const payload = rawBody.toString('utf8');
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(`${receivedSignatures.t}.${payload}`, 'utf8')
+        .digest('hex');
+
+      console.error('Webhook signature verification failed:', err.message);
+      console.error('Error details:', {
         message: err.message,
-        type: err.name,
-        stack: err.stack?.split('\n')[0],
+        type: err.type,
+        stack: err.stack,
         requestBody: {
-          isBuffer: Buffer.isBuffer(req.body),
-          length: req.body.length,
-          type: typeof req.body,
+          isBuffer: Buffer.isBuffer(rawBody),
+          length: rawBody.length,
+          hash: rawBodyHash,
         },
+        receivedSignatures,
+        expectedSignature,
       });
       res.status(400).send(`Webhook Error: ${err.message}`);
     }
