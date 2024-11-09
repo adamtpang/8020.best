@@ -73,15 +73,19 @@ const Product = () => {
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   const { isSyncing, isSyncError } = useDataPersistence({
     user,
+    isAuthReady,
     list1,
     list2,
     list3,
+    trashedItems,
     setList1,
     setList2,
     setList3,
+    setTrashedItems,
     setIsLoading
   });
 
@@ -454,7 +458,9 @@ const Product = () => {
   // Load data on mount
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
+      console.log('Auth state changed:', user?.email);
       setUser(user);
+      setIsAuthReady(true);
     });
     return () => unsubscribe();
   }, []);
@@ -804,6 +810,11 @@ const Product = () => {
     });
   };
 
+  // Log when trashedItems changes
+  useEffect(() => {
+    console.log('TrashedItems updated:', trashedItems);
+  }, [trashedItems]);
+
   return (
     <>
       <MainLayout
@@ -930,4 +941,4 @@ const Product = () => {
   );
 };
 
-export default Product; 
+export default Product;
