@@ -25,75 +25,70 @@ console.log('Allowed Origins:', allowedOrigins);
 // Create a new router for the webhook
 const webhookRouter = express.Router();
 
-// Configure webhook route with raw body parser
-webhookRouter.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
+// Webhook handling - MUST come before other middleware
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  // Log headers and body for debugging
-  console.log('Webhook Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('Webhook Body Length:', req.body.length);
-
-  const sig = req.headers['stripe-signature'];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
-
-  console.log('Webhook Secret Length:', webhookSecret?.length);
-  console.log('Signature Header:', sig);
+app.post('/webhook', express.raw({type: 'application/json'}), async (request, response) => {
+  const sig = request.headers['stripe-signature'];
 
   let event;
 
   try {
-    // Verify the event
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      webhookSecret
-    );
+    event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
+    console.log('Webhook verified:', event.type);
+  } catch (err) {
+    console.error('Webhook verification failed:', {
+      error: err.message,
+      signature: sig?.slice(0, 20) + '...',  // Log part of signature for debugging
+      bodyLength: request.body?.length,
+      secretLength: endpointSecret?.length
+    });
+    response.status(400).send(`Webhook Error: ${err.message}`);
+    return;
+  }
 
-    // Handle the event
-    if (event.type === 'checkout.session.completed') {
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed':
       const session = event.data.object;
-
-      console.log('Processing successful payment:', {
+      console.log('Processing checkout session:', {
         sessionId: session.id,
         customerEmail: session.customer_email
       });
 
-      const Purchase = require('./models/Purchase');
-      const result = await Purchase.findOneAndUpdate(
-        { email: session.customer_email },
-        {
-          $set: {
-            hasPurchased: true,
-            purchaseDate: new Date(),
-            stripeSessionId: session.id
-          }
-        },
-        { upsert: true, new: true }
-      );
+      try {
+        const Purchase = require('./models/Purchase');
+        const result = await Purchase.findOneAndUpdate(
+          { email: session.customer_email },
+          {
+            $set: {
+              hasPurchased: true,
+              purchaseDate: new Date(),
+              stripeSessionId: session.id
+            }
+          },
+          { upsert: true, new: true }
+        );
 
-      console.log('Updated purchase record:', {
-        email: session.customer_email,
-        hasPurchased: result.hasPurchased,
-        purchaseDate: result.purchaseDate
-      });
-    }
+        console.log('Purchase recorded:', {
+          email: session.customer_email,
+          hasPurchased: result.hasPurchased
+        });
+      } catch (error) {
+        console.error('Database error:', error);
+      }
+      break;
 
-    res.json({ received: true });
-  } catch (err) {
-    console.error('Webhook Error:', {
-      message: err.message,
-      stack: err.stack,
-      body: req.body.toString('utf8').slice(0, 100) + '...' // Log first 100 chars of body
-    });
-
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    default:
+      console.log(`Unhandled event type ${event.type}`);
   }
+
+  // Return a 200 response to acknowledge receipt of the event
+  response.send();
 });
 
-// Use the webhook router BEFORE other middleware
-app.use(webhookRouter);
-
-// CORS and other middleware AFTER webhook router
+// CORS and other middleware MUST come AFTER webhook route
 app.use(cors({
   origin: function(origin, callback) {
     console.log('Request origin:', origin);
@@ -106,7 +101,6 @@ app.use(cors({
   credentials: true
 }));
 
-// Regular JSON parser for non-webhook routes
 app.use(express.json());
 
 // MongoDB connection
