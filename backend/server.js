@@ -22,74 +22,79 @@ const allowedOrigins = [
 
 console.log('Allowed Origins:', allowedOrigins);
 
-// Remove bufferParser middleware
+// Webhook handling
+app.post('/webhook',
+  express.raw({type: '*/*'}),  // Accept any content type
+  async (req, res) => {
+    try {
+      // Log request details
+      console.log('Webhook received:', {
+        contentType: req.headers['content-type'],
+        contentLength: req.headers['content-length'],
+        bodyType: typeof req.body,
+        isBuffer: Buffer.isBuffer(req.body)
+      });
 
-// Simple webhook handler
-app.post('/webhook', express.raw({
-  type: 'application/json',
-  verify: (req, res, buf) => {
-    req.rawBody = buf;
-  }
-}), async (req, res) => {
-  // Set response timeout
-  res.setTimeout(5000, () => {
-    console.log('Response timeout - sending 408');
-    res.status(408).send('Request timeout');
-  });
+      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
+      const sig = req.headers['stripe-signature'];
+      const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
-  try {
-    console.log('Webhook received');
+      // Verify we have what we need
+      if (!sig || !endpointSecret || !req.body) {
+        console.log('Missing required data:', {
+          hasSignature: !!sig,
+          hasSecret: !!endpointSecret,
+          hasBody: !!req.body
+        });
+        return res.status(400).send('Missing required webhook data');
+      }
 
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY?.trim());
-    const sig = req.headers['stripe-signature'];
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
-
-    // Quick response if missing data
-    if (!sig || !endpointSecret) {
-      console.log('Missing signature or secret');
-      return res.status(400).send('Missing signature or secret');
-    }
-
-    // Verify webhook using req.rawBody
-    const event = stripe.webhooks.constructEvent(
-      req.rawBody,
-      sig,
-      endpointSecret
-    );
-
-    console.log('Event verified:', event.type);
-
-    // Handle the event
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      console.log('Processing session:', session.id);
-
-      const Purchase = require('./models/Purchase');
-      await Purchase.findOneAndUpdate(
-        { email: session.customer_email },
-        {
-          $set: {
-            hasPurchased: true,
-            purchaseDate: new Date(),
-            stripeSessionId: session.id
-          }
-        },
-        { upsert: true }
+      // Verify webhook
+      const event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        endpointSecret
       );
 
-      console.log('Purchase recorded');
+      console.log('Event verified:', event.type);
+
+      // Handle the event
+      if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        console.log('Processing session:', session.id);
+
+        const Purchase = require('./models/Purchase');
+        await Purchase.findOneAndUpdate(
+          { email: session.customer_email },
+          {
+            $set: {
+              hasPurchased: true,
+              purchaseDate: new Date(),
+              stripeSessionId: session.id
+            }
+          },
+          { upsert: true }
+        );
+
+        console.log('Purchase recorded for:', session.customer_email);
+      }
+
+      // Send success response
+      res.json({ received: true });
+
+    } catch (err) {
+      console.error('Webhook error:', {
+        message: err.message,
+        stack: err.stack,
+        headers: req.headers,
+        bodyPreview: req.body?.toString().slice(0, 100)
+      });
+      res.status(400).send(`Webhook Error: ${err.message}`);
     }
-
-    // Send success response
-    res.json({ received: true });
-
-  } catch (err) {
-    console.error('Webhook error:', err.message);
-    res.status(400).send(`Webhook Error: ${err.message}`);
   }
-});
+);
 
-// CORS and other middleware come after webhook
+// Other middleware AFTER webhook
 app.use(cors({
   origin: function(origin, callback) {
     console.log('Request origin:', origin);
