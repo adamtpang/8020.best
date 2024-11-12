@@ -47,7 +47,9 @@ router.post(
             $set: {
               hasPurchased: true,
               purchaseDate: new Date(),
-              stripeSessionId: session.id
+              stripeSessionId: session.id,
+              priceId: session.line_items?.data[0]?.price?.id,
+              amount: session.amount_total
             }
           },
           { upsert: true, new: true }  // Return updated document
