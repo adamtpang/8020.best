@@ -38,6 +38,7 @@ import MainLayout from './Product/components/MainLayout';
 import useDataPersistence from './Product/hooks/useDataPersistence';
 import ClearConfirmDialog from './Product/dialogs/ClearConfirmDialog';
 import InstructionsDialog from './Product/dialogs/InstructionsDialog';
+import ReadingModeControls from './Product/components/ReadingModeControls';
 
 const Product = () => {
   const auth = getAuth();
@@ -74,6 +75,10 @@ const Product = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isReadingMode, setIsReadingMode] = useState(false);
+  const [speechRate, setSpeechRate] = useState(1);
+  const speechSynthesis = window.speechSynthesis;
+  const [currentUtterance, setCurrentUtterance] = useState(null);
 
   const { isSyncing, isSyncError } = useDataPersistence({
     user,
@@ -815,6 +820,37 @@ const Product = () => {
     console.log('TrashedItems updated:', trashedItems);
   }, [trashedItems]);
 
+  // Add this effect to handle text-to-speech when selection changes
+  useEffect(() => {
+    if (!isReadingMode) {
+      if (currentUtterance) {
+        speechSynthesis.cancel();
+      }
+      return;
+    }
+
+    const selectedItem = getSelectedItemText();
+    if (selectedItem) {
+      if (currentUtterance) {
+        speechSynthesis.cancel();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(selectedItem);
+      utterance.rate = speechRate;
+      setCurrentUtterance(utterance);
+      speechSynthesis.speak(utterance);
+    }
+  }, [selectedIndex1, selectedIndex2, selectedIndex3, isReadingMode, speechRate]);
+
+  // Add cleanup effect
+  useEffect(() => {
+    return () => {
+      if (currentUtterance) {
+        speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
   return (
     <>
       <MainLayout
@@ -918,6 +954,12 @@ const Product = () => {
           open={exportResultsOpen}
           onClose={() => setExportResultsOpen(false)}
           reductionPercent={reductionPercent}
+        />
+        <ReadingModeControls
+          isReadingMode={isReadingMode}
+          setIsReadingMode={setIsReadingMode}
+          speechRate={speechRate}
+          setSpeechRate={setSpeechRate}
         />
       </MainLayout>
 
