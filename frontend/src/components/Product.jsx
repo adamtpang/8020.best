@@ -324,12 +324,24 @@ const Product = () => {
         return newList;
       });
 
-      // Remove from list1
+      // Remove from list1 and select next item
       setList1(prevList => {
         const newList = prevList.filter((_, idx) => idx !== selectedIndex1);
         if (newList.length > 0) {
           const nextIndex = selectedIndex1 < newList.length ? selectedIndex1 : newList.length - 1;
           setSelectedIndex1(nextIndex);
+
+          // Read the next item if reading mode is on
+          if (isReadingMode) {
+            const nextItem = newList[nextIndex];
+            const utterance = new SpeechSynthesisUtterance(nextItem);
+            utterance.rate = speechRate;
+            if (currentUtterance) {
+              speechSynthesis.cancel();
+            }
+            setCurrentUtterance(utterance);
+            speechSynthesis.speak(utterance);
+          }
         } else {
           setSelectedIndex1(null);
         }
@@ -397,12 +409,24 @@ const Product = () => {
         return newList;
       });
 
-      // Remove from list2
+      // Remove from list2 and select next item
       setList2(prevList => {
         const newList = prevList.filter((_, idx) => idx !== selectedIndex2);
         if (newList.length > 0) {
           const nextIndex = selectedIndex2 < newList.length ? selectedIndex2 : newList.length - 1;
           setSelectedIndex2(nextIndex);
+
+          // Read the next item if reading mode is on
+          if (isReadingMode) {
+            const nextItem = newList[nextIndex];
+            const utterance = new SpeechSynthesisUtterance(nextItem.idea);
+            utterance.rate = speechRate;
+            if (currentUtterance) {
+              speechSynthesis.cancel();
+            }
+            setCurrentUtterance(utterance);
+            speechSynthesis.speak(utterance);
+          }
         } else {
           setSelectedIndex2(null);
         }
