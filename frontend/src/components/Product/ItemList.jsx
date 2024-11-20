@@ -46,77 +46,68 @@ const ItemList = ({
         }}
       >
         {listNumber === 1 ? "Important?" :
-         listNumber === 2 ? "Urgent?" :
-         "Calendar?"}
+          listNumber === 2 ? "Urgent?" :
+            "Calendar?"}
       </Typography>
 
       <List
-        id={`list-${listNumber}`}
         sx={{
+          width: '350px !important',
+          maxWidth: '350px !important',
+          padding: 0,
           flex: 1,
           overflow: 'auto',
-          width: '100%',
-          '& .MuiListItem-root': {
-            width: '100%',
-            padding: '8px 16px',
-            '& .MuiListItemText-root': {
-              margin: 0,
-              '& .MuiTypography-root': {
-                maxWidth: '300px',
-                whiteSpace: 'normal',
-                wordWrap: 'break-word',
-                overflowWrap: 'break-word',
-                hyphens: 'auto',
-                lineHeight: 1.4,
-              }
-            }
-          }
         }}
       >
-        <Box sx={{
-          position: 'relative',
-          minHeight: '100%'
-        }}>
-          {items.map((item, index) => (
-            <ListItem
-              key={index}
-              selected={index === selectedIndex}
-              onClick={() => onItemSelect(index)}
+        {items.map((item, index) => (
+          <ListItem
+            key={index}
+            selected={index === selectedIndex}
+            onClick={() => onItemSelect(index)}
+            sx={{
+              width: '100% !important',
+              maxWidth: '100% !important',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+              }
+            }}
+          >
+            <ListItemText
+              primary={typeof item === 'string' ? item : item.idea}
               sx={{
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                '&:hover': {
-                  backgroundColor: 'action.hover',
+                m: 0,
+                width: 'calc(100% - 48px) !important', // Leave space for the copy button
+                '& .MuiTypography-root': {
+                  wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap',
+                  overflowWrap: 'break-word',
+                  width: '100%',
+                  pr: 1,
                 }
               }}
-            >
-              <ListItemText
-                primary={typeof item === 'string' ? item : item.idea}
-                sx={{
-                  flex: '1 1 auto',
-                  overflow: 'hidden',
+            />
+            <Box sx={{
+              display: 'flex',
+              flexShrink: 0,
+              ml: 1
+            }}>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onItemCopy(item);
                 }}
-              />
-              <Box sx={{
-                display: 'flex',
-                flexShrink: 0,
-                ml: 1
-              }}>
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onItemCopy(item);
-                  }}
-                >
-                  <ContentCopy fontSize="small" />
-                </IconButton>
-              </Box>
-            </ListItem>
-          ))}
-        </Box>
+              >
+                <ContentCopy fontSize="small" />
+              </IconButton>
+            </Box>
+          </ListItem>
+        ))}
       </List>
 
       {/* Bottom Controls */}
