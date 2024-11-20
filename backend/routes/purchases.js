@@ -195,4 +195,71 @@ router.post('/api/save-user-data', async (req, res) => {
   }
 });
 
+// Handle chunk syncs
+router.post('/api/purchases/sync-chunk', async (req, res) => {
+  try {
+    const { email, listName, chunk } = req.body;
+
+    console.log(`Processing ${listName} chunk ${chunk.index + 1}/${chunk.total} for ${email}`);
+
+    const purchase = await Purchase.findOne({ email });
+    if (!purchase) {
+      purchase = new Purchase({ email });
+    }
+
+    // Calculate the start index for this chunk
+    const startIndex = chunk.index * CHUNK_SIZE;
+
+    // Update the specific portion of the list
+    if (!purchase[listName]) {
+      purchase[listName] = [];
+    }
+
+    // Extend array if needed
+    while (purchase[listName].length < startIndex + chunk.items.length) {
+      purchase[listName].push(null);
+    }
+
+    // Insert chunk items at the correct position
+    for (let i = 0; i < chunk.items.length; i++) {
+      purchase[listName][startIndex + i] = chunk.items[i];
+    }
+
+    await purchase.save();
+
+    res.json({
+      success: true,
+      chunkProcessed: chunk.index + 1,
+      totalChunks: chunk.total
+    });
+
+  } catch (error) {
+    console.error('Error processing chunk:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Handle sync completion
+router.post('/api/purchases/sync-complete', async (req, res) => {
+  try {
+    const { email, metadata } = req.body;
+
+    const purchase = await Purchase.findOne({ email });
+    if (purchase) {
+      purchase.lastSyncedAt = metadata.lastSyncedAt;
+      await purchase.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Sync completed successfully',
+      timestamp: metadata.lastSyncedAt
+    });
+
+  } catch (error) {
+    console.error('Error completing sync:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
