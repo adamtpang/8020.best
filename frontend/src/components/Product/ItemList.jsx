@@ -108,9 +108,20 @@ const ItemList = ({
               }}
             >
               <ListItemText
-                primary={listNumber === 1 ? item :
-                  listNumber === 2 ? `${item.importanceValue}, ${item.idea}` :
-                  `${item.importanceValue},${item.urgencyValue},${item.idea}`}
+                primary={typeof item === 'string' ? item : item.idea}
+                sx={{
+                  m: 0,
+                  width: '100%',
+                  '& .MuiTypography-root': {
+                    wordBreak: 'break-all',
+                    overflowWrap: 'break-word',
+                    whiteSpace: 'pre-wrap',
+                    width: '100%',
+                    pr: 1,
+                    fontSize: '0.875rem',
+                    lineHeight: 1.5,
+                  }
+                }}
               />
             </ListItem>
           ))}
