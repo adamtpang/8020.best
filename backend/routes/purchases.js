@@ -4,6 +4,8 @@ const express = require('express');
 const router = express.Router();
 const Purchase = require('../models/Purchase');
 
+const CHUNK_SIZE = 50; // Define CHUNK_SIZE constant
+
 // Log to verify route is registered
 console.log('Registering purchase routes...');
 
@@ -73,20 +75,12 @@ router.get('/api/purchases/load-lists', async (req, res) => {
 
     console.log('Found purchase:', purchase);
 
-    // Ensure list4 exists
-    if (!purchase.list4) {
-      purchase.list4 = [];
-      await purchase.save();
-    }
-
     const lists = {
       list1: purchase?.list1 || [],
       list2: purchase?.list2 || [],
       list3: purchase?.list3 || [],
       list4: purchase?.list4 || []
     };
-
-    console.log('Sending lists with trash:', lists);
 
     res.json({
       success: true,
@@ -95,49 +89,6 @@ router.get('/api/purchases/load-lists', async (req, res) => {
   } catch (error) {
     console.error('Error loading lists:', error);
     res.status(500).json({ error: 'Failed to load lists' });
-  }
-});
-
-// Save lists
-router.post('/api/purchases/save-lists', async (req, res) => {
-  try {
-    const { email, lists } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-
-    console.log('Saving lists for:', email);
-    console.log('Lists to save:', {
-      list1Length: lists.list1?.length,
-      list2Length: lists.list2?.length,
-      list3Length: lists.list3?.length,
-      list4Length: lists.list4?.length
-    });
-
-    const result = await Purchase.findOneAndUpdate(
-      { email },
-      {
-        $set: {
-          list1: lists.list1 || [],
-          list2: lists.list2 || [],
-          list3: lists.list3 || [],
-          list4: lists.list4 || []
-        }
-      },
-      { upsert: true, new: true }
-    );
-
-    console.log('Save result:', {
-      list1Length: result.list1?.length,
-      list2Length: result.list2?.length,
-      list3Length: result.list3?.length,
-      list4Length: result.list4?.length
-    });
-
-    res.json({ success: true, purchase: result });
-  } catch (error) {
-    console.error('Error saving lists:', error);
-    res.status(500).json({ error: 'Failed to save lists' });
   }
 });
 
@@ -202,7 +153,7 @@ router.post('/api/purchases/sync-chunk', async (req, res) => {
 
     console.log(`Processing ${listName} chunk ${chunk.index + 1}/${chunk.total} for ${email}`);
 
-    const purchase = await Purchase.findOne({ email });
+    let purchase = await Purchase.findOne({ email });
     if (!purchase) {
       purchase = new Purchase({ email });
     }
@@ -224,6 +175,9 @@ router.post('/api/purchases/sync-chunk', async (req, res) => {
     for (let i = 0; i < chunk.items.length; i++) {
       purchase[listName][startIndex + i] = chunk.items[i];
     }
+
+    // Remove any null values that might be left
+    purchase[listName] = purchase[listName].filter(item => item !== null);
 
     await purchase.save();
 
