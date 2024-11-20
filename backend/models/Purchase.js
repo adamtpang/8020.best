@@ -49,4 +49,6 @@ function arrayLimit(val) {
   return val.length <= 10000;
 }
 
-module.exports = mongoose.model('Purchase', purchaseSchema);
+const Purchase = mongoose.model('Purchase', purchaseSchema);
+
+module.exports = Purchase;
