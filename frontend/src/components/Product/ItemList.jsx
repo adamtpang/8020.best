@@ -19,14 +19,21 @@ const ItemList = ({
   onClearList
 }) => {
   return (
-    <Box sx={{
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      maxHeight: '65vh',
-      position: 'relative',
-    }}>
+    <Box
+      sx={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minWidth: '300px',
+        maxWidth: '300px',
+        bgcolor: 'background.paper',
+        borderRadius: 1,
+        overflow: 'hidden',
+        border: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
       {/* List Label */}
       <Typography
         variant="caption"
@@ -47,25 +54,17 @@ const ItemList = ({
         sx={{
           flex: 1,
           overflow: 'auto',
-          border: '1px solid rgba(0, 0, 0, 0.12)',
-          borderRadius: 1,
-          p: 1,
-          position: 'relative',
-          height: '100%',
-          '&::-webkit-scrollbar': {
-            width: '8px',
-          },
-          '&::-webkit-scrollbar-track': {
-            background: '#f1f1f1',
-            borderRadius: '4px',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: '#888',
-            borderRadius: '4px',
-          },
-          '&::-webkit-scrollbar-thumb:hover': {
-            background: '#555',
-          },
+          '& .MuiListItem-root': {
+            width: '100%',
+            wordBreak: 'break-word',
+            '& .MuiListItemText-root': {
+              width: '100%',
+              '& .MuiTypography-root': {
+                whiteSpace: 'pre-wrap',
+                overflowWrap: 'break-word',
+              }
+            }
+          }
         }}
       >
         <Box sx={{

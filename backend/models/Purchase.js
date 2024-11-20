@@ -4,12 +4,7 @@ const purchaseSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true,
-    lowercase: true
-  },
-  userId: {
-    type: String,
-    sparse: true
+    index: true
   },
   hasPurchased: {
     type: Boolean,
@@ -18,25 +13,40 @@ const purchaseSchema = new mongoose.Schema({
   purchaseDate: {
     type: Date
   },
-  stripeSessionId: {
-    type: String
+  list1: {
+    type: [String],
+    default: [],
+    validate: [arrayLimit, 'List 1 exceeds the limit of 10000 items']
   },
-  list1: [String],
-  list2: [{
-    importanceValue: Number,
-    idea: String
-  }],
-  list3: [{
-    importanceValue: Number,
-    urgencyValue: Number,
-    idea: String
-  }],
-  list4: {
+  list2: {
+    type: [{
+      importance: Boolean,
+      importanceValue: Number,
+      idea: String
+    }],
+    default: [],
+    validate: [arrayLimit, 'List 2 exceeds the limit of 10000 items']
+  },
+  list3: {
+    type: [{
+      importance: Boolean,
+      importanceValue: Number,
+      urgency: Boolean,
+      urgencyValue: Number,
+      idea: String
+    }],
+    default: [],
+    validate: [arrayLimit, 'List 3 exceeds the limit of 10000 items']
+  },
+  trashedItems: {
     type: Array,
-    default: []
+    default: [],
+    validate: [arrayLimit, 'Trash exceeds the limit of 10000 items']
   }
-}, {
-  timestamps: true
 });
+
+function arrayLimit(val) {
+  return val.length <= 10000;
+}
 
 module.exports = mongoose.model('Purchase', purchaseSchema);
