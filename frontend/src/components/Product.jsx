@@ -902,7 +902,13 @@ const Product = () => {
           gap: 2,
           flex: 1,
           minHeight: 0,
-          justifyContent: 'center'
+          justifyContent: 'center',
+          '& > *': {  // This targets all direct children
+            width: '350px !important',  // Fixed width for all lists
+            minWidth: '350px !important',
+            maxWidth: '350px !important',
+            flex: '0 0 350px !important',  // Don't grow or shrink
+          }
         }}>
           <ItemList
             items={list1}
