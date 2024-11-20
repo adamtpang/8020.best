@@ -22,10 +22,16 @@ const useDataPersistence = () => {
 
   const syncChanges = async () => {
     try {
-      // Get the last sync time from localStorage on component mount
       const lastSync = localStorage.getItem('lastSyncTime') || null;
 
-      // Find items that were added or modified since last sync
+      // Log sizes before calculating changes
+      console.log('Current list sizes:', {
+        list1: list1.length,
+        list2: list2.length,
+        list3: list3.length,
+        trashedItems: trashedItems.length
+      });
+
       const changes = {
         list1: {
           added: list1.filter(item => !previousList1.includes(item)),
@@ -46,20 +52,40 @@ const useDataPersistence = () => {
         timestamp: new Date().toISOString()
       };
 
-      // Only sync if there are changes
+      // Log the size of changes being sent
+      console.log('Changes to sync:', {
+        list1: { added: changes.list1.added.length, removed: changes.list1.removed.length },
+        list2: { added: changes.list2.added.length, removed: changes.list2.removed.length },
+        list3: { added: changes.list3.added.length, removed: changes.list3.removed.length },
+        trashedItems: { added: changes.trashedItems.added.length, removed: changes.trashedItems.removed.length }
+      });
+
+      // Only sync if there are actual changes
       if (Object.values(changes).some(list =>
         list.added?.length > 0 || list.removed?.length > 0
       )) {
+        console.log('Sending sync request...');
+
         const response = await axios.post(
           `${import.meta.env.VITE_API_URL}/api/purchases/sync-changes`,
           {
             email: user.email,
             changes,
             lastSyncTimestamp: lastSync
+          },
+          {
+            // Add timeout and size monitoring
+            timeout: 30000,
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
+            onUploadProgress: (progressEvent) => {
+              console.log('Upload progress:', progressEvent);
+            }
           }
         );
 
-        // Update last sync time
+        console.log('Sync response:', response.data);
+
         const newSyncTime = new Date().toISOString();
         localStorage.setItem('lastSyncTime', newSyncTime);
         setLastSyncTimestamp(newSyncTime);
@@ -69,9 +95,18 @@ const useDataPersistence = () => {
         setPreviousList2(list2);
         setPreviousList3(list3);
         setPreviousTrashedItems(trashedItems);
+
+        setIsSyncError(false);
+      } else {
+        console.log('No changes to sync');
       }
     } catch (error) {
-      console.error('Error syncing changes:', error);
+      console.error('Sync error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        headers: error.response?.headers
+      });
       setIsSyncError(true);
     }
   };

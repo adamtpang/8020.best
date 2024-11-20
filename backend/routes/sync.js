@@ -49,54 +49,89 @@ router.post('/sync-changes', async (req, res) => {
   try {
     const { email, changes, lastSyncTimestamp } = req.body;
 
-    // Get the current document
+    // Log incoming request details
+    console.log('Sync request received:', {
+      email,
+      changesSize: JSON.stringify(changes).length,
+      timestamp: changes.timestamp,
+      lastSync: lastSyncTimestamp
+    });
+
     let purchase = await Purchase.findOne({ email });
 
     if (!purchase) {
+      console.log('Creating new purchase document for:', email);
       purchase = new Purchase({ email });
     }
 
-    // Apply changes to each list
+    // Apply changes with validation
     Object.entries(changes).forEach(([listName, { added, removed }]) => {
       if (listName === 'timestamp') return;
 
-      // Remove items that should be removed
-      if (removed?.length > 0) {
-        if (listName === 'list1') {
-          purchase.list1 = purchase.list1.filter(item =>
-            !removed.includes(item)
-          );
-        } else if (listName === 'list2' || listName === 'list3') {
-          purchase[listName] = purchase[listName].filter(item =>
-            !removed.some(r => r.idea === item.idea)
-          );
-        } else if (listName === 'trashedItems') {
-          purchase.trashedItems = purchase.trashedItems.filter(item =>
-            !removed.includes(item)
-          );
-        }
-      }
+      console.log(`Processing ${listName}:`, {
+        addedCount: added?.length,
+        removedCount: removed?.length
+      });
 
-      // Add new items
-      if (added?.length > 0) {
-        purchase[listName] = [...purchase[listName], ...added];
+      try {
+        // Remove items
+        if (removed?.length > 0) {
+          if (listName === 'list1') {
+            purchase.list1 = purchase.list1.filter(item =>
+              !removed.includes(item)
+            );
+          } else if (listName === 'list2' || listName === 'list3') {
+            purchase[listName] = purchase[listName].filter(item =>
+              !removed.some(r => r.idea === item.idea)
+            );
+          } else if (listName === 'trashedItems') {
+            purchase.trashedItems = purchase.trashedItems.filter(item =>
+              !removed.includes(item)
+            );
+          }
+        }
+
+        // Add new items
+        if (added?.length > 0) {
+          // Validate array size before adding
+          if (purchase[listName].length + added.length > 10000) {
+            throw new Error(`${listName} would exceed 10000 items limit`);
+          }
+          purchase[listName] = [...purchase[listName], ...added];
+        }
+      } catch (err) {
+        console.error(`Error processing ${listName}:`, err);
+        throw err;
       }
     });
 
-    // Update last sync timestamp
+    // Update timestamp
     purchase.lastSyncedAt = changes.timestamp;
 
-    // Save changes
-    await purchase.save();
+    // Save with validation
+    const savedPurchase = await purchase.save();
+    console.log('Changes saved successfully');
 
     res.json({
       success: true,
-      lastSyncedAt: changes.timestamp
+      lastSyncedAt: changes.timestamp,
+      listSizes: {
+        list1: savedPurchase.list1.length,
+        list2: savedPurchase.list2.length,
+        list3: savedPurchase.list3.length,
+        trashedItems: savedPurchase.trashedItems.length
+      }
     });
   } catch (error) {
-    console.error('Sync changes error:', error);
+    console.error('Sync error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+
     res.status(500).json({
       error: error.message,
+      type: error.name,
       details: error.errors
     });
   }
