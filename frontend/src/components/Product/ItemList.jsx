@@ -7,7 +7,7 @@ import {
   Typography,
   IconButton
 } from '@mui/material';
-import { DeleteOutline } from '@mui/icons-material';
+import { DeleteOutline, ContentCopy } from '@mui/icons-material';
 
 const ItemList = ({
   items,
@@ -58,12 +58,16 @@ const ItemList = ({
           width: '100%',
           '& .MuiListItem-root': {
             width: '100%',
-            wordBreak: 'break-word',
+            padding: '8px 16px',
             '& .MuiListItemText-root': {
-              width: '100%',
+              margin: 0,
               '& .MuiTypography-root': {
-                whiteSpace: 'pre-wrap',
+                maxWidth: '300px',
+                whiteSpace: 'normal',
+                wordWrap: 'break-word',
                 overflowWrap: 'break-word',
+                hyphens: 'auto',
+                lineHeight: 1.4,
               }
             }
           }
@@ -76,43 +80,40 @@ const ItemList = ({
           {items.map((item, index) => (
             <ListItem
               key={index}
-              data-index={index}
-              selected={selectedIndex === index}
+              selected={index === selectedIndex}
               onClick={() => onItemSelect(index)}
-              onDoubleClick={() => onItemCopy(item)}
               sx={{
                 cursor: 'pointer',
-                backgroundColor: selectedIndex === index ? 'black !important' :
-                  listNumber === 1 ? 'transparent' :
-                  listNumber === 2 ?
-                    (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)') :
-                  (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.35)' :
-                  (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.35)' :
-                  (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.15)' :
-                  'rgba(244, 67, 54, 0.15)',
-                color: selectedIndex === index ? 'white !important' : 'inherit',
-                borderLeft: selectedIndex === index ? '6px solid #333' : '6px solid transparent',
-                boxShadow: selectedIndex === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
                 '&:hover': {
-                  backgroundColor: selectedIndex === index ? 'black !important' :
-                    listNumber === 1 ? 'rgba(0, 0, 0, 0.04)' :
-                    listNumber === 2 ?
-                      (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)') :
-                    (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.45)' :
-                    (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.45)' :
-                    (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.2)' :
-                    'rgba(244, 67, 54, 0.2)',
-                },
-                borderRadius: 1,
-                mb: 0.5,
-                transition: 'all 0.2s ease',
+                  backgroundColor: 'action.hover',
+                }
               }}
             >
               <ListItemText
-                primary={listNumber === 1 ? item :
-                  listNumber === 2 ? `${item.importanceValue}, ${item.idea}` :
-                  `${item.importanceValue},${item.urgencyValue},${item.idea}`}
+                primary={typeof item === 'string' ? item : item.idea}
+                sx={{
+                  flex: '1 1 auto',
+                  overflow: 'hidden',
+                }}
               />
+              <Box sx={{
+                display: 'flex',
+                flexShrink: 0,
+                ml: 1
+              }}>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onItemCopy(item);
+                  }}
+                >
+                  <ContentCopy fontSize="small" />
+                </IconButton>
+              </Box>
             </ListItem>
           ))}
         </Box>
