@@ -181,8 +181,18 @@ const MainLayout = ({
             flex: 1,
             overflow: 'auto',
             display: 'flex',
-            flexDirection: 'column',
             position: 'relative',
+            '& > *': { // Target the lists container
+              display: 'flex',
+              width: '100%',
+              gap: '16px',
+              padding: '0 16px',
+              '& > *': { // Target each list
+                flex: '1 0 calc(33.333% - 11px)', // Equal width minus gap
+                maxWidth: 'calc(33.333% - 11px)',
+                minWidth: 'calc(33.333% - 11px)',
+              }
+            }
           }}
         >
           {children}
