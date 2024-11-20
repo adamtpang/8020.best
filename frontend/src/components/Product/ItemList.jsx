@@ -7,7 +7,7 @@ import {
   Typography,
   IconButton
 } from '@mui/material';
-import { DeleteOutline, ContentCopy } from '@mui/icons-material';
+import { DeleteOutline } from '@mui/icons-material';
 
 const ItemList = ({
   items,
@@ -19,22 +19,14 @@ const ItemList = ({
   onClearList
 }) => {
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        width: '350px !important',
-        minWidth: '350px !important',
-        maxWidth: '350px !important',
-        flex: '0 0 350px !important',
-        bgcolor: 'background.paper',
-        borderRadius: 1,
-        overflow: 'hidden',
-        border: '1px solid',
-        borderColor: 'divider',
-      }}
-    >
+    <Box sx={{
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      maxHeight: '65vh',
+      position: 'relative',
+    }}>
       {/* List Label */}
       <Typography
         variant="caption"
@@ -46,68 +38,83 @@ const ItemList = ({
         }}
       >
         {listNumber === 1 ? "Important?" :
-          listNumber === 2 ? "Urgent?" :
-            "Calendar?"}
+         listNumber === 2 ? "Urgent?" :
+         "Calendar?"}
       </Typography>
 
       <List
+        id={`list-${listNumber}`}
         sx={{
-          width: '350px !important',
-          maxWidth: '350px !important',
-          padding: 0,
           flex: 1,
           overflow: 'auto',
+          border: '1px solid rgba(0, 0, 0, 0.12)',
+          borderRadius: 1,
+          p: 1,
+          position: 'relative',
+          height: '100%',
+          '&::-webkit-scrollbar': {
+            width: '8px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: '#f1f1f1',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#888',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            background: '#555',
+          },
         }}
       >
-        {items.map((item, index) => (
-          <ListItem
-            key={index}
-            selected={index === selectedIndex}
-            onClick={() => onItemSelect(index)}
-            sx={{
-              width: '100% !important',
-              maxWidth: '100% !important',
-              padding: '8px 16px',
-              cursor: 'pointer',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-              }
-            }}
-          >
-            <ListItemText
-              primary={typeof item === 'string' ? item : item.idea}
+        <Box sx={{
+          position: 'relative',
+          minHeight: '100%'
+        }}>
+          {items.map((item, index) => (
+            <ListItem
+              key={index}
+              data-index={index}
+              selected={selectedIndex === index}
+              onClick={() => onItemSelect(index)}
+              onDoubleClick={() => onItemCopy(item)}
               sx={{
-                m: 0,
-                width: 'calc(100% - 48px) !important', // Leave space for the copy button
-                '& .MuiTypography-root': {
-                  wordBreak: 'break-word',
-                  whiteSpace: 'pre-wrap',
-                  overflowWrap: 'break-word',
-                  width: '100%',
-                  pr: 1,
-                }
+                cursor: 'pointer',
+                backgroundColor: selectedIndex === index ? 'black !important' :
+                  listNumber === 1 ? 'transparent' :
+                  listNumber === 2 ?
+                    (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)') :
+                  (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.35)' :
+                  (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.35)' :
+                  (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.15)' :
+                  'rgba(244, 67, 54, 0.15)',
+                color: selectedIndex === index ? 'white !important' : 'inherit',
+                borderLeft: selectedIndex === index ? '6px solid #333' : '6px solid transparent',
+                boxShadow: selectedIndex === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+                '&:hover': {
+                  backgroundColor: selectedIndex === index ? 'black !important' :
+                    listNumber === 1 ? 'rgba(0, 0, 0, 0.04)' :
+                    listNumber === 2 ?
+                      (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)') :
+                    (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.45)' :
+                    (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.45)' :
+                    (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.2)' :
+                    'rgba(244, 67, 54, 0.2)',
+                },
+                borderRadius: 1,
+                mb: 0.5,
+                transition: 'all 0.2s ease',
               }}
-            />
-            <Box sx={{
-              display: 'flex',
-              flexShrink: 0,
-              ml: 1
-            }}>
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onItemCopy(item);
-                }}
-              >
-                <ContentCopy fontSize="small" />
-              </IconButton>
-            </Box>
-          </ListItem>
-        ))}
+            >
+              <ListItemText
+                primary={listNumber === 1 ? item :
+                  listNumber === 2 ? `${item.importanceValue}, ${item.idea}` :
+                  `${item.importanceValue},${item.urgencyValue},${item.idea}`}
+              />
+            </ListItem>
+          ))}
+        </Box>
       </List>
 
       {/* Bottom Controls */}
