@@ -895,6 +895,14 @@ const Product = () => {
         setIsTrashOpen={setIsTrashOpen}
         isSyncing={isSyncing}
         isSyncError={isSyncError}
+        readingModeControls={
+          <ReadingModeControls
+            isReadingMode={isReadingMode}
+            setIsReadingMode={setIsReadingMode}
+            speechRate={speechRate}
+            setSpeechRate={setSpeechRate}
+          />
+        }
       >
         {/* Lists Container */}
         <Box sx={{
@@ -903,11 +911,10 @@ const Product = () => {
           flex: 1,
           minHeight: 0,
           justifyContent: 'center',
-          '& > *': {  // This targets all direct children
-            width: '350px !important',  // Fixed width for all lists
-            minWidth: '350px !important',
-            maxWidth: '350px !important',
-            flex: '0 0 350px !important',  // Don't grow or shrink
+          '& > *': {
+            flex: '1 0 calc(33.333% - 11px)',
+            maxWidth: 'calc(33.333% - 11px)',
+            minWidth: 'calc(33.333% - 11px)',
           }
         }}>
           <ItemList
@@ -947,58 +954,54 @@ const Product = () => {
             }}
           />
         </Box>
-        <ClearConfirmDialog
-          open={clearConfirmOpen}
-          onClose={() => setClearConfirmOpen(false)}
-          onConfirm={handleClearConfirm}
-          listNumber={listToClear}
-        />
-        <InstructionsDialog
-          open={isInstructionsOpen}
-          onClose={handleInstructionsClose}
-        />
-        <TrashDialog
-          open={isTrashOpen}
-          onClose={() => setIsTrashOpen(false)}
-          trashedItems={trashedItems}
-          onRestore={handleRestoreItem}
-          onClearTrash={() => {
-            setTrashedItems([]);
-            setNotification({
-              open: true,
-              message: 'Trash cleared'
-            });
-          }}
-        />
-        <ExportDialog
-          open={exportDialogOpen}
-          onClose={() => setExportDialogOpen(false)}
-          items={list3}
-          onExport={handleExportConfirm}
-          list1Length={list1.length}
-          list2Length={list2.length}
-          list3Length={list3.length}
-          trashedItemsLength={trashedItems.length}
-        />
-        <ExportResultsDialog
-          open={exportResultsOpen}
-          onClose={() => setExportResultsOpen(false)}
-          reductionPercent={reductionPercent}
-        />
-        <ReadingModeControls
-          isReadingMode={isReadingMode}
-          setIsReadingMode={setIsReadingMode}
-          speechRate={speechRate}
-          setSpeechRate={setSpeechRate}
-        />
       </MainLayout>
 
-      {/* Unified Notification Snackbar */}
+      {/* Dialogs */}
+      <ClearConfirmDialog
+        open={clearConfirmOpen}
+        onClose={() => setClearConfirmOpen(false)}
+        onConfirm={handleClearConfirm}
+        listNumber={listToClear}
+      />
+      <InstructionsDialog
+        open={isInstructionsOpen}
+        onClose={() => setIsInstructionsOpen(false)}
+      />
+      <TrashDialog
+        open={isTrashOpen}
+        onClose={() => setIsTrashOpen(false)}
+        trashedItems={trashedItems}
+        onRestore={handleRestoreItem}
+        onClearTrash={() => {
+          setTrashedItems([]);
+          setNotification({
+            open: true,
+            message: 'Trash cleared'
+          });
+        }}
+      />
+      <ExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        items={list3}
+        onExport={handleExportConfirm}
+        list1Length={list1.length}
+        list2Length={list2.length}
+        list3Length={list3.length}
+        trashedItemsLength={trashedItems.length}
+      />
+      <ExportResultsDialog
+        open={exportResultsOpen}
+        onClose={() => setExportResultsOpen(false)}
+        reductionPercent={reductionPercent}
+      />
+
+      {/* Notification Snackbar */}
       <Snackbar
         open={notification.open}
         autoHideDuration={3000}
         onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}  // Position at top
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert
           onClose={() => setNotification(prev => ({ ...prev, open: false }))}
