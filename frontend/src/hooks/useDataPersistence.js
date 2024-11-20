@@ -22,40 +22,32 @@ const useDataPersistence = () => {
     setPreviousTrashedItems(trashedItems);
   }, []);
 
-  const CHUNK_SIZE = 100; // Smaller chunks for better reliability
+  const CHUNK_SIZE = 50; // Even smaller chunks for reliability
 
   const syncData = async () => {
     if (!user || !isAuthReady) return;
 
     try {
       setIsSyncing(true);
-      console.log('Starting sync for user:', user.email);
+      console.log('Starting chunked sync for user:', user.email);
 
-      // Split list1 into chunks
-      const list1Chunks = [];
-      for (let i = 0; i < list1.length; i += CHUNK_SIZE) {
-        list1Chunks.push(list1.slice(i, i + CHUNK_SIZE));
-      }
+      // Function to sync a single chunk
+      const syncChunk = async (items, startIndex, endIndex, total) => {
+        console.log(`Syncing chunk ${startIndex}-${endIndex} of ${total}`);
 
-      // Process each chunk
-      for (let i = 0; i < list1Chunks.length; i++) {
-        console.log(`Syncing list1 chunk ${i + 1}/${list1Chunks.length}`);
         const chunk = {
           email: user.email,
-          changes: {
-            list1: {
-              added: list1Chunks[i],
-              removed: []
-            },
-            list2: i === 0 ? { added: list2, removed: [] } : { added: [], removed: [] },
-            list3: i === 0 ? { added: list3, removed: [] } : { added: [], removed: [] },
-            trashedItems: i === 0 ? { added: trashedItems, removed: [] } : { added: [], removed: [] },
-            timestamp: new Date().toISOString()
+          chunk: {
+            startIndex,
+            endIndex,
+            totalChunks: Math.ceil(total / CHUNK_SIZE),
+            currentChunk: Math.floor(startIndex / CHUNK_SIZE) + 1,
+            items
           }
         };
 
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/purchases/sync-changes`,
+        return axios.post(
+          `${import.meta.env.VITE_API_URL}/api/purchases/sync-chunk`,
           chunk,
           {
             headers: {
@@ -63,9 +55,39 @@ const useDataPersistence = () => {
             }
           }
         );
+      };
 
-        console.log(`Chunk ${i + 1} sync response:`, response.data);
+      // Sync list1 in chunks
+      for (let i = 0; i < list1.length; i += CHUNK_SIZE) {
+        const chunk = list1.slice(i, i + CHUNK_SIZE);
+        await syncChunk(chunk, i, i + CHUNK_SIZE, list1.length);
       }
+
+      // Sync list2 in chunks if needed
+      for (let i = 0; i < list2.length; i += CHUNK_SIZE) {
+        const chunk = list2.slice(i, i + CHUNK_SIZE);
+        await syncChunk(chunk, i, i + CHUNK_SIZE, list2.length);
+      }
+
+      // Sync list3 in chunks if needed
+      for (let i = 0; i < list3.length; i += CHUNK_SIZE) {
+        const chunk = list3.slice(i, i + CHUNK_SIZE);
+        await syncChunk(chunk, i, i + CHUNK_SIZE, list3.length);
+      }
+
+      // Final sync to update metadata
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/purchases/sync-complete`,
+        {
+          email: user.email,
+          metadata: {
+            list1Length: list1.length,
+            list2Length: list2.length,
+            list3Length: list3.length,
+            lastSyncedAt: new Date().toISOString()
+          }
+        }
+      );
 
       setIsSyncing(false);
       setIsSyncError(false);
