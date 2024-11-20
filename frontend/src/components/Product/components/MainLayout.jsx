@@ -32,18 +32,15 @@ const MainLayout = ({
   children
 }) => {
   return (
-    <Container maxWidth="xl" sx={{ height: '100vh', display: 'flex' }}>
-      <Box sx={{
-        width: '100%',
-        maxWidth: '1400px',
-        margin: '0 auto',
+    <Box
+      sx={{
         height: '100vh',
-        display: "flex",
-        flexDirection: "column",
-        p: { xs: 1, md: 2 },
-        gap: 2,
-        position: 'relative'
-      }}>
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
         {/* Row 1: Back Button and Sync Status */}
         <Box sx={{
           display: 'flex',
@@ -166,67 +163,76 @@ const MainLayout = ({
             <ContentCopy />
           </IconButton>
         </Box>
+      </Box>
 
-        {/* Lists Container */}
-        <Box sx={{
-          display: "flex",
-          gap: 2,
+      {/* Main content area - This is where the lists are rendered */}
+      <Box
+        sx={{
           flex: 1,
-          height: '65vh',
-          minHeight: 0,
-          justifyContent: 'center',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
           position: 'relative',
-          zIndex: 1,
-          overflow: 'hidden'
-        }}>
+        }}
+      >
+        {/* Scrollable content wrapper */}
+        <Box
+          sx={{
+            flex: 1,
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+          }}
+        >
           {children}
         </Box>
+      </Box>
 
-        {/* Bottom Controls Container */}
+      {/* Bottom Controls Container */}
+      <Box sx={{
+        position: 'relative',
+        zIndex: 2,
+        backgroundColor: 'white',
+        mt: 'auto'
+      }}>
+        {/* Help and Trash Buttons */}
         <Box sx={{
-          position: 'relative',
-          zIndex: 2,
-          backgroundColor: 'white',
-          mt: 'auto'
+          position: 'fixed',
+          bottom: 16,
+          left: 16,
+          display: 'flex',
+          gap: 2
         }}>
-          {/* Help and Trash Buttons */}
-          <Box sx={{
-            position: 'fixed',
-            bottom: 16,
-            left: 16,
-            display: 'flex',
-            gap: 2
-          }}>
-            <IconButton
-              onClick={() => setIsInstructionsOpen(true)}
-              size="small"
-              sx={{
-                backgroundColor: 'black',
-                color: 'white',
-                '&:hover': { backgroundColor: '#333' },
-                width: 40,
-                height: 40
-              }}
-            >
-              <HelpOutline />
-            </IconButton>
-            <IconButton
-              onClick={() => setIsTrashOpen(true)}
-              size="small"
-              sx={{
-                backgroundColor: 'black',
-                color: 'white',
-                '&:hover': { backgroundColor: '#333' },
-                width: 40,
-                height: 40
-              }}
-            >
-              <DeleteOutlined />
-            </IconButton>
-          </Box>
+          <IconButton
+            onClick={() => setIsInstructionsOpen(true)}
+            size="small"
+            sx={{
+              backgroundColor: 'black',
+              color: 'white',
+              '&:hover': { backgroundColor: '#333' },
+              width: 40,
+              height: 40
+            }}
+          >
+            <HelpOutline />
+          </IconButton>
+          <IconButton
+            onClick={() => setIsTrashOpen(true)}
+            size="small"
+            sx={{
+              backgroundColor: 'black',
+              color: 'white',
+              '&:hover': { backgroundColor: '#333' },
+              width: 40,
+              height: 40
+            }}
+          >
+            <DeleteOutlined />
+          </IconButton>
         </Box>
       </Box>
-    </Container>
+    </Box>
   );
 };
 
