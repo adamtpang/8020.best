@@ -20,18 +20,13 @@ const useDataPersistence = () => {
     setPreviousTrashedItems(trashedItems);
   }, []);
 
+  const CHUNK_SIZE = 500; // Number of items per chunk
+
   const syncChanges = async () => {
     try {
       const lastSync = localStorage.getItem('lastSyncTime') || null;
 
-      // Log sizes before calculating changes
-      console.log('Current list sizes:', {
-        list1: list1.length,
-        list2: list2.length,
-        list3: list3.length,
-        trashedItems: trashedItems.length
-      });
-
+      // Calculate changes
       const changes = {
         list1: {
           added: list1.filter(item => !previousList1.includes(item)),
@@ -52,61 +47,61 @@ const useDataPersistence = () => {
         timestamp: new Date().toISOString()
       };
 
-      // Log the size of changes being sent
-      console.log('Changes to sync:', {
-        list1: { added: changes.list1.added.length, removed: changes.list1.removed.length },
-        list2: { added: changes.list2.added.length, removed: changes.list2.removed.length },
-        list3: { added: changes.list3.added.length, removed: changes.list3.removed.length },
-        trashedItems: { added: changes.trashedItems.added.length, removed: changes.trashedItems.removed.length }
-      });
+      // Split large changes into chunks
+      for (const listName in changes) {
+        if (listName === 'timestamp') continue;
 
-      // Only sync if there are actual changes
-      if (Object.values(changes).some(list =>
-        list.added?.length > 0 || list.removed?.length > 0
-      )) {
-        console.log('Sending sync request...');
+        const { added, removed } = changes[listName];
+        if (added?.length > CHUNK_SIZE || removed?.length > CHUNK_SIZE) {
+          // Split into chunks and sync sequentially
+          for (let i = 0; i < added.length; i += CHUNK_SIZE) {
+            const chunkChanges = {
+              ...changes,
+              [listName]: {
+                added: added.slice(i, i + CHUNK_SIZE),
+                removed: removed.slice(i, i + CHUNK_SIZE)
+              },
+              timestamp: new Date().toISOString()
+            };
 
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/purchases/sync-changes`,
-          {
-            email: user.email,
-            changes,
-            lastSyncTimestamp: lastSync
-          },
-          {
-            // Add timeout and size monitoring
-            timeout: 30000,
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
-            onUploadProgress: (progressEvent) => {
-              console.log('Upload progress:', progressEvent);
-            }
+            console.log(`Syncing chunk ${i/CHUNK_SIZE + 1} of ${Math.ceil(added.length/CHUNK_SIZE)}`);
+
+            await axios.post(
+              `${import.meta.env.VITE_API_URL}/api/purchases/sync-changes`,
+              {
+                email: user.email,
+                changes: chunkChanges,
+                lastSyncTimestamp: lastSync
+              }
+            );
           }
-        );
-
-        console.log('Sync response:', response.data);
-
-        const newSyncTime = new Date().toISOString();
-        localStorage.setItem('lastSyncTime', newSyncTime);
-        setLastSyncTimestamp(newSyncTime);
-
-        // Update previous state references
-        setPreviousList1(list1);
-        setPreviousList2(list2);
-        setPreviousList3(list3);
-        setPreviousTrashedItems(trashedItems);
-
-        setIsSyncError(false);
-      } else {
-        console.log('No changes to sync');
+        } else {
+          // Sync normally for small changes
+          await axios.post(
+            `${import.meta.env.VITE_API_URL}/api/purchases/sync-changes`,
+            {
+              email: user.email,
+              changes,
+              lastSyncTimestamp: lastSync
+            }
+          );
+        }
       }
+
+      // Update after successful sync
+      const newSyncTime = new Date().toISOString();
+      localStorage.setItem('lastSyncTime', newSyncTime);
+      setLastSyncTimestamp(newSyncTime);
+
+      // Update previous state references
+      setPreviousList1(list1);
+      setPreviousList2(list2);
+      setPreviousList3(list3);
+      setPreviousTrashedItems(trashedItems);
+
+      setIsSyncError(false);
     } catch (error) {
-      console.error('Sync error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        headers: error.response?.headers
-      });
+      console.error('Sync error:', error);
       setIsSyncError(true);
     }
   };
