@@ -45,4 +45,61 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.post('/sync-changes', async (req, res) => {
+  try {
+    const { email, changes, lastSyncTimestamp } = req.body;
+
+    // Get the current document
+    let purchase = await Purchase.findOne({ email });
+
+    if (!purchase) {
+      purchase = new Purchase({ email });
+    }
+
+    // Apply changes to each list
+    Object.entries(changes).forEach(([listName, { added, removed }]) => {
+      if (listName === 'timestamp') return;
+
+      // Remove items that should be removed
+      if (removed?.length > 0) {
+        if (listName === 'list1') {
+          purchase.list1 = purchase.list1.filter(item =>
+            !removed.includes(item)
+          );
+        } else if (listName === 'list2' || listName === 'list3') {
+          purchase[listName] = purchase[listName].filter(item =>
+            !removed.some(r => r.idea === item.idea)
+          );
+        } else if (listName === 'trashedItems') {
+          purchase.trashedItems = purchase.trashedItems.filter(item =>
+            !removed.includes(item)
+          );
+        }
+      }
+
+      // Add new items
+      if (added?.length > 0) {
+        purchase[listName] = [...purchase[listName], ...added];
+      }
+    });
+
+    // Update last sync timestamp
+    purchase.lastSyncedAt = changes.timestamp;
+
+    // Save changes
+    await purchase.save();
+
+    res.json({
+      success: true,
+      lastSyncedAt: changes.timestamp
+    });
+  } catch (error) {
+    console.error('Sync changes error:', error);
+    res.status(500).json({
+      error: error.message,
+      details: error.errors
+    });
+  }
+});
+
 module.exports = router;
