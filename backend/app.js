@@ -1,10 +1,12 @@
 const express = require('express');
+const cors = require('cors');
 const app = express();
 
-// Increase all size limits
+// Configure body-parser with increased limits
 app.use(express.json({
-  limit: '50mb',  // Increased substantially
-  extended: true
+  limit: '50mb',
+  extended: true,
+  parameterLimit: 50000
 }));
 
 app.use(express.urlencoded({
@@ -13,14 +15,9 @@ app.use(express.urlencoded({
   parameterLimit: 50000
 }));
 
-// Add raw body parser with increased limit
-app.use(express.raw({
-  limit: '50mb'
-}));
-
-// Disable size limit in body-parser if you're using it
-app.use(require('body-parser').json({
-  limit: '50mb'
+// Configure CORS with increased limits
+app.use(cors({
+  maxBodyLength: 50 * 1024 * 1024 // 50MB
 }));
 
 // ... rest of your app configuration
