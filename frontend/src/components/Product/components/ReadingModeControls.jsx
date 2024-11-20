@@ -15,29 +15,33 @@ const ReadingModeControls = ({
   };
 
   return (
-    <Box sx={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 2,
-      position: 'fixed',
-      bottom: 20,
-      right: 20,
-      backgroundColor: 'white',
-      padding: '8px 16px',
-      borderRadius: '8px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      zIndex: 1000
-    }}>
+    <>
       <IconButton
         onClick={() => setIsReadingMode(!isReadingMode)}
-        color={isReadingMode ? "primary" : "default"}
+        size="small"
+        sx={{
+          backgroundColor: 'black',
+          color: 'white',
+          '&:hover': { backgroundColor: '#333' },
+          width: 40,
+          height: 40
+        }}
       >
         {isReadingMode ? <VolumeUp /> : <VolumeOff />}
       </IconButton>
 
       {isReadingMode && (
-        <>
-          <Typography variant="body2" sx={{ mr: 1 }}>Speed:</Typography>
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          backgroundColor: 'white',
+          padding: '4px 12px',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          ml: 1
+        }}>
+          <Typography variant="body2" sx={{ color: 'black' }}>Speed:</Typography>
           <ToggleButtonGroup
             value={speechRate}
             exclusive
@@ -50,9 +54,9 @@ const ReadingModeControls = ({
             <ToggleButton value={4}>4x</ToggleButton>
             <ToggleButton value={5}>5x</ToggleButton>
           </ToggleButtonGroup>
-        </>
+        </Box>
       )}
-    </Box>
+    </>
   );
 };
 
