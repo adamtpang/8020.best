@@ -21,12 +21,13 @@ const ItemList = ({
   return (
     <Box
       sx={{
-        flex: 1,
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        minWidth: '300px',
-        maxWidth: '300px',
+        width: '350px !important',
+        minWidth: '350px !important',
+        maxWidth: '350px !important',
+        flex: '0 0 350px !important',
         bgcolor: 'background.paper',
         borderRadius: 1,
         overflow: 'hidden',
@@ -54,6 +55,7 @@ const ItemList = ({
         sx={{
           flex: 1,
           overflow: 'auto',
+          width: '100%',
           '& .MuiListItem-root': {
             width: '100%',
             wordBreak: 'break-word',
