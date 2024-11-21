@@ -1,9 +1,21 @@
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { auth } from '../../../firebase-config';
-import debounce from 'lodash/debounce';
 
 const CHUNK_SIZE = 50; // Smaller chunks for better reliability
+
+// Remove lodash import and add custom debounce
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
 
 const useDataPersistence = ({
   user,
