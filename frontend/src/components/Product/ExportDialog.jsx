@@ -88,7 +88,7 @@ const ExportDialog = ({
                   }))}
                 />
               }
-              label="Important & Urgent (1,1)"
+              label="Problem & Urgent (1,1)"
             />
             <FormControlLabel
               control={
@@ -100,7 +100,7 @@ const ExportDialog = ({
                   }))}
                 />
               }
-              label="Important, Not Urgent (1,0)"
+              label="Problem, Not Urgent (1,0)"
             />
             <FormControlLabel
               control={
@@ -112,7 +112,7 @@ const ExportDialog = ({
                   }))}
                 />
               }
-              label="Not Important, Urgent (0,1)"
+              label="Not Problem, Urgent (0,1)"
             />
             <FormControlLabel
               control={
@@ -124,7 +124,7 @@ const ExportDialog = ({
                   }))}
                 />
               }
-              label="Not Important, Not Urgent (0,0)"
+              label="Not Problem, Not Urgent (0,0)"
             />
           </FormGroup>
 

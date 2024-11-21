@@ -66,10 +66,10 @@ const InstructionsDialog = ({ open, onClose }) => {
           <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Item Ratings</Typography>
           <Box sx={{ pl: 2 }}>
             <Typography>
-              • <b>1,1</b> - Important & Urgent<br />
-              • <b>1,0</b> - Important, Not Urgent<br />
-              • <b>0,1</b> - Not Important, Urgent<br />
-              • <b>0,0</b> - Not Important, Not Urgent
+              • <b>1,1</b> - Problem & Urgent<br />
+              • <b>1,0</b> - Problem, Not Urgent<br />
+              • <b>0,1</b> - Not Problem, Urgent<br />
+              • <b>0,0</b> - Not Problem, Not Urgent
             </Typography>
           </Box>
         </Box>
