@@ -37,7 +37,7 @@ const ItemList = ({
           opacity: 0.7
         }}
       >
-        {listNumber === 1 ? "Important?" :
+        {listNumber === 1 ? "Problem?" :
          listNumber === 2 ? "Urgent?" :
          "Calendar?"}
       </Typography>
@@ -81,7 +81,7 @@ const ItemList = ({
               onDoubleClick={() => onItemCopy(item)}
               sx={{
                 cursor: 'pointer',
-                backgroundColor: selectedIndex === index ? 'black !important' :
+                backgroundColor: selectedIndex === index ? 'black !Problem' :
                   listNumber === 1 ? 'transparent' :
                   listNumber === 2 ?
                     (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)') :
@@ -89,11 +89,11 @@ const ItemList = ({
                   (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.35)' :
                   (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.15)' :
                   'rgba(244, 67, 54, 0.15)',
-                color: selectedIndex === index ? 'white !important' : 'inherit',
+                color: selectedIndex === index ? 'white !Problem' : 'inherit',
                 borderLeft: selectedIndex === index ? '6px solid #333' : '6px solid transparent',
                 boxShadow: selectedIndex === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
                 '&:hover': {
-                  backgroundColor: selectedIndex === index ? 'black !important' :
+                  backgroundColor: selectedIndex === index ? 'black !Problem' :
                     listNumber === 1 ? 'rgba(0, 0, 0, 0.04)' :
                     listNumber === 2 ?
                       (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)') :

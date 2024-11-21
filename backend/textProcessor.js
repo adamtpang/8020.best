@@ -123,10 +123,10 @@ const processText = async (text) => {
       tasks,
       ideas,
       sortedTasks: {
-        importantUrgent: [],
-        importantNotUrgent: [],
-        notImportantUrgent: [],
-        notImportantNotUrgent: []
+        ProblemUrgent: [],
+        ProblemNotUrgent: [],
+        notProblemUrgent: [],
+        notProblemNotUrgent: []
       },
       progress
     };
