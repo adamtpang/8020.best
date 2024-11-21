@@ -2,19 +2,22 @@ import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { auth } from '../../../firebase-config';
 
-const CHUNK_SIZE = 50; // Smaller chunks for better reliability
-
-// Remove lodash import and add custom debounce
+// Custom debounce with cancel functionality
 function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
+  let timeoutId;
+
+  // Create the debounced function
+  const debounced = function(...args) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(this, args), wait);
   };
+
+  // Add cancel method
+  debounced.cancel = function() {
+    clearTimeout(timeoutId);
+  };
+
+  return debounced;
 }
 
 const useDataPersistence = ({
@@ -107,88 +110,85 @@ const useDataPersistence = ({
     loadLists();
   }, [isAuthReady, user?.email]);
 
-  // New save implementation using chunks
-  const saveChunkedData = async () => {
-    if (!user?.email) return;
+  // Save data effect
+  useEffect(() => {
+    const debouncedSave = debounce(async () => {
+      if (!user?.email) return;
 
-    setIsSyncing(true);
-    setIsSyncError(false);
+      setIsSyncing(true);
+      try {
+        // Process each list in chunks
+        const CHUNK_SIZE = 50;
 
-    try {
-      console.log('Starting chunked save for user:', user.email);
+        // Helper function to save a chunk
+        const saveChunk = async (items, listName, chunkIndex, totalChunks) => {
+          await axios.post(
+            `${import.meta.env.VITE_API_URL}/api/purchases/sync-chunk`,
+            {
+              email: user.email,
+              listName,
+              chunk: {
+                items,
+                index: chunkIndex,
+                total: totalChunks
+              }
+            }
+          );
+        };
 
-      // Helper function to save a chunk of items
-      const saveChunk = async (items, listName, chunkIndex, totalChunks) => {
-        console.log(`Saving ${listName} chunk ${chunkIndex + 1}/${totalChunks}`);
+        // Save list1 in chunks
+        for (let i = 0; i < list1.length; i += CHUNK_SIZE) {
+          const chunk = list1.slice(i, i + CHUNK_SIZE);
+          const totalChunks = Math.ceil(list1.length / CHUNK_SIZE);
+          await saveChunk(chunk, 'list1', i / CHUNK_SIZE, totalChunks);
+        }
 
+        // Save list2 in chunks
+        for (let i = 0; i < list2.length; i += CHUNK_SIZE) {
+          const chunk = list2.slice(i, i + CHUNK_SIZE);
+          const totalChunks = Math.ceil(list2.length / CHUNK_SIZE);
+          await saveChunk(chunk, 'list2', i / CHUNK_SIZE, totalChunks);
+        }
+
+        // Save list3 in chunks
+        for (let i = 0; i < list3.length; i += CHUNK_SIZE) {
+          const chunk = list3.slice(i, i + CHUNK_SIZE);
+          const totalChunks = Math.ceil(list3.length / CHUNK_SIZE);
+          await saveChunk(chunk, 'list3', i / CHUNK_SIZE, totalChunks);
+        }
+
+        // Save trashedItems in chunks
+        for (let i = 0; i < trashedItems.length; i += CHUNK_SIZE) {
+          const chunk = trashedItems.slice(i, i + CHUNK_SIZE);
+          const totalChunks = Math.ceil(trashedItems.length / CHUNK_SIZE);
+          await saveChunk(chunk, 'trashedItems', i / CHUNK_SIZE, totalChunks);
+        }
+
+        // Final sync
         await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/purchases/sync-chunk`,
+          `${import.meta.env.VITE_API_URL}/api/purchases/sync-complete`,
           {
             email: user.email,
-            listName,
-            chunk: {
-              items,
-              index: chunkIndex,
-              total: totalChunks
+            metadata: {
+              list1Length: list1.length,
+              list2Length: list2.length,
+              list3Length: list3.length,
+              trashedItemsLength: trashedItems.length,
+              lastSyncedAt: new Date().toISOString()
             }
           }
         );
-      };
 
-      // Process each list in chunks
-      for (let i = 0; i < list1.length; i += CHUNK_SIZE) {
-        const chunk = list1.slice(i, i + CHUNK_SIZE);
-        const totalChunks = Math.ceil(list1.length / CHUNK_SIZE);
-        await saveChunk(chunk, 'list1', i / CHUNK_SIZE, totalChunks);
+        setIsSyncError(false);
+      } catch (error) {
+        console.error('Sync error:', error);
+        setIsSyncError(true);
+      } finally {
+        setIsSyncing(false);
       }
+    }, 1000);
 
-      for (let i = 0; i < list2.length; i += CHUNK_SIZE) {
-        const chunk = list2.slice(i, i + CHUNK_SIZE);
-        const totalChunks = Math.ceil(list2.length / CHUNK_SIZE);
-        await saveChunk(chunk, 'list2', i / CHUNK_SIZE, totalChunks);
-      }
-
-      for (let i = 0; i < list3.length; i += CHUNK_SIZE) {
-        const chunk = list3.slice(i, i + CHUNK_SIZE);
-        const totalChunks = Math.ceil(list3.length / CHUNK_SIZE);
-        await saveChunk(chunk, 'list3', i / CHUNK_SIZE, totalChunks);
-      }
-
-      for (let i = 0; i < trashedItems.length; i += CHUNK_SIZE) {
-        const chunk = trashedItems.slice(i, i + CHUNK_SIZE);
-        const totalChunks = Math.ceil(trashedItems.length / CHUNK_SIZE);
-        await saveChunk(chunk, 'trashedItems', i / CHUNK_SIZE, totalChunks);
-      }
-
-      // Final sync to update metadata
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/purchases/sync-complete`,
-        {
-          email: user.email,
-          metadata: {
-            list1Length: list1.length,
-            list2Length: list2.length,
-            list3Length: list3.length,
-            trashedItemsLength: trashedItems.length,
-            lastSyncedAt: new Date().toISOString()
-          }
-        }
-      );
-
-      setIsSyncError(false);
-    } catch (error) {
-      console.error('Error in chunked save:', error);
-      setIsSyncError(true);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Debounced save effect
-  useEffect(() => {
-    const debouncedSave = debounce(saveChunkedData, 1000);
-
-    if (user?.email && (list1.length > 0 || list2.length > 0 || list3.length > 0 || trashedItems.length > 0)) {
+    if (user?.email) {
       debouncedSave();
     }
 
