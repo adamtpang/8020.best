@@ -256,35 +256,49 @@ router.post('/api/purchases/clear-trash', async (req, res) => {
   }
 });
 
-// Add clear endpoints for each list
+// Update the clear-list endpoint
 router.post('/api/purchases/clear-list', async (req, res) => {
   try {
     const { email, listNumber } = req.body;
+    console.log(`Clearing list ${listNumber} for ${email}`);
 
-    const purchase = await Purchase.findOne({ email });
-    if (purchase) {
-      // Clear the specified list
-      switch (listNumber) {
-        case 1:
-          purchase.list1 = [];
-          break;
-        case 2:
-          purchase.list2 = [];
-          break;
-        case 3:
-          purchase.list3 = [];
-          break;
-        case 'trash':
-          purchase.trashedItems = [];
-          break;
-      }
-      await purchase.save();
+    const purchase = await Purchase.findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          [listNumber === 1 ? 'list1' :
+           listNumber === 2 ? 'list2' :
+           listNumber === 3 ? 'list3' :
+           'trashedItems']: []
+        }
+      },
+      { new: true }
+    );
+
+    if (!purchase) {
+      console.log('No purchase found to clear');
+      return res.status(404).json({ error: 'Purchase not found' });
     }
+
+    console.log(`List ${listNumber} cleared successfully`);
+    console.log('Updated purchase:', {
+      list1Length: purchase.list1.length,
+      list2Length: purchase.list2.length,
+      list3Length: purchase.list3.length,
+      trashedItemsLength: purchase.trashedItems.length
+    });
 
     res.json({
       success: true,
-      message: `List ${listNumber} cleared`
+      message: `List ${listNumber} cleared`,
+      listLengths: {
+        list1: purchase.list1.length,
+        list2: purchase.list2.length,
+        list3: purchase.list3.length,
+        trashedItems: purchase.trashedItems.length
+      }
     });
+
   } catch (error) {
     console.error('Error clearing list:', error);
     res.status(500).json({ error: error.message });
