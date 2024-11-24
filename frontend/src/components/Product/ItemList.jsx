@@ -148,7 +148,6 @@ const ItemList = ({
           {items.map((item, index) => (
             <ListItem
               key={index}
-              data-index={index}
               selected={selectedIndex === index}
               onClick={(e) => {
                 handleItemClick(index, e);
@@ -156,14 +155,36 @@ const ItemList = ({
               }}
               sx={{
                 cursor: 'pointer',
+                backgroundColor: (() => {
+                  // For List 2
+                  if (listNumber === 2) {
+                    return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)';
+                  }
+                  // For List 3
+                  if (listNumber === 3) {
+                    return (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.15)' : 'transparent';
+                  }
+                  return 'transparent';
+                })(),
                 '&.MuiListItem-root': {
                   '&:hover': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                    backgroundColor: (() => {
+                      // For List 2
+                      if (listNumber === 2) {
+                        return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)';
+                      }
+                      // For List 3
+                      if (listNumber === 3) {
+                        return (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.25)' : 'rgba(0, 0, 0, 0.04)';
+                      }
+                      return 'rgba(0, 0, 0, 0.04)';
+                    })(),
                   },
                   '&.Mui-selected': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.8) !important',
+                    backgroundColor: '#2196f3 !important',
+                    color: 'white',
                     '&:hover': {
-                      backgroundColor: 'rgba(25, 118, 210, 0.9) !important',
+                      backgroundColor: '#1976d2 !important',
                     }
                   }
                 }
