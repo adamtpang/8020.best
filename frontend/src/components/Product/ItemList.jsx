@@ -9,13 +9,21 @@ import {
 } from '@mui/material';
 import { DeleteOutline } from '@mui/icons-material';
 
+const getListTitle = (listNumber) => {
+  switch (listNumber) {
+    case 1: return "Problem?";
+    case 2: return "Urgent?";
+    case 3: return "Calendar?";
+    default: return `List ${listNumber}`;
+  }
+};
+
 const ItemList = ({
   items,
   selectedIndex,
   onItemSelect,
   onItemCopy,
   onDeleteItems,
-  peakCount,
   listNumber,
   onClearList
 }) => {
@@ -70,8 +78,7 @@ const ItemList = ({
         alignItems: 'center'
       }}>
         <Typography variant="subtitle1">
-          List {listNumber} ({items.length} items)
-          {peakCount > 0 && ` - Peak: ${peakCount}`}
+          {getListTitle(listNumber)} ({items.length})
         </Typography>
         <IconButton
           onClick={() => onClearList(listNumber)}
@@ -86,8 +93,21 @@ const ItemList = ({
       <List
         sx={{
           flex: 1,
-          overflow: 'auto',
+          overflowY: 'auto',
           padding: 0,
+          '&::-webkit-scrollbar': {
+            width: '8px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: '#f1f1f1',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#888',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            background: '#555',
+          },
         }}
       >
         {items.map((item, index) => (
@@ -111,15 +131,6 @@ const ItemList = ({
                 }
               }}
             />
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                onItemCopy(item);
-              }}
-            >
-              <DeleteOutline />
-            </IconButton>
           </ListItem>
         ))}
       </List>
