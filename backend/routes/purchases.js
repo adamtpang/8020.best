@@ -158,26 +158,13 @@ router.post('/api/purchases/sync-chunk', async (req, res) => {
       purchase = new Purchase({ email });
     }
 
-    // Calculate the start index for this chunk
-    const startIndex = chunk.index * CHUNK_SIZE;
-
-    // Update the specific portion of the list
-    if (!purchase[listName]) {
+    // If this is the first chunk, clear the list
+    if (chunk.index === 0) {
       purchase[listName] = [];
     }
 
-    // Extend array if needed
-    while (purchase[listName].length < startIndex + chunk.items.length) {
-      purchase[listName].push(null);
-    }
-
-    // Insert chunk items at the correct position
-    for (let i = 0; i < chunk.items.length; i++) {
-      purchase[listName][startIndex + i] = chunk.items[i];
-    }
-
-    // Remove any null values that might be left
-    purchase[listName] = purchase[listName].filter(item => item !== null);
+    // Add the chunk items
+    purchase[listName].push(...chunk.items);
 
     await purchase.save();
 
@@ -212,6 +199,27 @@ router.post('/api/purchases/sync-complete', async (req, res) => {
 
   } catch (error) {
     console.error('Error completing sync:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add a clear trash endpoint
+router.post('/api/purchases/clear-trash', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const purchase = await Purchase.findOne({ email });
+    if (purchase) {
+      purchase.trashedItems = [];
+      await purchase.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Trash cleared'
+    });
+  } catch (error) {
+    console.error('Error clearing trash:', error);
     res.status(500).json({ error: error.message });
   }
 });
