@@ -150,10 +150,9 @@ const ItemList = ({
                     backgroundColor: 'rgba(25, 118, 210, 0.08)',
                   },
                   '&.Mui-selected': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.5) !important',
-                    color: 'white',
+                    backgroundColor: 'rgba(25, 118, 210, 0.8) !important',
                     '&:hover': {
-                      backgroundColor: 'rgba(25, 118, 210, 0.6) !important',
+                      backgroundColor: 'rgba(25, 118, 210, 0.9) !important',
                     }
                   }
                 }
@@ -165,7 +164,7 @@ const ItemList = ({
                   wordBreak: 'break-word',
                   '& .MuiTypography-root': {
                     whiteSpace: 'pre-wrap',
-                    color: selectedIndex === index ? 'white' : 'inherit',
+                    color: selectedIndex === index ? '#ffffff' : 'rgba(0, 0, 0, 0.87)',
                     fontWeight: selectedIndex === index ? 500 : 400,
                   }
                 }}
