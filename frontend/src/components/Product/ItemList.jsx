@@ -139,20 +139,24 @@ const ItemList = ({
             <ListItem
               key={index}
               selected={selectedIndex === index}
-              onClick={(e) => handleItemClick(index, e)}
+              onClick={(e) => {
+                handleItemClick(index, e);
+                onItemSelect(index);
+              }}
               sx={{
                 cursor: 'pointer',
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                },
-                '&.Mui-selected': {
-                  backgroundColor: '#2196f3 !important',
-                  color: 'white',
+                '&.MuiListItem-root': {
                   '&:hover': {
-                    backgroundColor: '#1976d2 !important',
+                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                  },
+                  '&.Mui-selected': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.5) !important',
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.6) !important',
+                    }
                   }
-                },
-                transition: 'background-color 0.2s ease',
+                }
               }}
             >
               <ListItemText
@@ -161,7 +165,8 @@ const ItemList = ({
                   wordBreak: 'break-word',
                   '& .MuiTypography-root': {
                     whiteSpace: 'pre-wrap',
-                    color: 'inherit',
+                    color: selectedIndex === index ? 'white' : 'inherit',
+                    fontWeight: selectedIndex === index ? 500 : 400,
                   }
                 }}
               />

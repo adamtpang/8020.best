@@ -951,6 +951,7 @@ const Product = () => {
         setIsTrashOpen={setIsTrashOpen}
         isSyncing={isSyncing}
         isSyncError={isSyncError}
+        trashedItems={trashedItems}
         readingModeControls={
           <ReadingModeControls
             isReadingMode={isReadingMode}
