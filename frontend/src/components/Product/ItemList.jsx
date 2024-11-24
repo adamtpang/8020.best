@@ -156,9 +156,9 @@ const ItemList = ({
               sx={{
                 cursor: 'pointer',
                 backgroundColor: (() => {
-                  // For List 2 - Much stronger colors
+                  // For List 2 - More subtle colors
                   if (listNumber === 2) {
-                    return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.4)' : 'rgba(244, 67, 54, 0.4)'; // Increased from 0.25 to 0.4
+                    return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)'; // Reduced from 0.4
                   }
                   // For List 3
                   if (listNumber === 3) {
@@ -169,9 +169,9 @@ const ItemList = ({
                 '&.MuiListItem-root': {
                   '&:hover': {
                     backgroundColor: (() => {
-                      // For List 2 - Stronger hover colors
+                      // For List 2 - More subtle hover colors
                       if (listNumber === 2) {
-                        return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.5)' : 'rgba(244, 67, 54, 0.5)'; // Increased from 0.35 to 0.5
+                        return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'; // Reduced from 0.5
                       }
                       // For List 3
                       if (listNumber === 3) {
@@ -181,10 +181,12 @@ const ItemList = ({
                     })(),
                   },
                   '&.Mui-selected': {
-                    backgroundColor: '#2196f3 !important',
-                    color: 'white',
+                    // New selection style: left border and subtle background
+                    borderLeft: '4px solid #2196f3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.08) !important',
+                    paddingLeft: '12px', // Compensate for border
                     '&:hover': {
-                      backgroundColor: '#1976d2 !important',
+                      backgroundColor: 'rgba(33, 150, 243, 0.12) !important',
                     }
                   }
                 }
@@ -196,7 +198,7 @@ const ItemList = ({
                   wordBreak: 'break-word',
                   '& .MuiTypography-root': {
                     whiteSpace: 'pre-wrap',
-                    color: selectedIndex === index ? '#2196f3' : 'rgba(0, 0, 0, 0.87)',
+                    color: 'rgba(0, 0, 0, 0.87)', // Always black text
                     fontWeight: selectedIndex === index ? 500 : 400,
                   }
                 }}

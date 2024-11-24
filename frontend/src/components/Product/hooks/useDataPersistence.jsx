@@ -192,12 +192,15 @@ const useDataPersistence = ({
     return () => debouncedSave.cancel();
   }, [list1, list2, list3, trashedItems, user?.email]);
 
-  // Add clearList function
+  // Update the clearList function
   const clearList = async (listNumber) => {
     if (!user?.email) return;
 
     try {
-      await axios.post(
+      console.log(`Clearing list ${listNumber}`);
+
+      // First, clear in MongoDB
+      const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/purchases/clear-list`,
         {
           email: user.email,
@@ -205,20 +208,39 @@ const useDataPersistence = ({
         }
       );
 
-      // Clear local state based on list number
-      switch (listNumber) {
-        case 1:
-          setList1([]);
-          break;
-        case 2:
-          setList2([]);
-          break;
-        case 3:
-          setList3([]);
-          break;
-        case 'trash':
-          setTrashedItems([]);
-          break;
+      if (response.data.success) {
+        // Then clear local state
+        switch (listNumber) {
+          case 1:
+            setList1([]);
+            break;
+          case 2:
+            setList2([]);
+            break;
+          case 3:
+            setList3([]);
+            break;
+          case 'trash':
+            setTrashedItems([]);
+            break;
+        }
+
+        // Force a reload of all lists to ensure sync
+        const reloadResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/purchases/load-lists`,
+          {
+            params: { email: user.email }
+          }
+        );
+
+        if (reloadResponse.data.success) {
+          const lists = reloadResponse.data.lists;
+          // Update all lists with fresh data
+          setList1(lists.list1 || []);
+          setList2(lists.list2 || []);
+          setList3(lists.list3 || []);
+          setTrashedItems(lists.trashedItems || []);
+        }
       }
     } catch (error) {
       console.error('Error clearing list:', error);
