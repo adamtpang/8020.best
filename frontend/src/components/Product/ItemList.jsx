@@ -113,11 +113,11 @@ const ItemList = ({
       {/* List content */}
       <Box sx={{
         flex: 1,
-        overflow: 'hidden'
+        height: '100%',
       }}>
         <List
           sx={{
-            flex: 1,
+            height: 'calc(100% - 70px)',
             overflowY: 'auto',
             padding: 0,
             '&::-webkit-scrollbar': {
@@ -143,13 +143,13 @@ const ItemList = ({
               sx={{
                 cursor: 'pointer',
                 '&:hover': {
-                  backgroundColor: 'action.hover',
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
                 },
                 '&.Mui-selected': {
-                  backgroundColor: 'primary.main',
+                  backgroundColor: '#2196f3 !important',
                   color: 'white',
                   '&:hover': {
-                    backgroundColor: 'primary.dark',
+                    backgroundColor: '#1976d2 !important',
                   }
                 }
               }}
@@ -160,6 +160,7 @@ const ItemList = ({
                   wordBreak: 'break-word',
                   '& .MuiTypography-root': {
                     whiteSpace: 'pre-wrap',
+                    color: 'inherit',
                   }
                 }}
               />
