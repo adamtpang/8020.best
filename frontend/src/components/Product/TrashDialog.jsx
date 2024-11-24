@@ -87,13 +87,13 @@ const TrashDialog = ({
                   sx={{
                     color: 'black',
                     flexShrink: 0,
-                    minWidth: '140px',
+                    minWidth: 'auto',
                     '&:hover': {
                       backgroundColor: 'rgba(0, 0, 0, 0.04)'
                     }
                   }}
                 >
-                  Restore to List 1
+                  Restore
                 </Button>
               </ListItem>
             ))}
