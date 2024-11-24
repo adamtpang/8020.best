@@ -71,31 +71,28 @@ const useDataPersistence = ({
           }
         );
 
-        console.log('Raw response:', response.data);
-
         if (response.data.success) {
           const lists = response.data.lists;
+          console.log('Loaded lists:', lists);
 
-          console.log('Full lists data:', lists);
-          console.log('Trash data:', lists.list4);
+          // Clear existing lists before setting new data
+          setList1([]);
+          setList2([]);
+          setList3([]);
+          setTrashedItems([]);
 
+          // Then set new data
           if (Array.isArray(lists.list1)) {
-            console.log('Setting list1:', lists.list1.length, 'items');
             setList1(lists.list1);
           }
           if (Array.isArray(lists.list2)) {
-            console.log('Setting list2:', lists.list2.length, 'items');
             setList2(lists.list2);
           }
           if (Array.isArray(lists.list3)) {
-            console.log('Setting list3:', lists.list3.length, 'items');
             setList3(lists.list3);
           }
-          if (Array.isArray(lists.list4)) {
-            console.log('Setting trash items:', lists.list4.length, 'items');
-            setTrashedItems(lists.list4);
-          } else {
-            console.log('No trash items found in response');
+          if (Array.isArray(lists.trashedItems)) {
+            setTrashedItems(lists.trashedItems);
           }
         }
       } catch (error) {
