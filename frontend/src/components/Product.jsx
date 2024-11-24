@@ -80,7 +80,7 @@ const Product = () => {
   const speechSynthesis = window.speechSynthesis;
   const [currentUtterance, setCurrentUtterance] = useState(null);
 
-  const { isSyncing, isSyncError } = useDataPersistence({
+  const { isSyncing, isSyncError, clearList } = useDataPersistence({
     user,
     isAuthReady,
     list1,
@@ -909,16 +909,13 @@ const Product = () => {
   const handleClearConfirm = () => {
     if (listToClear === 1) {
       setTrashedItems(prev => [...list1, ...prev]);
-      setList1([]);
-      setSelectedIndex1(null);
+      clearList(1);  // Clear in MongoDB
     } else if (listToClear === 2) {
       setTrashedItems(prev => [...list2, ...prev]);
-      setList2([]);
-      setSelectedIndex2(null);
+      clearList(2);  // Clear in MongoDB
     } else if (listToClear === 3) {
       setTrashedItems(prev => [...list3, ...prev]);
-      setList3([]);
-      setSelectedIndex3(null);
+      clearList(3);  // Clear in MongoDB
     }
 
     setClearConfirmOpen(false);
@@ -927,6 +924,17 @@ const Product = () => {
     setNotification({
       open: true,
       message: `List ${listToClear} cleared`,
+      severity: 'success'
+    });
+  };
+
+  // Update trash clear handler
+  const handleClearTrash = () => {
+    clearList('trash');  // Clear trash in MongoDB
+    setTrashedItems([]);
+    setNotification({
+      open: true,
+      message: 'Trash cleared',
       severity: 'success'
     });
   };
@@ -1032,13 +1040,7 @@ const Product = () => {
         onClose={() => setIsTrashOpen(false)}
         trashedItems={trashedItems}
         onRestore={handleRestoreItem}
-        onClearTrash={() => {
-          setTrashedItems([]);
-          setNotification({
-            open: true,
-            message: 'Trash cleared'
-          });
-        }}
+        onClearTrash={handleClearTrash}
       />
       <ExportDialog
         open={exportDialogOpen}

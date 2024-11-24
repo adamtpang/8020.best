@@ -256,4 +256,39 @@ router.post('/api/purchases/clear-trash', async (req, res) => {
   }
 });
 
+// Add clear endpoints for each list
+router.post('/api/purchases/clear-list', async (req, res) => {
+  try {
+    const { email, listNumber } = req.body;
+
+    const purchase = await Purchase.findOne({ email });
+    if (purchase) {
+      // Clear the specified list
+      switch (listNumber) {
+        case 1:
+          purchase.list1 = [];
+          break;
+        case 2:
+          purchase.list2 = [];
+          break;
+        case 3:
+          purchase.list3 = [];
+          break;
+        case 'trash':
+          purchase.trashedItems = [];
+          break;
+      }
+      await purchase.save();
+    }
+
+    res.json({
+      success: true,
+      message: `List ${listNumber} cleared`
+    });
+  } catch (error) {
+    console.error('Error clearing list:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
