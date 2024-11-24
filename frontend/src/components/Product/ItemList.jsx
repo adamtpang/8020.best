@@ -5,7 +5,8 @@ import {
   ListItem,
   ListItemText,
   Typography,
-  IconButton
+  IconButton,
+  LinearProgress
 } from '@mui/material';
 import { DeleteOutline } from '@mui/icons-material';
 
@@ -25,10 +26,13 @@ const ItemList = ({
   onItemCopy,
   onDeleteItems,
   listNumber,
-  onClearList
+  onClearList,
+  peakCount
 }) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
+
+  const progress = peakCount > 0 ? (items.length / peakCount) * 100 : 0;
 
   const handleItemClick = (index, event) => {
     if (event.shiftKey && lastSelectedIndex !== null) {
@@ -63,7 +67,6 @@ const ItemList = ({
         height: '100%',
         bgcolor: 'background.paper',
         borderRadius: 1,
-        overflow: 'hidden',
         border: '1px solid',
         borderColor: 'divider',
       }}
@@ -73,67 +76,96 @@ const ItemList = ({
         p: 1,
         borderBottom: 1,
         borderColor: 'divider',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
       }}>
-        <Typography variant="subtitle1">
-          {getListTitle(listNumber)} ({items.length})
-        </Typography>
-        <IconButton
-          onClick={() => onClearList(listNumber)}
-          size="small"
-          sx={{ color: 'text.secondary' }}
-        >
-          <DeleteOutline />
-        </IconButton>
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 1
+        }}>
+          <Typography variant="subtitle1">
+            {getListTitle(listNumber)} ({items.length})
+          </Typography>
+          <IconButton
+            onClick={() => onClearList(listNumber)}
+            size="small"
+            sx={{ color: 'text.secondary' }}
+          >
+            <DeleteOutline />
+          </IconButton>
+        </Box>
+        {peakCount > 0 && (
+          <LinearProgress
+            variant="determinate"
+            value={progress}
+            sx={{
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: '#e0e0e0',
+              '& .MuiLinearProgress-bar': {
+                backgroundColor: progress > 100 ? '#f44336' : '#2196f3'
+              }
+            }}
+          />
+        )}
       </Box>
 
       {/* List content */}
-      <List
-        sx={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: 0,
-          '&::-webkit-scrollbar': {
-            width: '8px',
-          },
-          '&::-webkit-scrollbar-track': {
-            background: '#f1f1f1',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: '#888',
-            borderRadius: '4px',
-          },
-          '&::-webkit-scrollbar-thumb:hover': {
-            background: '#555',
-          },
-        }}
-      >
-        {items.map((item, index) => (
-          <ListItem
-            key={index}
-            selected={selectedItems.includes(index)}
-            onClick={(e) => handleItemClick(index, e)}
-            sx={{
-              cursor: 'pointer',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-              }
-            }}
-          >
-            <ListItemText
-              primary={typeof item === 'string' ? item : item.idea}
+      <Box sx={{
+        flex: 1,
+        overflow: 'hidden'
+      }}>
+        <List
+          sx={{
+            height: '100%',
+            overflowY: 'auto',
+            padding: 0,
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: '#f1f1f1',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: '#888',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              background: '#555',
+            },
+          }}
+        >
+          {items.map((item, index) => (
+            <ListItem
+              key={index}
+              selected={selectedIndex === index || selectedItems.includes(index)}
+              onClick={(e) => handleItemClick(index, e)}
               sx={{
-                wordBreak: 'break-word',
-                '& .MuiTypography-root': {
-                  whiteSpace: 'pre-wrap',
+                cursor: 'pointer',
+                '&:hover': {
+                  backgroundColor: 'action.hover',
+                },
+                '&.Mui-selected': {
+                  backgroundColor: 'primary.light',
+                  '&:hover': {
+                    backgroundColor: 'primary.light',
+                  }
                 }
               }}
-            />
-          </ListItem>
-        ))}
-      </List>
+            >
+              <ListItemText
+                primary={typeof item === 'string' ? item : item.idea}
+                sx={{
+                  wordBreak: 'break-word',
+                  '& .MuiTypography-root': {
+                    whiteSpace: 'pre-wrap',
+                  }
+                }}
+              />
+            </ListItem>
+          ))}
+        </List>
+      </Box>
     </Box>
   );
 };
