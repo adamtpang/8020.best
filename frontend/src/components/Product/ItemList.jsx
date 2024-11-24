@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   List,
@@ -18,6 +18,38 @@ const ItemList = ({
   listNumber,
   onClearList
 }) => {
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
+
+  const handleItemClick = (index, event) => {
+    if (event.shiftKey && lastSelectedIndex !== null) {
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      const newSelectedItems = Array.from(
+        { length: end - start + 1 },
+        (_, i) => start + i
+      );
+      setSelectedItems(newSelectedItems);
+    } else {
+      setSelectedItems([index]);
+      setLastSelectedIndex(index);
+    }
+    onItemSelect(index);
+  };
+
+  const handleDelete = () => {
+    const itemsToDelete = selectedItems.map(index => items[index]);
+    onDeleteItems(itemsToDelete);
+    setSelectedItems([]);
+    setLastSelectedIndex(null);
+
+    setNotification({
+      open: true,
+      message: `Deleted ${itemsToDelete.length} item${itemsToDelete.length > 1 ? 's' : ''}`,
+      severity: 'success'
+    });
+  };
+
   return (
     <Box sx={{
       flex: 1,
@@ -76,12 +108,12 @@ const ItemList = ({
             <ListItem
               key={index}
               data-index={index}
-              selected={selectedIndex === index}
-              onClick={() => onItemSelect(index)}
+              selected={selectedItems.includes(index)}
+              onClick={(e) => handleItemClick(index, e)}
               onDoubleClick={() => onItemCopy(item)}
               sx={{
                 cursor: 'pointer',
-                backgroundColor: selectedIndex === index ? 'black !Problem' :
+                backgroundColor: selectedItems.includes(index) ? 'black !Problem' :
                   listNumber === 1 ? 'transparent' :
                   listNumber === 2 ?
                     (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)') :
@@ -89,11 +121,11 @@ const ItemList = ({
                   (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.35)' :
                   (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.15)' :
                   'rgba(244, 67, 54, 0.15)',
-                color: selectedIndex === index ? 'white !Problem' : 'inherit',
-                borderLeft: selectedIndex === index ? '6px solid #333' : '6px solid transparent',
-                boxShadow: selectedIndex === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+                color: selectedItems.includes(index) ? 'white !Problem' : 'inherit',
+                borderLeft: selectedItems.includes(index) ? '6px solid #333' : '6px solid transparent',
+                boxShadow: selectedItems.includes(index) ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
                 '&:hover': {
-                  backgroundColor: selectedIndex === index ? 'black !Problem' :
+                  backgroundColor: selectedItems.includes(index) ? 'black !Problem' :
                     listNumber === 1 ? 'rgba(0, 0, 0, 0.04)' :
                     listNumber === 2 ?
                       (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)') :
@@ -151,7 +183,7 @@ const ItemList = ({
         </Typography>
 
         <IconButton
-          onClick={() => onClearList(listNumber)}
+          onClick={handleDelete}
           size="small"
           sx={{
             color: 'black',

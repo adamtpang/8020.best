@@ -195,7 +195,24 @@ const useDataPersistence = ({
     return () => debouncedSave.cancel();
   }, [list1, list2, list3, trashedItems, user?.email]);
 
-  return { isSyncing, isSyncError };
+  // Add this function to handle clearing trash
+  const clearTrash = async () => {
+    if (!user?.email) return;
+
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/purchases/clear-trash`,
+        { email: user.email }
+      );
+
+      setTrashedItems([]); // Clear local trash state
+    } catch (error) {
+      console.error('Error clearing trash:', error);
+      setIsSyncError(true);
+    }
+  };
+
+  return { isSyncing, isSyncError, clearTrash };
 };
 
 export default useDataPersistence;
