@@ -192,24 +192,41 @@ const useDataPersistence = ({
     return () => debouncedSave.cancel();
   }, [list1, list2, list3, trashedItems, user?.email]);
 
-  // Add this function to handle clearing trash
-  const clearTrash = async () => {
+  // Add clearList function
+  const clearList = async (listNumber) => {
     if (!user?.email) return;
 
     try {
       await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/purchases/clear-trash`,
-        { email: user.email }
+        `${import.meta.env.VITE_API_URL}/api/purchases/clear-list`,
+        {
+          email: user.email,
+          listNumber
+        }
       );
 
-      setTrashedItems([]); // Clear local trash state
+      // Clear local state based on list number
+      switch (listNumber) {
+        case 1:
+          setList1([]);
+          break;
+        case 2:
+          setList2([]);
+          break;
+        case 3:
+          setList3([]);
+          break;
+        case 'trash':
+          setTrashedItems([]);
+          break;
+      }
     } catch (error) {
-      console.error('Error clearing trash:', error);
+      console.error('Error clearing list:', error);
       setIsSyncError(true);
     }
   };
 
-  return { isSyncing, isSyncError, clearTrash };
+  return { isSyncing, isSyncError, clearList };
 };
 
 export default useDataPersistence;
