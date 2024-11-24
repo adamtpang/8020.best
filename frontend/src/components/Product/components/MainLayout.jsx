@@ -30,7 +30,8 @@ const MainLayout = ({
   isSyncing,
   isSyncError,
   children,
-  readingModeControls
+  readingModeControls,
+  trashedItems
 }) => {
   return (
     <Box
@@ -232,10 +233,29 @@ const MainLayout = ({
             color: 'white',
             '&:hover': { backgroundColor: '#333' },
             width: 40,
-            height: 40
+            height: 40,
+            position: 'relative'
           }}
         >
           <DeleteOutlined />
+          {trashedItems?.length > 0 && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: -8,
+                right: -8,
+                backgroundColor: 'error.main',
+                color: 'white',
+                borderRadius: '50%',
+                padding: '2px 6px',
+                fontSize: '0.75rem',
+                minWidth: '20px',
+                textAlign: 'center'
+              }}
+            >
+              {trashedItems.length}
+            </Box>
+          )}
         </IconButton>
         {/* Reading Mode Controls */}
         <Box sx={{
