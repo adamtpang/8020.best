@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   List,
@@ -14,6 +14,7 @@ const ItemList = ({
   selectedIndex,
   onItemSelect,
   onItemCopy,
+  onDeleteItems,
   peakCount,
   listNumber,
   onClearList
@@ -42,13 +43,20 @@ const ItemList = ({
     onDeleteItems(itemsToDelete);
     setSelectedItems([]);
     setLastSelectedIndex(null);
-
-    setNotification({
-      open: true,
-      message: `Deleted ${itemsToDelete.length} item${itemsToDelete.length > 1 ? 's' : ''}`,
-      severity: 'success'
-    });
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedItems.length > 0) {
+          handleDelete();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItems]);
 
   return (
     <Box sx={{
