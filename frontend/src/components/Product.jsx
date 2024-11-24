@@ -728,28 +728,26 @@ const Product = () => {
     isInputFocused
   ]);
 
-  const handleClearConfirm = () => {
-    if (listToClear === 1) {
-      // Move items to trash before clearing
+  const handleClearList = (listNumber) => {
+    // Store items in trash before clearing
+    if (listNumber === 1) {
       setTrashedItems(prev => [...list1, ...prev]);
       setList1([]);
       setSelectedIndex1(null);
-    } else if (listToClear === 2) {
+    } else if (listNumber === 2) {
       setTrashedItems(prev => [...list2, ...prev]);
       setList2([]);
       setSelectedIndex2(null);
-    } else if (listToClear === 3) {
+    } else if (listNumber === 3) {
       setTrashedItems(prev => [...list3, ...prev]);
       setList3([]);
       setSelectedIndex3(null);
     }
 
-    setClearConfirmOpen(false);
-    setListToClear(null);
-
     setNotification({
       open: true,
-      message: `List ${listToClear} cleared`
+      message: `List ${listNumber} cleared`,
+      severity: 'success'
     });
   };
 
@@ -980,10 +978,7 @@ const Product = () => {
             onDeleteItems={(items) => handleDeleteItems(3, items)}
             peakCount={peakCount3}
             listNumber={3}
-            onClearList={(listNum) => {
-              setListToClear(listNum);
-              setClearConfirmOpen(true);
-            }}
+            onClearList={handleClearList}
           />
         </Box>
       </MainLayout>
