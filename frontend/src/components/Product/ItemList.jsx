@@ -59,6 +59,15 @@ const ItemList = ({
     }
   };
 
+  useEffect(() => {
+    if (selectedIndex !== null) {
+      const element = document.querySelector(`[data-listnum="${listNumber}"] [data-index="${selectedIndex}"]`);
+      if (element) {
+        element.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+      }
+    }
+  }, [selectedIndex, listNumber]);
+
   return (
     <Box
       sx={{
@@ -116,6 +125,7 @@ const ItemList = ({
         height: '100%',
       }}>
         <List
+          data-listnum={listNumber}
           sx={{
             height: 'calc(100% - 70px)',
             overflowY: 'auto',
@@ -138,6 +148,7 @@ const ItemList = ({
           {items.map((item, index) => (
             <ListItem
               key={index}
+              data-index={index}
               selected={selectedIndex === index}
               onClick={(e) => {
                 handleItemClick(index, e);
