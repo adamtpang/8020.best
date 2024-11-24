@@ -138,7 +138,7 @@ const ItemList = ({
           {items.map((item, index) => (
             <ListItem
               key={index}
-              selected={selectedIndex === index || selectedItems.includes(index)}
+              selected={selectedIndex === index}
               onClick={(e) => handleItemClick(index, e)}
               sx={{
                 cursor: 'pointer',
@@ -151,7 +151,8 @@ const ItemList = ({
                   '&:hover': {
                     backgroundColor: '#1976d2 !important',
                   }
-                }
+                },
+                transition: 'background-color 0.2s ease',
               }}
             >
               <ListItemText

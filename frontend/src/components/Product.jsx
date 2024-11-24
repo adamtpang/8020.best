@@ -272,20 +272,23 @@ const Product = () => {
 
   // Update handleSelectItem to handleItemSelect
   const handleItemSelect = (listNumber, index) => {
+    // Clear other selections
     if (listNumber === 1) {
       setSelectedIndex1(index);
       setSelectedIndex2(null);
       setSelectedIndex3(null);
+      setActiveList(1);
     } else if (listNumber === 2) {
       setSelectedIndex1(null);
       setSelectedIndex2(index);
       setSelectedIndex3(null);
+      setActiveList(2);
     } else if (listNumber === 3) {
       setSelectedIndex1(null);
       setSelectedIndex2(null);
       setSelectedIndex3(index);
+      setActiveList(3);
     }
-    setActiveList(listNumber);
   };
 
   // Move items between lists
