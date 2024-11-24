@@ -875,6 +875,35 @@ const Product = () => {
     };
   }, []);
 
+  // In Product.jsx, add the delete handler
+  const handleDeleteItems = (listNumber, itemsToDelete) => {
+    if (listNumber === 1) {
+      setList1(prev => {
+        const newList = prev.filter(item => !itemsToDelete.includes(item));
+        setTrashedItems(prev => [...itemsToDelete, ...prev]);
+        return newList;
+      });
+    } else if (listNumber === 2) {
+      setList2(prev => {
+        const newList = prev.filter(item => !itemsToDelete.some(deleteItem => deleteItem.idea === item.idea));
+        setTrashedItems(prev => [...itemsToDelete, ...prev]);
+        return newList;
+      });
+    } else if (listNumber === 3) {
+      setList3(prev => {
+        const newList = prev.filter(item => !itemsToDelete.some(deleteItem => deleteItem.idea === item.idea));
+        setTrashedItems(prev => [...itemsToDelete, ...prev]);
+        return newList;
+      });
+    }
+
+    setNotification({
+      open: true,
+      message: `Moved ${itemsToDelete.length} item${itemsToDelete.length > 1 ? 's' : ''} to trash`,
+      severity: 'success'
+    });
+  };
+
   return (
     <>
       <MainLayout
@@ -922,6 +951,7 @@ const Product = () => {
             selectedIndex={selectedIndex1}
             onItemSelect={(index) => handleItemSelect(1, index)}
             onItemCopy={handleItemCopy}
+            onDeleteItems={(items) => handleDeleteItems(1, items)}
             peakCount={peakCount1}
             listNumber={1}
             onClearList={(listNum) => {
@@ -934,6 +964,7 @@ const Product = () => {
             selectedIndex={selectedIndex2}
             onItemSelect={(index) => handleItemSelect(2, index)}
             onItemCopy={handleItemCopy}
+            onDeleteItems={(items) => handleDeleteItems(2, items)}
             peakCount={peakCount2}
             listNumber={2}
             onClearList={(listNum) => {
@@ -946,6 +977,7 @@ const Product = () => {
             selectedIndex={selectedIndex3}
             onItemSelect={(index) => handleItemSelect(3, index)}
             onItemCopy={handleItemCopy}
+            onDeleteItems={(items) => handleDeleteItems(3, items)}
             peakCount={peakCount3}
             listNumber={3}
             onClearList={(listNum) => {
