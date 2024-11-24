@@ -902,6 +902,32 @@ const Product = () => {
     });
   };
 
+  // Add the clear confirm handler
+  const handleClearConfirm = () => {
+    if (listToClear === 1) {
+      setTrashedItems(prev => [...list1, ...prev]);
+      setList1([]);
+      setSelectedIndex1(null);
+    } else if (listToClear === 2) {
+      setTrashedItems(prev => [...list2, ...prev]);
+      setList2([]);
+      setSelectedIndex2(null);
+    } else if (listToClear === 3) {
+      setTrashedItems(prev => [...list3, ...prev]);
+      setList3([]);
+      setSelectedIndex3(null);
+    }
+
+    setClearConfirmOpen(false);
+    setListToClear(null);
+
+    setNotification({
+      open: true,
+      message: `List ${listToClear} cleared`,
+      severity: 'success'
+    });
+  };
+
   return (
     <>
       <MainLayout
@@ -978,7 +1004,10 @@ const Product = () => {
             onDeleteItems={(items) => handleDeleteItems(3, items)}
             peakCount={peakCount3}
             listNumber={3}
-            onClearList={handleClearList}
+            onClearList={(listNum) => {
+              setListToClear(listNum);
+              setClearConfirmOpen(true);
+            }}
           />
         </Box>
       </MainLayout>
