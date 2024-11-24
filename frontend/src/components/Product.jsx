@@ -961,9 +961,9 @@ const Product = () => {
         <Box sx={{
           display: "flex",
           gap: 2,
-          flex: 1,
-          minHeight: 0,
           justifyContent: 'center',
+          height: 'calc(100vh - 200px)', // Adjust based on your header height
+          overflow: 'hidden',
           '& > *': {
             flex: '1 0 calc(33.333% - 11px)',
             maxWidth: 'calc(33.333% - 11px)',

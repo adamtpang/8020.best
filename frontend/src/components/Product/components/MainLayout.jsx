@@ -210,10 +210,7 @@ const MainLayout = ({
         zIndex: 1200,
       }}>
         <IconButton
-          onClick={() => {
-            console.log('Instructions button clicked');
-            setIsInstructionsOpen(true);
-          }}
+          onClick={() => setIsInstructionsOpen(true)}
           size="small"
           sx={{
             backgroundColor: 'black',
@@ -225,19 +222,21 @@ const MainLayout = ({
         >
           <HelpOutline />
         </IconButton>
-        <IconButton
-          onClick={() => setIsTrashOpen(true)}
-          size="small"
-          sx={{
-            backgroundColor: 'black',
-            color: 'white',
-            '&:hover': { backgroundColor: '#333' },
-            width: 40,
-            height: 40,
-            position: 'relative'
-          }}
-        >
-          <DeleteOutlined />
+
+        <Box sx={{ position: 'relative' }}>
+          <IconButton
+            onClick={() => setIsTrashOpen(true)}
+            size="small"
+            sx={{
+              backgroundColor: 'black',
+              color: 'white',
+              '&:hover': { backgroundColor: '#333' },
+              width: 40,
+              height: 40
+            }}
+          >
+            <DeleteOutlined />
+          </IconButton>
           {trashedItems?.length > 0 && (
             <Box
               sx={{
@@ -250,25 +249,18 @@ const MainLayout = ({
                 padding: '2px 6px',
                 fontSize: '0.75rem',
                 minWidth: '20px',
-                textAlign: 'center'
+                height: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
               {trashedItems.length}
             </Box>
           )}
-        </IconButton>
-        {/* Reading Mode Controls */}
-        <Box sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          backgroundColor: 'white',
-          padding: '4px 12px',
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        }}>
-          {readingModeControls}
         </Box>
+
+        {readingModeControls}
       </Box>
     </Box>
   );
