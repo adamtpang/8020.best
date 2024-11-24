@@ -75,12 +75,21 @@ router.get('/api/purchases/load-lists', async (req, res) => {
 
     console.log('Found purchase:', purchase);
 
+    // Ensure we're sending clean arrays
     const lists = {
-      list1: purchase?.list1 || [],
-      list2: purchase?.list2 || [],
-      list3: purchase?.list3 || [],
-      list4: purchase?.list4 || []
+      list1: purchase?.list1?.filter(Boolean) || [],
+      list2: purchase?.list2?.filter(Boolean) || [],
+      list3: purchase?.list3?.filter(Boolean) || [],
+      trashedItems: purchase?.trashedItems?.filter(Boolean) || []
     };
+
+    // Log what we're sending back
+    console.log('Sending lists:', {
+      list1Length: lists.list1.length,
+      list2Length: lists.list2.length,
+      list3Length: lists.list3.length,
+      trashedItemsLength: lists.trashedItems.length
+    });
 
     res.json({
       success: true,
