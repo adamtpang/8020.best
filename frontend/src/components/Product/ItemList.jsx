@@ -64,7 +64,7 @@ const ItemList = ({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
+        height: '500px',
         bgcolor: 'background.paper',
         borderRadius: 1,
         border: '1px solid',
@@ -117,7 +117,7 @@ const ItemList = ({
       }}>
         <List
           sx={{
-            height: '100%',
+            flex: 1,
             overflowY: 'auto',
             padding: 0,
             '&::-webkit-scrollbar': {
@@ -146,9 +146,10 @@ const ItemList = ({
                   backgroundColor: 'action.hover',
                 },
                 '&.Mui-selected': {
-                  backgroundColor: 'primary.light',
+                  backgroundColor: 'primary.main',
+                  color: 'white',
                   '&:hover': {
-                    backgroundColor: 'primary.light',
+                    backgroundColor: 'primary.dark',
                   }
                 }
               }}
