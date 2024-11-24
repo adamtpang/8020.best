@@ -164,7 +164,7 @@ const ItemList = ({
                   wordBreak: 'break-word',
                   '& .MuiTypography-root': {
                     whiteSpace: 'pre-wrap',
-                    color: selectedIndex === index ? '#ffffff' : 'rgba(0, 0, 0, 0.87)',
+                    color: selectedIndex === index ? '#2196f3' : 'rgba(0, 0, 0, 0.87)',
                     fontWeight: selectedIndex === index ? 500 : 400,
                   }
                 }}
