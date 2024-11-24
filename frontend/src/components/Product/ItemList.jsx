@@ -156,26 +156,26 @@ const ItemList = ({
               sx={{
                 cursor: 'pointer',
                 backgroundColor: (() => {
-                  // For List 2
+                  // For List 2 - Much stronger colors
                   if (listNumber === 2) {
-                    return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)';
+                    return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.4)' : 'rgba(244, 67, 54, 0.4)'; // Increased from 0.25 to 0.4
                   }
                   // For List 3
                   if (listNumber === 3) {
-                    return (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.15)' : 'transparent';
+                    return (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.3)' : 'transparent';
                   }
                   return 'transparent';
                 })(),
                 '&.MuiListItem-root': {
                   '&:hover': {
                     backgroundColor: (() => {
-                      // For List 2
+                      // For List 2 - Stronger hover colors
                       if (listNumber === 2) {
-                        return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)';
+                        return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.5)' : 'rgba(244, 67, 54, 0.5)'; // Increased from 0.35 to 0.5
                       }
                       // For List 3
                       if (listNumber === 3) {
-                        return (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.25)' : 'rgba(0, 0, 0, 0.04)';
+                        return (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.4)' : 'rgba(0, 0, 0, 0.04)';
                       }
                       return 'rgba(0, 0, 0, 0.04)';
                     })(),
