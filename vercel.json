@@ -1,4 +1,19 @@
 {
+  "version": 2,
+  "routes": [
+    {
+      "src": "/app",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/app/(.*)",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
@@ -11,16 +26,5 @@
       "memory": 1024,
       "maxPayloadSize": "50mb"
     }
-  },
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Max-Age",
-          "value": "86400"
-        }
-      ]
-    }
-  ]
+  }
 }

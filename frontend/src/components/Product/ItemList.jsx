@@ -158,7 +158,7 @@ const ItemList = ({
                 backgroundColor: (() => {
                   // For List 2 - More subtle colors
                   if (listNumber === 2) {
-                    return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)'; // Reduced opacity
+                    return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)';
                   }
                   // For List 3
                   if (listNumber === 3) {
@@ -169,9 +169,9 @@ const ItemList = ({
                 '&.MuiListItem-root': {
                   '&:hover': {
                     backgroundColor: (() => {
-                      // For List 2 - More subtle hover colors
+                      // For List 2
                       if (listNumber === 2) {
-                        return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)'; // Reduced hover opacity
+                        return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)';
                       }
                       // For List 3
                       if (listNumber === 3) {
@@ -181,9 +181,9 @@ const ItemList = ({
                     })(),
                   },
                   '&.Mui-selected': {
-                    backgroundColor: 'rgba(33, 150, 243, 0.1) !important', // Light blue background for selection
+                    backgroundColor: '#e3f2fd !important', // Light blue background
                     '&:hover': {
-                      backgroundColor: 'rgba(33, 150, 243, 0.15) !important',
+                      backgroundColor: '#bbdefb !important', // Slightly darker blue on hover
                     }
                   }
                 }
@@ -196,7 +196,7 @@ const ItemList = ({
                   '& .MuiTypography-root': {
                     whiteSpace: 'pre-wrap',
                     color: 'rgba(0, 0, 0, 0.87)', // Normal text color
-                    fontWeight: 400, // Normal font weight
+                    fontWeight: 400, // Normal weight
                   }
                 }}
               />
