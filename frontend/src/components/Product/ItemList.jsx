@@ -158,7 +158,7 @@ const ItemList = ({
                 backgroundColor: (() => {
                   // For List 2 - More subtle colors
                   if (listNumber === 2) {
-                    return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)'; // Reduced from 0.4
+                    return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)'; // Reduced opacity
                   }
                   // For List 3
                   if (listNumber === 3) {
@@ -171,7 +171,7 @@ const ItemList = ({
                     backgroundColor: (() => {
                       // For List 2 - More subtle hover colors
                       if (listNumber === 2) {
-                        return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'; // Reduced from 0.5
+                        return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)'; // Reduced hover opacity
                       }
                       // For List 3
                       if (listNumber === 3) {
@@ -181,12 +181,9 @@ const ItemList = ({
                     })(),
                   },
                   '&.Mui-selected': {
-                    // New selection style: left border and subtle background
-                    borderLeft: '4px solid #2196f3',
-                    backgroundColor: 'rgba(33, 150, 243, 0.08) !important',
-                    paddingLeft: '12px', // Compensate for border
+                    backgroundColor: 'rgba(33, 150, 243, 0.1) !important', // Light blue background for selection
                     '&:hover': {
-                      backgroundColor: 'rgba(33, 150, 243, 0.12) !important',
+                      backgroundColor: 'rgba(33, 150, 243, 0.15) !important',
                     }
                   }
                 }
@@ -198,8 +195,8 @@ const ItemList = ({
                   wordBreak: 'break-word',
                   '& .MuiTypography-root': {
                     whiteSpace: 'pre-wrap',
-                    color: 'rgba(0, 0, 0, 0.87)', // Always black text
-                    fontWeight: selectedIndex === index ? 500 : 400,
+                    color: 'rgba(0, 0, 0, 0.87)', // Normal text color
+                    fontWeight: 400, // Normal font weight
                   }
                 }}
               />

@@ -162,43 +162,20 @@ router.post('/api/purchases/sync-chunk', async (req, res) => {
 
     console.log(`Processing ${listName} chunk ${chunk.index + 1}/${chunk.total} for ${email}`);
 
-    let purchase = await Purchase.findOne({ email });
-    if (!purchase) {
-      purchase = new Purchase({ email });
-    }
-
-    // Special handling for clearing trashedItems
-    if (listName === 'trashedItems' && (!chunk.items || chunk.items.length === 0)) {
-      purchase.trashedItems = [];
-    } else {
-      // Calculate the start index for this chunk
-      const startIndex = chunk.index * CHUNK_SIZE;
-
-      // Update the specific portion of the list
-      if (!purchase[listName]) {
-        purchase[listName] = [];
-      }
-
-      // If this is the first chunk and there are no items, clear the list
-      if (chunk.index === 0 && (!chunk.items || chunk.items.length === 0)) {
-        purchase[listName] = [];
-      } else {
-        // Extend array if needed
-        while (purchase[listName].length < startIndex + chunk.items.length) {
-          purchase[listName].push(null);
+    // Use findOneAndUpdate instead of find and save
+    const result = await Purchase.findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          [`${listName}`]: chunk.items
         }
-
-        // Insert chunk items at the correct position
-        for (let i = 0; i < chunk.items.length; i++) {
-          purchase[listName][startIndex + i] = chunk.items[i];
-        }
-
-        // Remove any null values that might be left
-        purchase[listName] = purchase[listName].filter(item => item !== null);
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true
       }
-    }
-
-    await purchase.save();
+    );
 
     res.json({
       success: true,
