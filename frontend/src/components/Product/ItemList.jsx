@@ -6,9 +6,12 @@ import {
   ListItemText,
   Typography,
   IconButton,
-  LinearProgress
+  LinearProgress,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { DeleteOutline } from '@mui/icons-material';
+import './styles/ItemList.css';
 
 const getListTitle = (listNumber) => {
   switch (listNumber) {
@@ -31,6 +34,11 @@ const ItemList = ({
 }) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const progress = peakCount > 0 ? (items.length / peakCount) * 100 : 0;
 
@@ -59,6 +67,24 @@ const ItemList = ({
     }
   };
 
+  const handleDoubleClick = async (item) => {
+    try {
+      const textToCopy = typeof item === 'string' ? item : item.idea;
+      await navigator.clipboard.writeText(textToCopy);
+      setNotification({
+        open: true,
+        message: 'Copied to clipboard!',
+        severity: 'success'
+      });
+    } catch (err) {
+      setNotification({
+        open: true,
+        message: 'Failed to copy to clipboard',
+        severity: 'error'
+      });
+    }
+  };
+
   useEffect(() => {
     if (selectedIndex !== null) {
       const element = document.querySelector(`[data-listnum="${listNumber}"] [data-index="${selectedIndex}"]`);
@@ -69,142 +95,147 @@ const ItemList = ({
   }, [selectedIndex, listNumber]);
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '500px',
-        bgcolor: 'background.paper',
-        borderRadius: 1,
-        border: '1px solid',
-        borderColor: 'divider',
-      }}
-    >
-      {/* Header */}
-      <Box sx={{
-        p: 1,
-        borderBottom: 1,
-        borderColor: 'divider',
-      }}>
-        <Box sx={{
+    <>
+      <Box
+        sx={{
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 1
+          flexDirection: 'column',
+          height: '500px',
+          bgcolor: 'background.paper',
+          borderRadius: 1,
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        {/* Header */}
+        <Box sx={{
+          p: 1,
+          borderBottom: 1,
+          borderColor: 'divider',
         }}>
-          <Typography variant="subtitle1">
-            {getListTitle(listNumber)} ({items.length})
-          </Typography>
-          <IconButton
-            onClick={() => onClearList(listNumber)}
-            size="small"
-            sx={{ color: 'text.secondary' }}
-          >
-            <DeleteOutline />
-          </IconButton>
-        </Box>
-        {peakCount > 0 && (
-          <LinearProgress
-            variant="determinate"
-            value={progress}
-            sx={{
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: '#e0e0e0',
-              '& .MuiLinearProgress-bar': {
-                backgroundColor: progress > 100 ? '#f44336' : '#2196f3'
-              }
-            }}
-          />
-        )}
-      </Box>
-
-      {/* List content */}
-      <Box sx={{
-        flex: 1,
-        height: '100%',
-      }}>
-        <List
-          data-listnum={listNumber}
-          sx={{
-            height: 'calc(100% - 70px)',
-            overflowY: 'auto',
-            padding: 0,
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: '#f1f1f1',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#888',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb:hover': {
-              background: '#555',
-            },
-          }}
-        >
-          {items.map((item, index) => (
-            <ListItem
-              key={index}
-              selected={selectedIndex === index}
-              onClick={(e) => {
-                handleItemClick(index, e);
-                onItemSelect(index);
-              }}
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 1
+          }}>
+            <Typography variant="subtitle1">
+              {getListTitle(listNumber)} ({items.length})
+            </Typography>
+            <IconButton
+              onClick={() => onClearList(listNumber)}
+              size="small"
+              sx={{ color: 'text.secondary' }}
+            >
+              <DeleteOutline />
+            </IconButton>
+          </Box>
+          {peakCount > 0 && (
+            <LinearProgress
+              variant="determinate"
+              value={progress}
               sx={{
-                cursor: 'pointer',
-                backgroundColor: (() => {
-                  // For List 2 - More subtle colors
-                  if (listNumber === 2) {
-                    return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)';
-                  }
-                  // For List 3
-                  if (listNumber === 3) {
-                    return (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.3)' : 'transparent';
-                  }
-                  return 'transparent';
-                })(),
-                '&:hover': {
-                  backgroundColor: (() => {
-                    // For List 2
-                    if (listNumber === 2) {
-                      return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)';
-                    }
-                    // For List 3
-                    if (listNumber === 3) {
-                      return (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.4)' : 'rgba(0, 0, 0, 0.04)';
-                    }
-                    return 'rgba(0, 0, 0, 0.04)';
-                  })()
-                },
-                '&.Mui-selected': {
-                  '& .MuiTypography-root.MuiTypography-body1.MuiListItemText-primary': {
-                    backgroundColor: '#2196f3', // Blue background
-                    color: 'white',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                  }
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: '#e0e0e0',
+                '& .MuiLinearProgress-bar': {
+                  backgroundColor: progress > 100 ? '#f44336' : '#2196f3'
                 }
               }}
-            >
-              <ListItemText
-                primary={typeof item === 'string' ? item : item.idea}
+            />
+          )}
+        </Box>
+
+        {/* List content */}
+        <Box sx={{
+          flex: 1,
+          height: '100%',
+        }}>
+          <List
+            data-listnum={listNumber}
+            sx={{
+              height: 'calc(100% - 70px)',
+              overflowY: 'auto',
+              padding: 0,
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: '#f1f1f1',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: '#888',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                background: '#555',
+              },
+            }}
+          >
+            {items.map((item, index) => (
+              <ListItem
+                key={index}
+                selected={selectedIndex === index}
+                onClick={(e) => {
+                  handleItemClick(index, e);
+                  onItemSelect(index);
+                }}
+                onDoubleClick={() => handleDoubleClick(item)}
+                className={
+                  listNumber === 2
+                    ? item.importanceValue === 1
+                      ? 'rated-important'
+                      : 'rated-not-important'
+                    : ''
+                }
                 sx={{
-                  wordBreak: 'break-word',
-                  '& .MuiTypography-root': {
-                    whiteSpace: 'pre-wrap',
-                    color: 'rgba(0, 0, 0, 0.87)',
-                    fontWeight: 400,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                  },
+                  '&.Mui-selected': {
+                    '& .MuiTypography-root.MuiTypography-body1.MuiListItemText-primary': {
+                      backgroundColor: '#2196f3',
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                    }
                   }
                 }}
-              />
-            </ListItem>
-          ))}
-        </List>
+              >
+                <ListItemText
+                  primary={typeof item === 'string' ? item : item.idea}
+                  sx={{
+                    wordBreak: 'break-word',
+                    '& .MuiTypography-root': {
+                      whiteSpace: 'pre-wrap',
+                      color: 'rgba(0, 0, 0, 0.87)',
+                      fontWeight: 400,
+                    }
+                  }}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Box>
       </Box>
-    </Box>
+
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={2000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+          elevation={6}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 
