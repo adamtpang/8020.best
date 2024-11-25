@@ -5,14 +5,37 @@ const cors = require('cors');
 require('dotenv').config();
 const mongoose = require('mongoose');
 
+// Graceful shutdown handling
+const gracefulShutdown = () => {
+  console.log('Received shutdown signal. Closing connections...');
+
+  // Close MongoDB connection
+  mongoose.connection.close(false, () => {
+    console.log('MongoDB connection closed.');
+    process.exit(0);
+  });
+
+  // If MongoDB doesn't close in 10 seconds, force exit
+  setTimeout(() => {
+    console.error('Could not close MongoDB connection in time, forcefully shutting down');
+    process.exit(1);
+  }, 10000);
+};
+
 // Global error handlers
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
+  gracefulShutdown();
 });
 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
+  gracefulShutdown();
 });
+
+// Handle process signals
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 const app = express();
 
@@ -43,18 +66,31 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
+// Increase payload size limits
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .then(() => {
+    console.log('Connected to MongoDB');
+    // Start server only after MongoDB connection is established
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT} in ${environment} mode`);
+    });
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });
 
 // Routes setup
 const purchasesRouter = require('./routes/purchases');
 app.use('/', purchasesRouter);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} in ${environment} mode`);
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something broke!' });
 });
