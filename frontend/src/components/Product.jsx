@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAuth } from "firebase/auth";
+import { auth } from '../firebase-config';
+import axiosInstance from '../axios-config';
 // MUI imports
 import {
   Box,
@@ -52,7 +53,6 @@ import InstructionsDialog from './Product/dialogs/InstructionsDialog';
 import ReadingModeControls from './Product/components/ReadingModeControls';
 
 const Product = () => {
-  const auth = getAuth();
   const navigate = useNavigate();
 
   // Initialize all state at the top
