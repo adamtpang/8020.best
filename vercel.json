@@ -1,24 +1,7 @@
 {
   "version": 2,
-  "routes": [
-    {
-      "src": "/app",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/app/(.*)",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
     "api/*.js": {
