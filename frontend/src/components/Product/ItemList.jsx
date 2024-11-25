@@ -11,7 +11,7 @@ import {
   Alert
 } from '@mui/material';
 import { DeleteOutline } from '@mui/icons-material';
-import './styles/ItemList.css';
+import "../../styles/ItemList.css";
 
 const getListTitle = (listNumber) => {
   switch (listNumber) {
