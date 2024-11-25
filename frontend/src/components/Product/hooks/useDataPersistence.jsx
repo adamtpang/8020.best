@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import axios from 'axios';
+import axios from '../../../axios-config';
 import { auth } from '../../../firebase-config';
 
 // Custom debounce with cancel functionality
@@ -67,19 +67,13 @@ const useDataPersistence = ({
 
       try {
         console.log('Loading lists for user:', user.email);
-        const response = await axios.get(`${BASE_URL}/api/purchases/lists`, {
+        const response = await axios.get(`/api/purchases/lists`, {
           params: { email: user.email }
         });
 
         if (response.data) {
           const lists = response.data;
           console.log('Loaded lists:', lists);
-
-          // Clear existing lists before setting new data
-          setList1([]);
-          setList2([]);
-          setList3([]);
-          setTrashedItems([]);
 
           // Then set new data
           if (Array.isArray(lists.list1)) {
@@ -114,7 +108,7 @@ const useDataPersistence = ({
 
       setIsSyncing(true);
       try {
-        await axios.post(`${BASE_URL}/api/purchases/save-lists`, {
+        await axios.post(`/api/purchases/save-lists`, {
           email: user.email,
           lists: {
             list1,
