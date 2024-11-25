@@ -1,20 +1,12 @@
 {
-  "version": 2,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
   "routes": [
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/app",
-      "dest": "/"
-    },
-    {
-      "src": "/app/(.*)",
-      "dest": "/"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/"
+      "src": "/[^.]+",
+      "dest": "/",
+      "status": 200
     }
   ],
   "functions": {
