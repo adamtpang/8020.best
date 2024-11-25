@@ -9,12 +9,10 @@ const app = express();
 
 // CORS configuration - MUST BE FIRST
 app.use(cors({
-  origin: ['https://hower.app', 'https://www.hower.app', 'http://localhost:5173'],
+  origin: '*',  // Allow all origins temporarily for debugging
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  optionsSuccessStatus: 200,
-  preflightContinue: true
+  credentials: false  // Changed to false since we're allowing all origins
 }));
 
 // Body parsing middleware
