@@ -7,13 +7,11 @@ const mongoose = require('mongoose');
 
 const app = express();
 
+// Enable pre-flight requests for all routes
+app.options('*', cors());
+
 // CORS configuration - MUST BE FIRST
-app.use(cors({
-  origin: '*',  // Allow all origins temporarily for debugging
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false  // Changed to false since we're allowing all origins
-}));
+app.use(cors());  // Simplified CORS to allow all origins for now
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
