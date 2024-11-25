@@ -7,11 +7,18 @@ const mongoose = require('mongoose');
 
 const app = express();
 
-// Enable pre-flight requests for all routes
-app.options('*', cors());
-
 // CORS configuration - MUST BE FIRST
-app.use(cors());  // Simplified CORS to allow all origins for now
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://hower.app');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
