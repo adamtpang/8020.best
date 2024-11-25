@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // Set base URL for all axios requests
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || '';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+axios.defaults.baseURL = BASE_URL;
 
 // Add request interceptor for error handling
 axios.interceptors.request.use(
@@ -23,7 +24,8 @@ axios.interceptors.response.use(
       url: error.config?.url,
       method: error.config?.method,
       status: error.response?.status,
-      message: error.message
+      message: error.message,
+      data: error.response?.data
     });
     return Promise.reject(error);
   }
