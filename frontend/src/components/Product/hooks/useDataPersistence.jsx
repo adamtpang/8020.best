@@ -123,13 +123,13 @@ const useDataPersistence = ({
     return () => debouncedSave.cancel();
   }, [list1, list2, list3, trashedItems, user?.email]);
 
-  // Update the clearList function
+  // Update clearList function
   const clearList = async (listNumber) => {
     if (!user?.email) return;
 
     try {
       console.log(`Clearing list ${listNumber}`);
-
+      
       let itemsToTrash = [];
       if (listNumber === 1) itemsToTrash = [...list1];
       else if (listNumber === 2) itemsToTrash = [...list2];
