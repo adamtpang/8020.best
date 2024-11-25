@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Navigate, Routes, Route } from 'react-router-dom';
+import Product from './components/Product';
+import Landing from './components/Landing';
 
 function App() {
   return (
