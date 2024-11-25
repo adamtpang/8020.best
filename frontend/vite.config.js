@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
-      external: ['@firebase/app', '@firebase/auth']
+      external: ['firebase/app', 'firebase/auth']
     }
   },
   optimizeDeps: {
