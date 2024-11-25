@@ -20,6 +20,9 @@ function debounce(func, wait) {
   return debounced;
 }
 
+// Add BASE_URL constant at the top
+const BASE_URL = import.meta.env.VITE_API_URL || '';
+
 const useDataPersistence = ({
   user,
   isAuthReady,
@@ -64,7 +67,7 @@ const useDataPersistence = ({
 
       try {
         console.log('Loading lists for user:', user.email);
-        const response = await axios.get('/api/purchases/lists', {
+        const response = await axios.get(`${BASE_URL}/api/purchases/lists`, {
           params: { email: user.email }
         });
 
@@ -111,7 +114,7 @@ const useDataPersistence = ({
 
       setIsSyncing(true);
       try {
-        await axios.post('/api/purchases/save-lists', {
+        await axios.post(`${BASE_URL}/api/purchases/save-lists`, {
           email: user.email,
           lists: {
             list1,
@@ -152,7 +155,7 @@ const useDataPersistence = ({
       else if (listNumber === 3) itemsToTrash = [...list3];
 
       // Updated endpoint
-      await axios.post('/api/purchases/clear-list', {
+      await axios.post(`${BASE_URL}/api/purchases/clear-list`, {
         email: user.email,
         listNumber,
         itemsToTrash: listNumber !== 'trash' ? itemsToTrash : []

@@ -63,41 +63,95 @@ router.get('/api/purchases/check-purchase', async (req, res) => {
 });
 
 // Load lists
-router.get('/api/purchases/load-lists', async (req, res) => {
+router.get('/api/purchases/lists', async (req, res) => {
   try {
     const { email } = req.query;
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    console.log('Loading lists for:', email);
     const purchase = await Purchase.findOne({ email });
-
-    console.log('Found purchase:', purchase);
-
-    // Ensure we're sending clean arrays
-    const lists = {
-      list1: purchase?.list1?.filter(Boolean) || [],
-      list2: purchase?.list2?.filter(Boolean) || [],
-      list3: purchase?.list3?.filter(Boolean) || [],
-      trashedItems: purchase?.trashedItems?.filter(Boolean) || []
-    };
-
-    // Log what we're sending back
-    console.log('Sending lists:', {
-      list1Length: lists.list1.length,
-      list2Length: lists.list2.length,
-      list3Length: lists.list3.length,
-      trashedItemsLength: lists.trashedItems.length
-    });
+    if (!purchase) {
+      return res.json({
+        list1: [],
+        list2: [],
+        list3: [],
+        trashedItems: []
+      });
+    }
 
     res.json({
-      success: true,
-      lists
+      list1: purchase.list1 || [],
+      list2: purchase.list2 || [],
+      list3: purchase.list3 || [],
+      trashedItems: purchase.trashedItems || []
     });
   } catch (error) {
     console.error('Error loading lists:', error);
     res.status(500).json({ error: 'Failed to load lists' });
+  }
+});
+
+// Save lists
+router.post('/api/purchases/save-lists', async (req, res) => {
+  try {
+    const { email, lists } = req.body;
+    if (!email || !lists) {
+      return res.status(400).json({ error: 'Email and lists are required' });
+    }
+
+    await Purchase.findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          list1: lists.list1,
+          list2: lists.list2,
+          list3: lists.list3,
+          trashedItems: lists.trashedItems,
+          lastUpdated: new Date()
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving lists:', error);
+    res.status(500).json({ error: 'Failed to save lists' });
+  }
+});
+
+// Clear list
+router.post('/api/purchases/clear-list', async (req, res) => {
+  try {
+    const { email, listNumber, itemsToTrash } = req.body;
+    if (!email || !listNumber) {
+      return res.status(400).json({ error: 'Email and listNumber are required' });
+    }
+
+    const update = {};
+    if (listNumber === 1) update.list1 = [];
+    else if (listNumber === 2) update.list2 = [];
+    else if (listNumber === 3) update.list3 = [];
+    else if (listNumber === 'trash') update.trashedItems = [];
+
+    // If we're clearing a list (not trash) and have items to move to trash
+    if (listNumber !== 'trash' && itemsToTrash?.length > 0) {
+      update.$push = {
+        trashedItems: { $each: itemsToTrash, $position: 0 }
+      };
+    }
+
+    await Purchase.findOneAndUpdate(
+      { email },
+      { $set: update },
+      { new: true }
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error clearing list:', error);
+    res.status(500).json({ error: 'Failed to clear list' });
   }
 });
 
@@ -229,55 +283,6 @@ router.post('/api/purchases/clear-trash', async (req, res) => {
     });
   } catch (error) {
     console.error('Error clearing trash:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update the clear-list endpoint
-router.post('/api/purchases/clear-list', async (req, res) => {
-  try {
-    const { email, listNumber } = req.body;
-    console.log(`Clearing list ${listNumber} for ${email}`);
-
-    const purchase = await Purchase.findOneAndUpdate(
-      { email },
-      {
-        $set: {
-          [listNumber === 1 ? 'list1' :
-           listNumber === 2 ? 'list2' :
-           listNumber === 3 ? 'list3' :
-           'trashedItems']: []
-        }
-      },
-      { new: true }
-    );
-
-    if (!purchase) {
-      console.log('No purchase found to clear');
-      return res.status(404).json({ error: 'Purchase not found' });
-    }
-
-    console.log(`List ${listNumber} cleared successfully`);
-    console.log('Updated purchase:', {
-      list1Length: purchase.list1.length,
-      list2Length: purchase.list2.length,
-      list3Length: purchase.list3.length,
-      trashedItemsLength: purchase.trashedItems.length
-    });
-
-    res.json({
-      success: true,
-      message: `List ${listNumber} cleared`,
-      listLengths: {
-        list1: purchase.list1.length,
-        list2: purchase.list2.length,
-        list3: purchase.list3.length,
-        trashedItems: purchase.trashedItems.length
-      }
-    });
-
-  } catch (error) {
-    console.error('Error clearing list:', error);
     res.status(500).json({ error: error.message });
   }
 });
