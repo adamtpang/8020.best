@@ -5,7 +5,8 @@ const axiosInstance = axios.create({
   baseURL: 'https://hower-app-production.up.railway.app',
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true
 });
 
 // Simple error logging
