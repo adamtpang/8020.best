@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
-import axios from "axios";
-
 // MUI imports
 import {
   Box,
