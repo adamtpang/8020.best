@@ -4,7 +4,8 @@ import axios from 'axios';
 const axiosInstance = axios.create({
   baseURL: 'https://hower-app-production.up.railway.app',
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
   },
   withCredentials: false
 });
@@ -13,10 +14,14 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.response.use(
   response => response,
   error => {
+    // Log the full error details
     console.error('API Error:', {
       url: error.config?.url,
+      method: error.config?.method,
       status: error.response?.status,
-      message: error.message
+      message: error.message,
+      data: error.response?.data,
+      headers: error.response?.headers
     });
     return Promise.reject(error);
   }
