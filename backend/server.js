@@ -60,36 +60,19 @@ console.log('Environment:', environment);
 // Import webhook router FIRST
 const webhookRouter = require('./routes/webhook');
 
-// Use webhook router BEFORE other middleware
-app.use('/webhook', webhookRouter);
-
-// CORS and other middleware AFTER webhook
+// CORS configuration - place this BEFORE other middleware
 app.use(cors({
-  origin: function(origin, callback) {
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'https://hower.app',
-      'https://www.hower.app',
-      'https://go.hower.app',
-      'https://hower-app.vercel.app'
-    ];
-
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log('Blocked origin:', origin); // Debug log
-      callback(new Error(`Not allowed by CORS: ${origin}`));
-    }
-  },
-  credentials: true,
+  origin: ['https://hower.app', 'https://www.hower.app', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Access-Control-Allow-Origin']
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 
-// Increase payload size limits
+// Webhook route needs raw body, so it goes after CORS but before body parsing
+app.use('/webhook', webhookRouter);
+
+// Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
