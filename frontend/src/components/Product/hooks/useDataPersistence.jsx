@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import axiosInstance from '../../../axios-config';
-import { auth } from '../../../firebase-config';
+import axiosInstance from '../../../utils/axios-config';
+import { auth } from '../../../config/firebase';
 
 // Custom debounce with cancel functionality
 function debounce(func, wait) {
@@ -129,7 +129,7 @@ const useDataPersistence = ({
 
     try {
       console.log(`Clearing list ${listNumber}`);
-      
+
       let itemsToTrash = [];
       if (listNumber === 1) itemsToTrash = [...list1];
       else if (listNumber === 2) itemsToTrash = [...list2];
