@@ -70,21 +70,19 @@ app.use(cors({
       'http://localhost:5173',
       'http://127.0.0.1:5173',
       'https://hower.app',
+      'https://www.hower.app',
       'https://go.hower.app',
       'https://hower-app.vercel.app'
     ];
 
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log('Blocked origin:', origin); // Debug log
+      console.log('Blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  credentials: true
 }));
 
 // Increase payload size limits
