@@ -5,6 +5,7 @@ import { Container, Grid, Typography, Button, Box, Avatar } from '@mui/material'
 import { useNavigate } from 'react-router-dom';
 import { auth, provider } from '../firebase-config';
 import { signInWithPopup, signOut } from 'firebase/auth';
+import axios from 'axios';
 
 const Landing = () => {
   const [user, setUser] = useState(null);
@@ -51,6 +52,18 @@ const Landing = () => {
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  const checkPurchaseStatus = async (user) => {
+    try {
+      const response = await axios.get('/api/purchases/check-purchase', {
+        params: { email: user.email }
+      });
+      setHasPurchased(response.data.hasPurchased);
+    } catch (error) {
+      console.error('Error checking purchase status:', error);
+      setHasPurchased(false);
     }
   };
 
