@@ -39,6 +39,7 @@ import useDataPersistence from './Product/hooks/useDataPersistence';
 import ClearConfirmDialog from './Product/dialogs/ClearConfirmDialog';
 import InstructionsDialog from './Product/dialogs/InstructionsDialog';
 import ReadingModeControls from './Product/components/ReadingModeControls';
+import useKeyboardNavigation from './Product/hooks/useKeyboardNavigation';
 
 const Product = () => {
   const auth = getAuth();
@@ -94,6 +95,26 @@ const Product = () => {
     setIsLoading
   });
 
+  useKeyboardNavigation({
+    isInputFocused,
+    activeList,
+    list1,
+    list2,
+    list3,
+    selectedIndex1,
+    selectedIndex2,
+    selectedIndex3,
+    sliderValue,
+    setSelectedIndex1,
+    setSelectedIndex2,
+    setSelectedIndex3,
+    setActiveList,
+    setSliderValue,
+    handleMoveToList2,
+    handleMoveToList3,
+    handleRemoveItem
+  });
+
   // Show instructions on first visit
   useEffect(() => {
     // Always show instructions when component mounts
@@ -112,54 +133,6 @@ const Product = () => {
   useEffect(() => {
     if (list3.length > peakCount3) setPeakCount3(list3.length);
   }, [list3.length, peakCount3]);
-
-  // Keyboard handler
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (isInputFocused) return;
-
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (activeList === 1 && selectedIndex1 !== null) {
-          handleMoveToList2();
-        } else if (activeList === 2 && selectedIndex2 !== null) {
-          handleMoveToList3();
-        }
-      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        const direction = e.key === 'ArrowUp' ? -1 : 1;
-
-        if (activeList === 1) {
-          const newIndex = selectedIndex1 !== null
-            ? Math.max(0, Math.min(list1.length - 1, selectedIndex1 + direction))
-            : 0;
-          setSelectedIndex1(newIndex);
-        } else if (activeList === 2) {
-          const newIndex = selectedIndex2 !== null
-            ? Math.max(0, Math.min(list2.length - 1, selectedIndex2 + direction))
-            : 0;
-          setSelectedIndex2(newIndex);
-        } else if (activeList === 3) {
-          const newIndex = selectedIndex3 !== null
-            ? Math.max(0, Math.min(list3.length - 1, selectedIndex3 + direction))
-            : 0;
-          setSelectedIndex3(newIndex);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    isInputFocused,
-    activeList,
-    selectedIndex1,
-    selectedIndex2,
-    selectedIndex3,
-    list1.length,
-    list2.length,
-    list3.length
-  ]);
 
   // Add handler for adding items
   const handleAddItem = (e) => {
