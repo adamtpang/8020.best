@@ -5,7 +5,7 @@ import { Container, Grid, Typography, Button, Box, Avatar } from '@mui/material'
 import { useNavigate } from 'react-router-dom';
 import { auth, provider } from '../firebase-config';
 import { signInWithPopup, signOut } from 'firebase/auth';
-import axios from 'axios';
+import axiosInstance from '../axios-config';
 
 const Landing = () => {
   const [user, setUser] = useState(null);
@@ -57,7 +57,7 @@ const Landing = () => {
 
   const checkPurchaseStatus = async (user) => {
     try {
-      const response = await axios.get('/api/purchases/check-purchase', {
+      const response = await axiosInstance.get('/api/purchases/check-purchase', {
         params: { email: user.email }
       });
       setHasPurchased(response.data.hasPurchased);
