@@ -4,7 +4,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, Typography, Container } from '@mui/material';
 
-const Landing = () => {
+function Landing() {
   const navigate = useNavigate();
 
   return (
@@ -46,6 +46,6 @@ const Landing = () => {
       </Box>
     </Container>
   );
-};
+}
 
 export default Landing;
