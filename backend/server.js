@@ -6,16 +6,24 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 
 // Graceful shutdown handling
-const gracefulShutdown = () => {
+const gracefulShutdown = async () => {
   console.log('Received shutdown signal. Closing connections...');
 
-  // Close MongoDB connection
-  mongoose.connection.close(false, () => {
+  try {
+    // Close MongoDB connection using await
+    await mongoose.connection.close();
     console.log('MongoDB connection closed.');
     process.exit(0);
-  });
+  } catch (error) {
+    console.error('Error closing MongoDB connection:', error);
+    // If there's an error, force exit after a brief delay
+    setTimeout(() => {
+      console.error('Forcefully shutting down');
+      process.exit(1);
+    }, 1000);
+  }
 
-  // If MongoDB doesn't close in 10 seconds, force exit
+  // Keep the timeout as a safety net
   setTimeout(() => {
     console.error('Could not close MongoDB connection in time, forcefully shutting down');
     process.exit(1);
@@ -25,17 +33,23 @@ const gracefulShutdown = () => {
 // Global error handlers
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
-  gracefulShutdown();
+  gracefulShutdown().catch(err => {
+    console.error('Error during graceful shutdown:', err);
+    process.exit(1);
+  });
 });
 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
-  gracefulShutdown();
+  gracefulShutdown().catch(err => {
+    console.error('Error during graceful shutdown:', err);
+    process.exit(1);
+  });
 });
 
 // Handle process signals
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', () => gracefulShutdown());
+process.on('SIGINT', () => gracefulShutdown());
 
 const app = express();
 
