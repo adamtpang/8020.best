@@ -40,8 +40,6 @@ import {
 } from "@mui/icons-material";
 
 // Local imports
-import { auth } from '../config/firebase';
-import axiosInstance from '../utils/axios-config';
 import ItemList from "./Product/ItemList";
 import ExportDialog from "./Product/ExportDialog";
 import ExportResultsDialog from "./Product/ExportResultsDialog";
