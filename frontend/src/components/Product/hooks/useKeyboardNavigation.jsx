@@ -21,7 +21,18 @@ const useKeyboardNavigation = ({
 }) => {
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (isInputFocused) return;
+      if (isInputFocused || document.querySelector('.MuiDialog-root')) return;
+
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+
+        if (e.key === 'ArrowLeft') {
+          setSliderValue(0);
+        } else if (e.key === 'ArrowRight') {
+          setSliderValue(1);
+        }
+        return;
+      }
 
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
@@ -86,10 +97,6 @@ const useKeyboardNavigation = ({
             setCurrentIndex(newIndex);
           }
         }
-      } else if (e.key === 'ArrowLeft') {
-        setSliderValue(0);
-      } else if (e.key === 'ArrowRight') {
-        setSliderValue(1);
       } else if (e.key === 'Enter') {
         if (selectedIndex1 !== null) {
           handleMoveToList2();
@@ -108,7 +115,6 @@ const useKeyboardNavigation = ({
         if (e.key === '[') {
           const newList = Math.max(1, activeList - 1);
           setActiveList(newList);
-          // Clear other selections and select top item of new list
           if (newList === 1) {
             setSelectedIndex1(list1.length > 0 ? 0 : null);
             setSelectedIndex2(null);
@@ -125,7 +131,6 @@ const useKeyboardNavigation = ({
         } else {
           const newList = Math.min(3, activeList + 1);
           setActiveList(newList);
-          // Clear other selections and select top item of new list
           if (newList === 1) {
             setSelectedIndex1(list1.length > 0 ? 0 : null);
             setSelectedIndex2(null);
@@ -146,6 +151,7 @@ const useKeyboardNavigation = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
+    isInputFocused,
     selectedIndex1,
     selectedIndex2,
     selectedIndex3,
@@ -153,8 +159,7 @@ const useKeyboardNavigation = ({
     list2.length,
     list3.length,
     sliderValue,
-    activeList,
-    isInputFocused
+    activeList
   ]);
 };
 
