@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, ToggleButton, ToggleButtonGroup, Typography, IconButton } from '@mui/material';
 import { VolumeUp, VolumeOff } from '@mui/icons-material';
 
@@ -8,9 +8,19 @@ const ReadingModeControls = ({
   speechRate,
   setSpeechRate
 }) => {
+  // Load saved speed preference on mount
+  useEffect(() => {
+    const savedSpeed = localStorage.getItem('preferredSpeechRate');
+    if (savedSpeed) {
+      setSpeechRate(Number(savedSpeed));
+    }
+  }, []);
+
   const handleSpeedChange = (event, newSpeed) => {
     if (newSpeed !== null) {
       setSpeechRate(newSpeed);
+      // Save speed preference
+      localStorage.setItem('preferredSpeechRate', newSpeed);
     }
   };
 
@@ -53,6 +63,8 @@ const ReadingModeControls = ({
             <ToggleButton value={3}>3x</ToggleButton>
             <ToggleButton value={4}>4x</ToggleButton>
             <ToggleButton value={5}>5x</ToggleButton>
+            <ToggleButton value={6}>6x</ToggleButton>
+            <ToggleButton value={7}>7x</ToggleButton>
           </ToggleButtonGroup>
         </Box>
       )}
