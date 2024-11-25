@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Grid, Typography, Button, Box, Avatar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../config/firebase';
+import { auth } from '../firebase-config';
 import { signInWithPopup, signOut } from 'firebase/auth';
 
 const Landing = () => {
