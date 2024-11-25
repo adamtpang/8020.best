@@ -175,32 +175,41 @@ const ItemList = ({
             {items.map((item, index) => (
               <ListItem
                 key={index}
+                data-index={index}
                 selected={selectedIndex === index}
                 onClick={(e) => {
                   handleItemClick(index, e);
                   onItemSelect(index);
                 }}
                 onDoubleClick={() => handleDoubleClick(item)}
-                className={
-                  listNumber === 2
-                    ? item.importanceValue === 1
-                      ? 'rated-important'
-                      : 'rated-not-important'
-                    : ''
-                }
                 sx={{
                   cursor: 'pointer',
+                  backgroundColor: selectedIndex === index ? 'black !important' :
+                    listNumber === 2 ?
+                      (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)') :
+                      listNumber === 3 ?
+                        (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.35)' :
+                        (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.35)' :
+                        (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.15)' :
+                        'rgba(244, 67, 54, 0.15)' :
+                      'transparent',
+                  color: selectedIndex === index ? 'white !important' : 'inherit',
+                  borderLeft: selectedIndex === index ? '6px solid #333' : '6px solid transparent',
+                  boxShadow: selectedIndex === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
                   '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                    backgroundColor: selectedIndex === index ? 'black !important' :
+                      listNumber === 2 ?
+                        (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)') :
+                      listNumber === 3 ?
+                        (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.45)' :
+                        (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.45)' :
+                        (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.2)' :
+                        'rgba(244, 67, 54, 0.2)' :
+                      'rgba(0, 0, 0, 0.04)',
                   },
-                  '&.Mui-selected': {
-                    '& .MuiTypography-root.MuiTypography-body1.MuiListItemText-primary': {
-                      backgroundColor: '#2196f3',
-                      color: 'white',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                    }
-                  }
+                  borderRadius: 1,
+                  mb: 0.5,
+                  transition: 'all 0.2s ease',
                 }}
               >
                 <ListItemText
@@ -209,8 +218,10 @@ const ItemList = ({
                     wordBreak: 'break-word',
                     '& .MuiTypography-root': {
                       whiteSpace: 'pre-wrap',
-                      color: 'rgba(0, 0, 0, 0.87)',
+                      color: selectedIndex === index ? 'white' : 'rgba(0, 0, 0, 0.87)',
                       fontWeight: 400,
+                      fontSize: '0.875rem',
+                      lineHeight: 1.5,
                     }
                   }}
                 />
