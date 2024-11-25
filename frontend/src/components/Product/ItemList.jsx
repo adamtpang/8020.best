@@ -180,9 +180,11 @@ const ItemList = ({
                   })()
                 },
                 '&.Mui-selected': {
-                  backgroundColor: 'rgba(25, 118, 210, 0.12) !important', // Light blue background
-                  '&:hover': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.15) !important', // Slightly darker on hover
+                  '& .MuiTypography-root.MuiTypography-body1.MuiListItemText-primary': {
+                    backgroundColor: '#2196f3', // Blue background
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
                   }
                 }
               }}
@@ -193,8 +195,8 @@ const ItemList = ({
                   wordBreak: 'break-word',
                   '& .MuiTypography-root': {
                     whiteSpace: 'pre-wrap',
-                    color: 'rgba(0, 0, 0, 0.87)', // Normal text color
-                    fontWeight: 400, // Normal weight
+                    color: 'rgba(0, 0, 0, 0.87)',
+                    fontWeight: 400,
                   }
                 }}
               />
