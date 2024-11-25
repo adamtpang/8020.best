@@ -1,10 +1,8 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Product from './components/Product';
-import Landing from './components/Landing';
+import { BrowserRouter as Router } from 'react-router-dom';
 
 function App() {
   return (
-    <Router>
+    <Router basename="/">
       <Routes>
         <Route path="/app" element={<Product />} />
         <Route path="/" element={<Landing />} />
