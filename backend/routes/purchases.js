@@ -54,8 +54,12 @@ router.get('/api/purchases/check-purchase', async (req, res) => {
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
+
     const purchase = await Purchase.findOne({ email });
-    return res.json({ hasPurchased: Boolean(purchase?.hasPurchased) });
+    return res.json({
+      hasPurchased: Boolean(purchase?.hasPurchased),
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Error checking purchase:', error);
     return res.status(500).json({ error: 'Server error' });
