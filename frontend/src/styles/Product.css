@@ -80,3 +80,25 @@
     cursor: pointer;
 }
 
+
+.rated-important {
+    background-color: rgba(76, 175, 80, 0.2) !important; /* Stronger green */
+  }
+
+  .rated-important:hover {
+    background-color: rgba(76, 175, 80, 0.3) !important;
+  }
+
+  .rated-not-important {
+    background-color: rgba(244, 67, 54, 0.2) !important; /* Stronger red */
+  }
+
+  .rated-not-important:hover {
+    background-color: rgba(244, 67, 54, 0.3) !important;
+  }
+
+  /* Override for selected state */
+  .rated-important.Mui-selected,
+  .rated-not-important.Mui-selected {
+    background-color: inherit !important;
+  }
