@@ -66,18 +66,25 @@ app.use('/webhook', webhookRouter);
 // CORS and other middleware AFTER webhook
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin || [
+    const allowedOrigins = [
       'http://localhost:5173',
       'http://127.0.0.1:5173',
       'https://hower.app',
-      'https://go.hower.app'
-    ].includes(origin)) {
+      'https://go.hower.app',
+      'https://hower-app.vercel.app'
+    ];
+
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log('Blocked origin:', origin); // Debug log
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Increase payload size limits
