@@ -5,85 +5,37 @@ const cors = require('cors');
 require('dotenv').config();
 const mongoose = require('mongoose');
 
-// Graceful shutdown handling
-const gracefulShutdown = async () => {
-  console.log('Received shutdown signal. Closing connections...');
-
-  try {
-    // Close MongoDB connection using await
-    await mongoose.connection.close();
-    console.log('MongoDB connection closed.');
-    process.exit(0);
-  } catch (error) {
-    console.error('Error closing MongoDB connection:', error);
-    // If there's an error, force exit after a brief delay
-    setTimeout(() => {
-      console.error('Forcefully shutting down');
-      process.exit(1);
-    }, 1000);
-  }
-
-  // Keep the timeout as a safety net
-  setTimeout(() => {
-    console.error('Could not close MongoDB connection in time, forcefully shutting down');
-    process.exit(1);
-  }, 10000);
-};
-
-// Global error handlers
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection:', reason);
-  gracefulShutdown().catch(err => {
-    console.error('Error during graceful shutdown:', err);
-    process.exit(1);
-  });
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-  gracefulShutdown().catch(err => {
-    console.error('Error during graceful shutdown:', err);
-    process.exit(1);
-  });
-});
-
-// Handle process signals
-process.on('SIGTERM', () => gracefulShutdown());
-process.on('SIGINT', () => gracefulShutdown());
-
 const app = express();
 
-// Environment setup
-const environment = process.env.NODE_ENV || 'development';
-console.log('Environment:', environment);
-
-// Import webhook router FIRST
-const webhookRouter = require('./routes/webhook');
-
-// CORS configuration - place this BEFORE other middleware
+// CORS configuration - MUST BE FIRST
 app.use(cors({
   origin: ['https://hower.app', 'https://www.hower.app', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  preflightContinue: true
 }));
-
-// Webhook route needs raw body, so it goes after CORS but before body parsing
-app.use('/webhook', webhookRouter);
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Import and use routes
+const purchasesRouter = require('./routes/purchases');
+const webhookRouter = require('./routes/webhook');
+
+// Routes
+app.use('/webhook', webhookRouter);  // Webhook route first
+app.use('/', purchasesRouter);       // Then other routes
+
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('Connected to MongoDB');
-    // Start server only after MongoDB connection is established
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT} in ${environment} mode`);
+      console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     });
   })
   .catch(err => {
@@ -91,12 +43,22 @@ mongoose.connect(process.env.MONGO_URI)
     process.exit(1);
   });
 
-// Routes setup
-const purchasesRouter = require('./routes/purchases');
-app.use('/', purchasesRouter);
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something broke!' });
 });
+
+// Graceful shutdown
+const gracefulShutdown = async () => {
+  try {
+    await mongoose.connection.close();
+    process.exit(0);
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+    process.exit(1);
+  }
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
