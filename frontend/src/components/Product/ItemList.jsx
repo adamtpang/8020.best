@@ -166,25 +166,23 @@ const ItemList = ({
                   }
                   return 'transparent';
                 })(),
-                '&.MuiListItem-root': {
-                  '&:hover': {
-                    backgroundColor: (() => {
-                      // For List 2
-                      if (listNumber === 2) {
-                        return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)';
-                      }
-                      // For List 3
-                      if (listNumber === 3) {
-                        return (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.4)' : 'rgba(0, 0, 0, 0.04)';
-                      }
-                      return 'rgba(0, 0, 0, 0.04)';
-                    })(),
-                  },
-                  '&.Mui-selected': {
-                    backgroundColor: '#e3f2fd !important', // Light blue background
-                    '&:hover': {
-                      backgroundColor: '#bbdefb !important', // Slightly darker blue on hover
+                '&:hover': {
+                  backgroundColor: (() => {
+                    // For List 2
+                    if (listNumber === 2) {
+                      return item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)';
                     }
+                    // For List 3
+                    if (listNumber === 3) {
+                      return (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.4)' : 'rgba(0, 0, 0, 0.04)';
+                    }
+                    return 'rgba(0, 0, 0, 0.04)';
+                  })()
+                },
+                '&.Mui-selected': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.12) !important', // Light blue background
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.15) !important', // Slightly darker on hover
                   }
                 }
               }}
