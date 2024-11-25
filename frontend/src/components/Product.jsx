@@ -1,6 +1,11 @@
 // src/components/Product.jsx
 
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { getAuth } from "firebase/auth";
+import axios from "axios";
+
+// MUI imports
 import {
   Box,
   Button,
@@ -25,21 +30,29 @@ import {
   Alert,
   Container,
 } from "@mui/material";
-import { Close as CloseIcon, ContentPaste, DeleteOutline, ContentCopy, HelpOutline, Add, ArrowBack, DeleteOutlined } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import { getAuth } from "firebase/auth";
-import axios from "axios";
+import {
+  Close as CloseIcon,
+  ContentPaste,
+  DeleteOutline,
+  ContentCopy,
+  HelpOutline,
+  Add,
+  ArrowBack,
+  DeleteOutlined
+} from "@mui/icons-material";
+
+// Local imports
+import { auth } from '../firebase-config';
 import ItemList from "./Product/ItemList";
 import ExportDialog from "./Product/ExportDialog";
 import ExportResultsDialog from "./Product/ExportResultsDialog";
 import TrashDialog from './Product/TrashDialog';
-import { auth } from '../firebase-config';
 import MainLayout from './Product/components/MainLayout';
 import useDataPersistence from './Product/hooks/useDataPersistence';
+import useKeyboardNavigation from './Product/hooks/useKeyboardNavigation';
 import ClearConfirmDialog from './Product/dialogs/ClearConfirmDialog';
 import InstructionsDialog from './Product/dialogs/InstructionsDialog';
 import ReadingModeControls from './Product/components/ReadingModeControls';
-import useKeyboardNavigation from './Product/hooks/useKeyboardNavigation';
 
 const Product = () => {
   const auth = getAuth();
@@ -95,88 +108,6 @@ const Product = () => {
     setIsLoading
   });
 
-  useKeyboardNavigation({
-    isInputFocused,
-    activeList,
-    list1,
-    list2,
-    list3,
-    selectedIndex1,
-    selectedIndex2,
-    selectedIndex3,
-    sliderValue,
-    setSelectedIndex1,
-    setSelectedIndex2,
-    setSelectedIndex3,
-    setActiveList,
-    setSliderValue,
-    handleMoveToList2,
-    handleMoveToList3,
-    handleRemoveItem
-  });
-
-  // Show instructions on first visit
-  useEffect(() => {
-    // Always show instructions when component mounts
-    setIsInstructionsOpen(true);
-  }, []);
-
-  // Track peak counts
-  useEffect(() => {
-    if (list1.length > peakCount1) setPeakCount1(list1.length);
-  }, [list1.length, peakCount1]);
-
-  useEffect(() => {
-    if (list2.length > peakCount2) setPeakCount2(list2.length);
-  }, [list2.length, peakCount2]);
-
-  useEffect(() => {
-    if (list3.length > peakCount3) setPeakCount3(list3.length);
-  }, [list3.length, peakCount3]);
-
-  // Add handler for adding items
-  const handleAddItem = (e) => {
-    e.preventDefault();
-    const item = newItem.trim();
-    if (item) {
-      // Check if item looks like a rated item
-      const ratedPattern = /^[01],[01],/;
-      if (!ratedPattern.test(item)) {
-        setList1(prev => [item, ...prev]);
-        setNewItem('');
-        setSelectedIndex1(0);
-        setActiveList(1);
-      } else {
-        setNotification({
-          open: true,
-          message: 'Cannot add rated items to List 1'
-        });
-      }
-    }
-  };
-
-  // Update handleSelectItem to handleItemSelect
-  const handleItemSelect = (listNumber, index) => {
-    // Clear other selections
-    if (listNumber === 1) {
-      setSelectedIndex1(index);
-      setSelectedIndex2(null);
-      setSelectedIndex3(null);
-      setActiveList(1);
-    } else if (listNumber === 2) {
-      setSelectedIndex1(null);
-      setSelectedIndex2(index);
-      setSelectedIndex3(null);
-      setActiveList(2);
-    } else if (listNumber === 3) {
-      setSelectedIndex1(null);
-      setSelectedIndex2(null);
-      setSelectedIndex3(index);
-      setActiveList(3);
-    }
-  };
-
-  // Move items between lists
   const handleMoveToList2 = () => {
     if (selectedIndex1 !== null) {
       const selectedItem = list1[selectedIndex1];
@@ -323,7 +254,6 @@ const Product = () => {
     }
   };
 
-  // Remove items
   const handleRemoveItem = (listNumber) => {
     console.log('Removing item from list:', listNumber); // Debug log
 
@@ -369,6 +299,88 @@ const Product = () => {
         }
         return newList;
       });
+    }
+  };
+
+  // Now use the keyboard navigation hook
+  useKeyboardNavigation({
+    isInputFocused,
+    activeList,
+    list1,
+    list2,
+    list3,
+    selectedIndex1,
+    selectedIndex2,
+    selectedIndex3,
+    sliderValue,
+    setSelectedIndex1,
+    setSelectedIndex2,
+    setSelectedIndex3,
+    setActiveList,
+    setSliderValue,
+    handleMoveToList2,
+    handleMoveToList3,
+    handleRemoveItem
+  });
+
+  // Show instructions on first visit
+  useEffect(() => {
+    // Always show instructions when component mounts
+    setIsInstructionsOpen(true);
+  }, []);
+
+  // Track peak counts
+  useEffect(() => {
+    if (list1.length > peakCount1) setPeakCount1(list1.length);
+  }, [list1.length, peakCount1]);
+
+  useEffect(() => {
+    if (list2.length > peakCount2) setPeakCount2(list2.length);
+  }, [list2.length, peakCount2]);
+
+  useEffect(() => {
+    if (list3.length > peakCount3) setPeakCount3(list3.length);
+  }, [list3.length, peakCount3]);
+
+  // Add handler for adding items
+  const handleAddItem = (e) => {
+    e.preventDefault();
+    const item = newItem.trim();
+    if (item) {
+      // Check if item looks like a rated item
+      const ratedPattern = /^[01],[01],/;
+      if (!ratedPattern.test(item)) {
+        setList1(prev => [item, ...prev]);
+        setNewItem('');
+        setSelectedIndex1(0);
+        setActiveList(1);
+      } else {
+        setNotification({
+          open: true,
+          message: 'Cannot add rated items to List 1'
+        });
+      }
+    }
+  };
+
+  // Update handleSelectItem to handleItemSelect
+  const handleItemSelect = (listNumber, index) => {
+    // Clear other selections
+    if (listNumber === 1) {
+      setSelectedIndex1(index);
+      setSelectedIndex2(null);
+      setSelectedIndex3(null);
+      setActiveList(1);
+    } else if (listNumber === 2) {
+      setSelectedIndex1(null);
+      setSelectedIndex2(index);
+      setSelectedIndex3(null);
+      setActiveList(2);
+    } else if (listNumber === 3) {
+      setSelectedIndex1(null);
+      setSelectedIndex2(null);
+      setSelectedIndex3(index);
+      setActiveList(3);
     }
   };
 
