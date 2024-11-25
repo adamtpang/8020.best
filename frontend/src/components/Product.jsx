@@ -118,119 +118,32 @@ const Product = () => {
     const handleKeyDown = (e) => {
       if (isInputFocused) return;
 
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      if (e.key === 'Enter') {
         e.preventDefault();
-
-        const getCurrentList = () => {
-          if (activeList === 1) return list1;
-          if (activeList === 2) return list2;
-          if (activeList === 3) return list3;
-          return [];
-        };
-
-        const getCurrentIndex = () => {
-          if (activeList === 1) return selectedIndex1;
-          if (activeList === 2) return selectedIndex2;
-          if (activeList === 3) return selectedIndex3;
-          return null;
-        };
-
-        const setCurrentIndex = (newIndex) => {
-          if (activeList === 1) setSelectedIndex1(newIndex);
-          if (activeList === 2) setSelectedIndex2(newIndex);
-          if (activeList === 3) setSelectedIndex3(newIndex);
-
-          requestAnimationFrame(() => {
-            const listElement = document.querySelector(`#list-${activeList}`);
-            const itemElement = listElement?.querySelector(`[data-index="${newIndex}"]`);
-
-            if (listElement && itemElement) {
-              const listRect = listElement.getBoundingClientRect();
-              const itemRect = itemElement.getBoundingClientRect();
-
-              // Calculate if item is outside visible area
-              const isAbove = itemRect.top < listRect.top;
-              const isBelow = itemRect.bottom > listRect.bottom;
-
-              if (isAbove || isBelow) {
-                itemElement.scrollIntoView({
-                  block: isAbove ? 'start' : 'end',
-                  behavior: 'auto'
-                });
-              }
-            }
-          });
-        };
-
-        const currentList = getCurrentList();
-        const currentIndex = getCurrentIndex();
-
-        if (currentList.length > 0) {
-          if (e.key === 'ArrowUp') {
-            const newIndex = currentIndex === null || currentIndex === 0
-              ? currentList.length - 1
-              : currentIndex - 1;
-            setCurrentIndex(newIndex);
-          } else {
-            const newIndex = currentIndex === null || currentIndex === currentList.length - 1
-              ? 0
-              : currentIndex + 1;
-            setCurrentIndex(newIndex);
-          }
-        }
-      } else if (e.key === 'ArrowLeft') {
-        setSliderValue(0);
-      } else if (e.key === 'ArrowRight') {
-        setSliderValue(1);
-      } else if (e.key === 'Enter') {
-        if (selectedIndex1 !== null) {
+        if (activeList === 1 && selectedIndex1 !== null) {
           handleMoveToList2();
-        } else if (selectedIndex2 !== null) {
+        } else if (activeList === 2 && selectedIndex2 !== null) {
           handleMoveToList3();
         }
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (activeList === 1 && selectedIndex1 !== null) {
-          handleRemoveItem(1);
-        } else if (activeList === 2 && selectedIndex2 !== null) {
-          handleRemoveItem(2);
-        } else if (activeList === 3 && selectedIndex3 !== null) {
-          handleRemoveItem(3);
-        }
-      } else if (e.key === '[' || e.key === ']') {
-        if (e.key === '[') {
-          const newList = Math.max(1, activeList - 1);
-          setActiveList(newList);
-          // Clear other selections and select top item of new list
-          if (newList === 1) {
-            setSelectedIndex1(list1.length > 0 ? 0 : null);
-            setSelectedIndex2(null);
-            setSelectedIndex3(null);
-          } else if (newList === 2) {
-            setSelectedIndex1(null);
-            setSelectedIndex2(list2.length > 0 ? 0 : null);
-            setSelectedIndex3(null);
-          } else {
-            setSelectedIndex1(null);
-            setSelectedIndex2(null);
-            setSelectedIndex3(list3.length > 0 ? 0 : null);
-          }
-        } else {
-          const newList = Math.min(3, activeList + 1);
-          setActiveList(newList);
-          // Clear other selections and select top item of new list
-          if (newList === 1) {
-            setSelectedIndex1(list1.length > 0 ? 0 : null);
-            setSelectedIndex2(null);
-            setSelectedIndex3(null);
-          } else if (newList === 2) {
-            setSelectedIndex1(null);
-            setSelectedIndex2(list2.length > 0 ? 0 : null);
-            setSelectedIndex3(null);
-          } else {
-            setSelectedIndex1(null);
-            setSelectedIndex2(null);
-            setSelectedIndex3(list3.length > 0 ? 0 : null);
-          }
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const direction = e.key === 'ArrowUp' ? -1 : 1;
+
+        if (activeList === 1) {
+          const newIndex = selectedIndex1 !== null
+            ? Math.max(0, Math.min(list1.length - 1, selectedIndex1 + direction))
+            : 0;
+          setSelectedIndex1(newIndex);
+        } else if (activeList === 2) {
+          const newIndex = selectedIndex2 !== null
+            ? Math.max(0, Math.min(list2.length - 1, selectedIndex2 + direction))
+            : 0;
+          setSelectedIndex2(newIndex);
+        } else if (activeList === 3) {
+          const newIndex = selectedIndex3 !== null
+            ? Math.max(0, Math.min(list3.length - 1, selectedIndex3 + direction))
+            : 0;
+          setSelectedIndex3(newIndex);
         }
       }
     };
@@ -238,15 +151,14 @@ const Product = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
+    isInputFocused,
+    activeList,
     selectedIndex1,
     selectedIndex2,
     selectedIndex3,
     list1.length,
     list2.length,
-    list3.length,
-    sliderValue,
-    activeList,
-    isInputFocused
+    list3.length
   ]);
 
   // Add handler for adding items
@@ -533,10 +445,9 @@ const Product = () => {
         setActiveList(1);
 
         handleNotification(
-          `Imported ${newItems.length} unique items${
-            text.split('\n').filter(line => line.trim().length > 0).length > newItems.length
-              ? ' (duplicates removed)'
-              : ''
+          `Imported ${newItems.length} unique items${text.split('\n').filter(line => line.trim().length > 0).length > newItems.length
+            ? ' (duplicates removed)'
+            : ''
           }`
         );
       } else {
@@ -601,135 +512,6 @@ const Product = () => {
     }
     return null;
   };
-
-  // Update the keyboard event handler
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (isInputFocused) return;
-
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        e.preventDefault();
-
-        const getCurrentList = () => {
-          if (activeList === 1) return list1;
-          if (activeList === 2) return list2;
-          if (activeList === 3) return list3;
-          return [];
-        };
-
-        const getCurrentIndex = () => {
-          if (activeList === 1) return selectedIndex1;
-          if (activeList === 2) return selectedIndex2;
-          if (activeList === 3) return selectedIndex3;
-          return null;
-        };
-
-        const setCurrentIndex = (newIndex) => {
-          if (activeList === 1) setSelectedIndex1(newIndex);
-          if (activeList === 2) setSelectedIndex2(newIndex);
-          if (activeList === 3) setSelectedIndex3(newIndex);
-        };
-
-        const currentList = getCurrentList();
-        const currentIndex = getCurrentIndex();
-
-        if (currentList.length > 0) {
-          if (e.key === 'ArrowUp') {
-            // If at top or no selection, go to bottom
-            const newIndex = currentIndex === null || currentIndex === 0
-              ? currentList.length - 1
-              : currentIndex - 1;
-            setCurrentIndex(newIndex);
-
-            // Scroll into view if needed
-            const element = document.getElementById(`list-${activeList}-item-${newIndex}`);
-            if (element) {
-              element.scrollIntoView({ block: 'nearest' });
-            }
-          } else {
-            // If at bottom or no selection, go to top
-            const newIndex = currentIndex === null || currentIndex === currentList.length - 1
-              ? 0
-              : currentIndex + 1;
-            setCurrentIndex(newIndex);
-
-            // Scroll into view if needed
-            const element = document.getElementById(`list-${activeList}-item-${newIndex}`);
-            if (element) {
-              element.scrollIntoView({ block: 'nearest' });
-            }
-          }
-        }
-      } else if (e.key === 'ArrowLeft') {
-        setSliderValue(0);
-      } else if (e.key === 'ArrowRight') {
-        setSliderValue(1);
-      } else if (e.key === 'Enter') {
-        if (selectedIndex1 !== null) {
-          handleMoveToList2();
-        } else if (selectedIndex2 !== null) {
-          handleMoveToList3();
-        }
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (activeList === 1 && selectedIndex1 !== null) {
-          handleRemoveItem(1);
-        } else if (activeList === 2 && selectedIndex2 !== null) {
-          handleRemoveItem(2);
-        } else if (activeList === 3 && selectedIndex3 !== null) {
-          handleRemoveItem(3);
-        }
-      } else if (e.key === '[' || e.key === ']') {
-        if (e.key === '[') {
-          const newList = Math.max(1, activeList - 1);
-          setActiveList(newList);
-          // Clear other selections and select top item of new list
-          if (newList === 1) {
-            setSelectedIndex1(list1.length > 0 ? 0 : null);
-            setSelectedIndex2(null);
-            setSelectedIndex3(null);
-          } else if (newList === 2) {
-            setSelectedIndex1(null);
-            setSelectedIndex2(list2.length > 0 ? 0 : null);
-            setSelectedIndex3(null);
-          } else {
-            setSelectedIndex1(null);
-            setSelectedIndex2(null);
-            setSelectedIndex3(list3.length > 0 ? 0 : null);
-          }
-        } else {
-          const newList = Math.min(3, activeList + 1);
-          setActiveList(newList);
-          // Clear other selections and select top item of new list
-          if (newList === 1) {
-            setSelectedIndex1(list1.length > 0 ? 0 : null);
-            setSelectedIndex2(null);
-            setSelectedIndex3(null);
-          } else if (newList === 2) {
-            setSelectedIndex1(null);
-            setSelectedIndex2(list2.length > 0 ? 0 : null);
-            setSelectedIndex3(null);
-          } else {
-            setSelectedIndex1(null);
-            setSelectedIndex2(null);
-            setSelectedIndex3(list3.length > 0 ? 0 : null);
-          }
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    selectedIndex1,
-    selectedIndex2,
-    selectedIndex3,
-    list1.length,
-    list2.length,
-    list3.length,
-    sliderValue,
-    activeList,
-    isInputFocused
-  ]);
 
   const handleClearList = (listNumber) => {
     // Store items in trash before clearing
