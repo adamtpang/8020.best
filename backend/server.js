@@ -13,6 +13,9 @@ console.log('- Working directory:', process.cwd());
 console.log('- Environment file path:', envPath);
 console.log('- File exists:', fs.existsSync(envPath));
 
+// Initialize Stripe
+let stripe;
+
 try {
   require('dotenv').config({ path: envPath });
 
@@ -24,11 +27,15 @@ try {
     throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
   }
 
+  // Initialize Stripe here
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  console.log('Stripe initialized successfully');
+
   console.log('Environment variables loaded successfully');
   console.log('- STRIPE_KEY_EXISTS:', !!process.env.STRIPE_SECRET_KEY);
   console.log('- MONGO_URI_EXISTS:', !!process.env.MONGO_URI);
 } catch (error) {
-  console.error('Failed to load environment variables:', error.message);
+  console.error('Failed to load environment variables or initialize Stripe:', error.message);
   process.exit(1);
 }
 
@@ -55,13 +62,13 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Import and use routes
+// Import routes
 const purchasesRouter = require('./routes/purchases');
 const webhookRouter = require('./routes/webhook');
 
-// Routes
-app.use('/webhook', webhookRouter);  // Webhook route first
-app.use('/', purchasesRouter);       // Then other routes
+// Pass stripe instance to routes
+app.use('/webhook', webhookRouter(stripe));  // Pass stripe to webhook route
+app.use('/', purchasesRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
