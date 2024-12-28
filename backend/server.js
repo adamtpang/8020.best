@@ -1,12 +1,17 @@
 // server.js
 
+// Load environment variables first
+require('dotenv').config({
+  path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development'
+});
+
+// Debug logging
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Stripe Key exists:', !!process.env.STRIPE_SECRET_KEY);
+console.log('MongoDB URI exists:', !!process.env.MONGO_URI);
+
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config({
-  path: process.env.NODE_ENV === 'production'
-    ? '.env.production'
-    : '.env.development'
-});
 const mongoose = require('mongoose');
 
 const app = express();
