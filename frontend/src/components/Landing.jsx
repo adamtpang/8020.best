@@ -125,7 +125,7 @@ const Landing = () => {
               mb: 6
             }}
           >
-            Cut your todolist by 80% with hower.app
+            Cut your todolist by 80% with 8020.best
           </Typography>
 
           {/* Show Google Sign In if not signed in */}

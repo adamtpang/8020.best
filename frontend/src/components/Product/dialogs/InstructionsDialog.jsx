@@ -18,7 +18,7 @@ const InstructionsDialog = ({ open, onClose }) => {
       fullWidth
     >
       <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-        How to Use Hower
+        How to Use 8020.best
       </DialogTitle>
       <DialogContent>
         <Box sx={{ p: 2 }}>
