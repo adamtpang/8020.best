@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create a custom axios instance with base configuration
 const axiosInstance = axios.create({
-  baseURL: 'https://howerapp-production.up.railway.app',
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
