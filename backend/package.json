@@ -25,7 +25,7 @@
     "nodemon": "^3.1.7"
   },
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "NODE_ENV=production node -r dotenv/config server.js dotenv_config_path=.env.production",
+    "dev": "NODE_ENV=development nodemon -r dotenv/config server.js dotenv_config_path=.env.development"
   }
 }
