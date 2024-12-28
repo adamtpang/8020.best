@@ -1,14 +1,12 @@
 // server.js
 
 // Load environment variables first
-require('dotenv').config({
-  path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development'
-});
+const path = require('path');
+// Always use production env file in Railway/Vercel
+const envPath = path.resolve(__dirname, '.env.production');
 
-// Debug logging
-console.log('Environment:', process.env.NODE_ENV);
-console.log('Stripe Key exists:', !!process.env.STRIPE_SECRET_KEY);
-console.log('MongoDB URI exists:', !!process.env.MONGO_URI);
+console.log('Loading environment file:', envPath);
+require('dotenv').config({ path: envPath });
 
 const express = require('express');
 const cors = require('cors');

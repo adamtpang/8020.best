@@ -1,5 +1,14 @@
 const express = require('express');
 const router = express.Router();
+
+// Debug logging
+console.log('Initializing webhook route with Stripe key:', process.env.STRIPE_SECRET_KEY ? 'exists' : 'missing');
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error('STRIPE_SECRET_KEY is not set in environment variables');
+  process.exit(1);
+}
+
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const crypto = require('crypto');
 

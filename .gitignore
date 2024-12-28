@@ -1,7 +1,6 @@
 # Environment files
 .env
-.env.*
-!.env.example
+!.env.*
 
 # Other files to ignore
 node_modules/
