@@ -68,145 +68,164 @@ const Landing = () => {
   };
 
   return (
-    <Container>
-      {/* Auth Controls - Only show Sign Out here */}
-      {user && (
-        <Box sx={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2
-        }}>
-          <Avatar
-            src={user.photoURL}
-            alt={user.displayName}
-            sx={{ width: 40, height: 40 }}
+    <Container maxWidth="lg">
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        mt={4}
+      >
+        {/* Logo */}
+        <Box mb={4}>
+          <img
+            src="/images/logo.png"
+            alt="8020.best Logo"
+            style={{
+              maxWidth: '200px',
+              height: 'auto'
+            }}
           />
-          <Button
-            onClick={handleSignOut}
-            variant="outlined"
-            sx={{
-              color: 'black',
-              borderColor: 'black',
-              '&:hover': {
-                borderColor: '#333',
-                backgroundColor: 'rgba(0,0,0,0.04)'
-              }
-            }}
-          >
-            Sign Out
-          </Button>
         </Box>
-      )}
 
-      {/* Content */}
-      <Grid container spacing={4} justifyContent="center" sx={{ mt: { xs: 8, md: 12 } }}>
-        <Grid item xs={12} md={8} textAlign="center">
-          <Typography
-            variant="h3"
-            component="h1"
-            gutterBottom
-            sx={{
-              fontWeight: 'bold',
-              mb: 3
-            }}
-          >
-            Are you an overwhelmed achiever?
-          </Typography>
-
-          <Typography
-            variant="h4"
-            component="h2"
-            gutterBottom
-            sx={{
-              color: 'text.secondary',
-              mb: 6
-            }}
-          >
-            Cut your todolist by 80% with 8020.best
-          </Typography>
-
-          {/* Show Google Sign In if not signed in */}
-          {!user && (
+        {/* Auth Controls - Only show Sign Out here */}
+        {user && (
+          <Box sx={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
+          }}>
+            <Avatar
+              src={user.photoURL}
+              alt={user.displayName}
+              sx={{ width: 40, height: 40 }}
+            />
             <Button
-              onClick={handleGoogleSignIn}
-              variant="contained"
-              size="large"
+              onClick={handleSignOut}
+              variant="outlined"
               sx={{
-                mt: 4,
-                backgroundColor: 'black',
-                py: 2,
-                px: 4,
-                fontSize: '1.2rem',
+                color: 'black',
+                borderColor: 'black',
                 '&:hover': {
-                  backgroundColor: '#333'
+                  borderColor: '#333',
+                  backgroundColor: 'rgba(0,0,0,0.04)'
                 }
               }}
             >
-              Continue with Google
+              Sign Out
             </Button>
-          )}
+          </Box>
+        )}
 
-          {/* Show Stripe button if signed in but hasn't purchased */}
-          {user && !hasPurchased && (
-            <Box sx={{ mt: 4 }}>
-              <stripe-buy-button
-                buy-button-id="buy_btn_1QKAq3FL7C10dNyGNkAnNUXj"
-                publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
-                client-reference-id={user.email}
-                customer-email={user.email}
-                success-url={window.location.origin}
-                cancel-url={window.location.origin}
-              >
-              </stripe-buy-button>
-            </Box>
-          )}
-
-          {/* Show proceed button if purchased */}
-          {user && hasPurchased && (
-            <Button
-              variant="contained"
-              onClick={() => navigate('/app')}
-              size="large"
+        {/* Content */}
+        <Grid container spacing={4} justifyContent="center" sx={{ mt: { xs: 8, md: 12 } }}>
+          <Grid item xs={12} md={8} textAlign="center">
+            <Typography
+              variant="h3"
+              component="h1"
+              gutterBottom
               sx={{
-                py: 2.5,
-                px: 8,
-                fontSize: '1.5rem',
                 fontWeight: 'bold',
-                backgroundColor: 'black',
-                position: 'relative',
-                '&:hover': {
-                  backgroundColor: '#333',
-                },
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: -3,
-                  left: -3,
-                  right: -3,
-                  bottom: -3,
-                  background: 'linear-gradient(45deg, #ff0000, #ff8800, #ffd000, #00ff88, #00ffff, #0066ff, #9900ff)',
-                  borderRadius: '8px',
-                  zIndex: -1,
-                  animation: 'borderAnimation 4s linear infinite',
-                },
-                '@keyframes borderAnimation': {
-                  '0%': {
-                    filter: 'hue-rotate(0deg)',
-                  },
-                  '100%': {
-                    filter: 'hue-rotate(360deg)',
-                  }
-                }
+                mb: 3
               }}
             >
-              Ready to 10x your productivity?
-            </Button>
-          )}
+              Are you an overwhelmed achiever?
+            </Typography>
+
+            <Typography
+              variant="h4"
+              component="h2"
+              gutterBottom
+              sx={{
+                color: 'text.secondary',
+                mb: 6
+              }}
+            >
+              Cut your todolist by 80% with 8020.best
+            </Typography>
+
+            {/* Show Google Sign In if not signed in */}
+            {!user && (
+              <Button
+                onClick={handleGoogleSignIn}
+                variant="contained"
+                size="large"
+                sx={{
+                  mt: 4,
+                  backgroundColor: 'black',
+                  py: 2,
+                  px: 4,
+                  fontSize: '1.2rem',
+                  '&:hover': {
+                    backgroundColor: '#333'
+                  }
+                }}
+              >
+                Continue with Google
+              </Button>
+            )}
+
+            {/* Show Stripe button if signed in but hasn't purchased */}
+            {user && !hasPurchased && (
+              <Box sx={{ mt: 4 }}>
+                <stripe-buy-button
+                  buy-button-id="buy_btn_1QKAq3FL7C10dNyGNkAnNUXj"
+                  publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+                  client-reference-id={user.email}
+                  customer-email={user.email}
+                  success-url={window.location.origin}
+                  cancel-url={window.location.origin}
+                >
+                </stripe-buy-button>
+              </Box>
+            )}
+
+            {/* Show proceed button if purchased */}
+            {user && hasPurchased && (
+              <Button
+                variant="contained"
+                onClick={() => navigate('/app')}
+                size="large"
+                sx={{
+                  py: 2.5,
+                  px: 8,
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  backgroundColor: 'black',
+                  position: 'relative',
+                  '&:hover': {
+                    backgroundColor: '#333',
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: -3,
+                    left: -3,
+                    right: -3,
+                    bottom: -3,
+                    background: 'linear-gradient(45deg, #ff0000, #ff8800, #ffd000, #00ff88, #00ffff, #0066ff, #9900ff)',
+                    borderRadius: '8px',
+                    zIndex: -1,
+                    animation: 'borderAnimation 4s linear infinite',
+                  },
+                  '@keyframes borderAnimation': {
+                    '0%': {
+                      filter: 'hue-rotate(0deg)',
+                    },
+                    '100%': {
+                      filter: 'hue-rotate(360deg)',
+                    }
+                  }
+                }}
+              >
+                Ready to 10x your productivity?
+              </Button>
+            )}
+          </Grid>
         </Grid>
-      </Grid>
+      </Box>
     </Container>
   );
 };
