@@ -2,7 +2,11 @@
 
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+require('dotenv').config({
+  path: process.env.NODE_ENV === 'production'
+    ? '.env.production'
+    : '.env.development'
+});
 const mongoose = require('mongoose');
 
 const app = express();
@@ -31,6 +35,11 @@ const webhookRouter = require('./routes/webhook');
 // Routes
 app.use('/webhook', webhookRouter);  // Webhook route first
 app.use('/', purchasesRouter);       // Then other routes
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
