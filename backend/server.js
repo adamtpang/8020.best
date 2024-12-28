@@ -2,11 +2,35 @@
 
 // Load environment variables first
 const path = require('path');
+const fs = require('fs');
+
 // Always use production env file in Railway/Vercel
 const envPath = path.resolve(__dirname, '.env.production');
 
-console.log('Loading environment file:', envPath);
-require('dotenv').config({ path: envPath });
+// Debug environment setup
+console.log('Environment setup:');
+console.log('- Working directory:', process.cwd());
+console.log('- Environment file path:', envPath);
+console.log('- File exists:', fs.existsSync(envPath));
+
+try {
+  require('dotenv').config({ path: envPath });
+
+  // Validate required environment variables
+  const requiredEnvVars = ['STRIPE_SECRET_KEY', 'MONGO_URI'];
+  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+  if (missingVars.length > 0) {
+    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  }
+
+  console.log('Environment variables loaded successfully');
+  console.log('- STRIPE_KEY_EXISTS:', !!process.env.STRIPE_SECRET_KEY);
+  console.log('- MONGO_URI_EXISTS:', !!process.env.MONGO_URI);
+} catch (error) {
+  console.error('Failed to load environment variables:', error.message);
+  process.exit(1);
+}
 
 const express = require('express');
 const cors = require('cors');
