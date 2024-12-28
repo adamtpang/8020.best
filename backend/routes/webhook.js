@@ -2,14 +2,27 @@ const express = require('express');
 const router = express.Router();
 
 // Debug logging
-console.log('Initializing webhook route with Stripe key:', process.env.STRIPE_SECRET_KEY ? 'exists' : 'missing');
+console.log('Current working directory:', process.cwd());
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('Environment variables:', {
+  STRIPE_KEY_EXISTS: !!process.env.STRIPE_SECRET_KEY,
+  STRIPE_KEY_LENGTH: process.env.STRIPE_SECRET_KEY?.length,
+  MONGO_URI_EXISTS: !!process.env.MONGO_URI
+});
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.error('STRIPE_SECRET_KEY is not set in environment variables');
+// Initialize Stripe with error handling
+let stripe;
+try {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY environment variable is not set');
+  }
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  console.log('Stripe initialized successfully');
+} catch (error) {
+  console.error('Failed to initialize Stripe:', error.message);
   process.exit(1);
 }
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const crypto = require('crypto');
 
 router.post(
