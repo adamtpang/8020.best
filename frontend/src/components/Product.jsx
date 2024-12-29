@@ -182,7 +182,7 @@ const Product = () => {
 
   const getListTitle = (index) => {
     switch (index) {
-      case 0: return "Problem?";
+      case 0: return "Importance?";
       case 1: return "Urgent?";
       case 2: return "Calendar?";
       default: return `List ${index + 1}`;
@@ -336,7 +336,7 @@ const Product = () => {
       }}
     >
       <Container
-        maxWidth="xl"
+        maxWidth="md"
         sx={{
           display: 'flex',
           height: 'calc(100vh - 48px)',
@@ -348,6 +348,8 @@ const Product = () => {
             display: 'flex',
             flexDirection: 'column',
             width: '100%',
+            maxWidth: '800px',
+            margin: '0 auto',
             backgroundColor: '#111111',
             borderRadius: 2,
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
