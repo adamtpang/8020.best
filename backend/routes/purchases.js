@@ -50,19 +50,27 @@ router.post('/api/purchases/set-purchase', async (req, res) => {
 // Check purchase status
 router.get('/api/purchases/check-purchase', async (req, res) => {
   try {
-    const { email } = req.query;
+    const email = req.query.email?.toLowerCase();
+    console.log('Checking purchase for email:', email);
+
     if (!email) {
+      console.log('No email provided in request');
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const purchase = await Purchase.findOne({ email });
-    return res.json({
-      hasPurchased: Boolean(purchase?.hasPurchased),
-      timestamp: new Date().toISOString()
+    const purchase = await Purchase.findOne({ email: email });
+    console.log('Purchase record found:', purchase ? {
+      email: purchase.email,
+      hasPurchased: purchase.hasPurchased,
+      purchaseDate: purchase.purchaseDate
+    } : 'No record found');
+
+    res.json({
+      hasPurchased: purchase?.hasPurchased || false
     });
   } catch (error) {
     console.error('Error checking purchase:', error);
-    return res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: error.message });
   }
 });
 

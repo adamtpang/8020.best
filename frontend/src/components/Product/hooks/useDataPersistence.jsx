@@ -1,167 +1,90 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import axiosInstance from '../../../axios-config';
-import { auth } from '../../../firebase-config';
+import { useAuth } from '../../../contexts/AuthContext';
 
-// Custom debounce with cancel functionality
-function debounce(func, wait) {
-  let timeoutId;
-
-  // Create the debounced function
-  const debounced = function(...args) {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func.apply(this, args), wait);
-  };
-
-  // Add cancel method
-  debounced.cancel = function() {
-    clearTimeout(timeoutId);
-  };
-
-  return debounced;
-}
-
-const useDataPersistence = ({
-  user,
-  isAuthReady,
-  list1,
-  list2,
-  list3,
-  trashedItems,
-  setList1,
-  setList2,
-  setList3,
-  setTrashedItems,
-  setIsLoading
-}) => {
+const useDataPersistence = () => {
+  const { user } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSyncError, setIsSyncError] = useState(false);
-  const isInitialLoad = useRef(true);
+  const lastSavedData = useRef(null);
 
-  // Auth listener
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (!user) {
-        setList1([]);
-        setList2([]);
-        setList3([]);
-        setTrashedItems([]);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Load data when user is available
-  useEffect(() => {
-    const loadLists = async () => {
-      if (!isAuthReady || !user?.email) {
-        setIsLoading(false);
-        return;
-      }
-
-      setIsSyncing(true);
-      setIsSyncError(false);
-
-      try {
-        console.log('Loading lists for user:', user.email);
-        const response = await axiosInstance.get('/api/purchases/lists', {
-          params: { email: user.email }
-        });
-
-        if (response.data) {
-          console.log('Loaded lists:', response.data);
-          const lists = response.data;
-
-          setList1(Array.isArray(lists.list1) ? lists.list1 : []);
-          setList2(Array.isArray(lists.list2) ? lists.list2 : []);
-          setList3(Array.isArray(lists.list3) ? lists.list3 : []);
-          setTrashedItems(Array.isArray(lists.trashedItems) ? lists.trashedItems : []);
-        }
-      } catch (error) {
-        console.error('Error loading lists:', error);
-        setIsSyncError(true);
-      } finally {
-        setIsSyncing(false);
-        setIsLoading(false);
-      }
-    };
-
-    loadLists();
-  }, [isAuthReady, user?.email]);
-
-  // Save data effect
-  useEffect(() => {
-    const debouncedSave = debounce(async () => {
-      if (!user?.email) return;
-
-      setIsSyncing(true);
-      try {
-        await axiosInstance.post('/api/purchases/save-lists', {
-          email: user.email,
-          lists: {
-            list1,
-            list2,
-            list3,
-            trashedItems
-          }
-        });
-
-        setIsSyncError(false);
-      } catch (error) {
-        console.error('Sync error:', error);
-        setIsSyncError(true);
-      } finally {
-        setIsSyncing(false);
-      }
-    }, 1000);
-
-    if (!isInitialLoad.current && user?.email) {
-      debouncedSave();
-    }
-    isInitialLoad.current = false;
-
-    return () => debouncedSave.cancel();
-  }, [list1, list2, list3, trashedItems, user?.email]);
-
-  // Update clearList function
-  const clearList = async (listNumber) => {
-    if (!user?.email) return;
+  const loadData = useCallback(async () => {
+    if (!user) return null;
 
     try {
-      console.log(`Clearing list ${listNumber}`);
+      setIsSyncing(true);
+      setIsSyncError(false);
+      console.log('Loading data for user:', user.email);
 
-      let itemsToTrash = [];
-      if (listNumber === 1) itemsToTrash = [...list1];
-      else if (listNumber === 2) itemsToTrash = [...list2];
-      else if (listNumber === 3) itemsToTrash = [...list3];
-
-      await axiosInstance.post('/api/purchases/clear-list', {
-        email: user.email,
-        listNumber,
-        itemsToTrash: listNumber !== 'trash' ? itemsToTrash : []
+      const response = await axiosInstance.get('/api/purchases/lists', {
+        params: { email: user.email }
       });
 
-      // Update local state
-      if (listNumber === 1) {
-        setList1([]);
-        setTrashedItems(prev => [...itemsToTrash, ...prev]);
-      } else if (listNumber === 2) {
-        setList2([]);
-        setTrashedItems(prev => [...itemsToTrash, ...prev]);
-      } else if (listNumber === 3) {
-        setList3([]);
-        setTrashedItems(prev => [...itemsToTrash, ...prev]);
-      } else if (listNumber === 'trash') {
-        setTrashedItems([]);
-      }
+      console.log('Loaded data:', response.data);
 
+      // Validate the data structure
+      const data = {
+        list1: Array.isArray(response.data.list1) ? response.data.list1 : [],
+        list2: Array.isArray(response.data.list2) ? response.data.list2 : [],
+        list3: Array.isArray(response.data.list3) ? response.data.list3 : []
+      };
+
+      lastSavedData.current = data;
+      return data;
     } catch (error) {
-      console.error('Error clearing list:', error);
+      console.error('Error loading data:', error.response?.data || error.message);
       setIsSyncError(true);
+      return null;
+    } finally {
+      setIsSyncing(false);
     }
-  };
+  }, [user]);
 
-  return { isSyncing, isSyncError, clearList };
+  const saveData = useCallback(async (lists) => {
+    if (!user) return;
+
+    // Validate lists before saving
+    const validatedLists = {
+      list1: Array.isArray(lists.list1) ? lists.list1 : [],
+      list2: Array.isArray(lists.list2) ? lists.list2 : [],
+      list3: Array.isArray(lists.list3) ? lists.list3 : []
+    };
+
+    // Don't save if the data hasn't changed
+    const currentData = JSON.stringify(validatedLists);
+    const lastData = JSON.stringify(lastSavedData.current);
+    if (currentData === lastData) {
+      console.log('Data unchanged, skipping save');
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+      setIsSyncError(false);
+      console.log('Saving lists for user:', user.email, validatedLists);
+
+      const response = await axiosInstance.post('/api/purchases/save-lists', {
+        email: user.email,
+        lists: validatedLists
+      });
+
+      console.log('Save response:', response.data);
+      lastSavedData.current = validatedLists;
+    } catch (error) {
+      console.error('Error saving data:', error.response?.data || error.message);
+      setIsSyncError(true);
+      throw error; // Propagate error to component
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [user]);
+
+  return {
+    loadData,
+    saveData,
+    isSyncing,
+    isSyncError
+  };
 };
 
 export default useDataPersistence;

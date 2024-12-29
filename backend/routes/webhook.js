@@ -1,5 +1,4 @@
 const express = require('express');
-const crypto = require('crypto');
 
 // Export a function that takes stripe as a parameter
 module.exports = function (stripe) {
@@ -10,71 +9,64 @@ module.exports = function (stripe) {
 
   router.post(
     '/',
-    express.raw({ type: '*/*' }),
-    async (req, res) => {
-      const sig = req.headers['stripe-signature'];
+    express.raw({ type: 'application/json' }),
+    async (request, response) => {
+      const sig = request.headers['stripe-signature'];
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
-      // Log the signature header
-      console.log('Signature header:', sig);
+      if (!webhookSecret) {
+        console.error('STRIPE_WEBHOOK_SECRET is not set!');
+        response.status(500).send('Webhook secret not configured');
+        return;
+      }
 
-      // Log the request body
-      const rawBody = req.body;
-      const rawBodyLength = rawBody.length;
-      const rawBodyHash = crypto.createHash('sha256').update(rawBody).digest('hex');
-
-      console.log('Request body:', {
-        isBuffer: Buffer.isBuffer(rawBody),
-        length: rawBodyLength,
-        hash: rawBodyHash,
-        type: typeof rawBody,
-      });
+      let event;
 
       try {
-        // Verify the webhook signature
-        const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+        event = stripe.webhooks.constructEvent(request.body, sig, webhookSecret);
+      } catch (err) {
+        console.error('Webhook signature verification failed:', err.message);
+        response.status(400).send(`Webhook Error: ${err.message}`);
+        return;
+      }
 
-        console.log('Event verified:', event.type);
+      // Handle the checkout.session.completed event
+      if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
 
-        // Handle the checkout.session.completed event
-        if (event.type === 'checkout.session.completed') {
-          const session = event.data.object;
-          console.log('Processing checkout session:', {
-            id: session.id,
-            email: session.customer_email
-          });
+        try {
+          const customerEmail = session.customer_email.toLowerCase();
+          console.log('Processing webhook for email:', customerEmail);
 
           // Update purchase status in MongoDB
           const Purchase = require('../models/Purchase');
           const result = await Purchase.findOneAndUpdate(
-            { email: session.customer_email },
+            { email: customerEmail },
             {
               $set: {
                 hasPurchased: true,
                 purchaseDate: new Date(),
                 stripeSessionId: session.id,
-                priceId: session.line_items?.data[0]?.price?.id,
                 amount: session.amount_total
               }
             },
-            { upsert: true, new: true }  // Return updated document
+            { upsert: true, new: true }
           );
 
-          console.log('Purchase recorded:', {
-            email: session.customer_email,
-            hasPurchased: result.hasPurchased,
-            purchaseDate: result.purchaseDate
+          console.log('Purchase recorded successfully:', {
+            email: customerEmail,
+            sessionId: session.id,
+            amount: session.amount_total
           });
-        }
 
-        res.status(200).send('Success');
-      } catch (err) {
-        console.error('Webhook error:', {
-          message: err.message,
-          type: err.type,
-          stack: err.stack?.split('\n')[0]
-        });
-        res.status(400).send(`Webhook Error: ${err.message}`);
+          response.json({ received: true });
+        } catch (error) {
+          console.error('Error processing webhook:', error);
+          response.status(500).send(`Webhook Error: ${error.message}`);
+        }
+      } else {
+        // For other event types, just acknowledge receipt
+        response.json({ received: true });
       }
     }
   );
