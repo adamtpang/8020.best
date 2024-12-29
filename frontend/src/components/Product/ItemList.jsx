@@ -1,252 +1,160 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   List,
   ListItem,
   ListItemText,
-  Typography,
   IconButton,
-  LinearProgress,
-  Snackbar,
-  Alert
+  TextField,
+  InputAdornment,
 } from '@mui/material';
-import { DeleteOutline } from '@mui/icons-material';
-import '../../styles/Product.css';
+import {
+  Add as AddIcon,
+  Clear as ClearIcon,
+} from '@mui/icons-material';
 
-const getListTitle = (listNumber) => {
-  switch (listNumber) {
-    case 1: return "Problem?";
-    case 2: return "Urgent?";
-    case 3: return "Calendar?";
-    default: return `List ${listNumber}`;
-  }
-};
+const ItemList = ({ items, listNumber, selectedIndex, onItemSelect, onDeleteItems, onClearList, onAddItem }) => {
+  const [newTask, setNewTask] = useState('');
 
-const ItemList = ({
-  items,
-  selectedIndex,
-  onItemSelect,
-  onItemCopy,
-  onDeleteItems,
-  listNumber,
-  onClearList,
-  peakCount
-}) => {
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
-  const [notification, setNotification] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
-
-  const progress = peakCount > 0 ? (items.length / peakCount) * 100 : 0;
-
-  const handleItemClick = (index, event) => {
-    if (event.shiftKey && lastSelectedIndex !== null) {
-      const start = Math.min(lastSelectedIndex, index);
-      const end = Math.max(lastSelectedIndex, index);
-      const newSelectedItems = Array.from(
-        { length: end - start + 1 },
-        (_, i) => start + i
-      );
-      setSelectedItems(newSelectedItems);
-    } else {
-      setSelectedItems([index]);
-      setLastSelectedIndex(index);
-    }
-    onItemSelect(index);
-  };
-
-  const handleDelete = () => {
-    if (selectedItems.length > 0) {
-      const itemsToDelete = selectedItems.map(index => items[index]);
-      onDeleteItems(itemsToDelete);
-      setSelectedItems([]);
-      setLastSelectedIndex(null);
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && newTask.trim()) {
+      onAddItem(newTask.trim());
+      setNewTask('');
     }
   };
 
-  const handleDoubleClick = async (item) => {
-    try {
-      const textToCopy = typeof item === 'string' ? item : item.idea;
-      await navigator.clipboard.writeText(textToCopy);
-      setNotification({
-        open: true,
-        message: 'Copied to clipboard!',
-        severity: 'success'
-      });
-    } catch (err) {
-      setNotification({
-        open: true,
-        message: 'Failed to copy to clipboard',
-        severity: 'error'
-      });
+  const handleAddClick = () => {
+    if (newTask.trim()) {
+      onAddItem(newTask.trim());
+      setNewTask('');
     }
   };
-
-  useEffect(() => {
-    if (selectedIndex !== null) {
-      const element = document.querySelector(`[data-listnum="${listNumber}"] [data-index="${selectedIndex}"]`);
-      if (element) {
-        element.scrollIntoView({ block: 'nearest', behavior: 'auto' });
-      }
-    }
-  }, [selectedIndex, listNumber]);
 
   return (
-    <>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          height: '500px',
-          bgcolor: 'background.paper',
-          borderRadius: 1,
-          border: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        {/* Header */}
-        <Box sx={{
-          p: 1,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}>
-          <Box sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 1
-          }}>
-            <Typography variant="subtitle1">
-              {getListTitle(listNumber)} ({items.length})
-            </Typography>
-            <IconButton
-              onClick={() => onClearList(listNumber)}
-              size="small"
-              sx={{ color: 'text.secondary' }}
-            >
-              <DeleteOutline />
-            </IconButton>
-          </Box>
-          {peakCount > 0 && (
-            <LinearProgress
-              variant="determinate"
-              value={progress}
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      width: '100%',
+      height: '100%'
+    }}>
+      {listNumber === 1 && (
+        <Box sx={{ p: 1.5, borderBottom: '1px solid #333', flexShrink: 0 }}>
+          <TextField
+            fullWidth
+            value={newTask}
+            onChange={(e) => setNewTask(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Add new task..."
+            variant="outlined"
+            size="small"
+            InputProps={{
+              endAdornment: newTask && (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={handleAddClick}
+                    edge="end"
+                    sx={{ color: '#999' }}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
+              sx: {
+                color: '#fff',
+                backgroundColor: '#222',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#333',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#444',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#666',
+                },
+              }
+            }}
+          />
+        </Box>
+      )}
+
+      <List sx={{
+        flex: 1,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        py: 0,
+        width: '100%',
+        '& .MuiListItem-root': {
+          py: 1,
+          px: 1.5,
+          borderBottom: '1px solid #333',
+          '&:last-child': {
+            borderBottom: 'none'
+          }
+        }
+      }}>
+        {items.map((item, index) => (
+          <ListItem
+            key={index}
+            selected={index === selectedIndex}
+            onClick={() => onItemSelect(index)}
+            sx={{
+              cursor: 'pointer',
+              backgroundColor: index === selectedIndex ? '#333' : 'transparent',
+              borderLeft: index === selectedIndex ? '4px solid #fff' : '4px solid transparent',
+              '&:hover': {
+                backgroundColor: '#222',
+                borderLeft: index === selectedIndex ? '4px solid #fff' : '4px solid #444'
+              },
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              transition: 'all 0.2s ease',
+              pl: index === selectedIndex ? 1.1 : 1.5
+            }}
+          >
+            <ListItemText
+              primary={item}
               sx={{
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: '#e0e0e0',
-                '& .MuiLinearProgress-bar': {
-                  backgroundColor: progress > 100 ? '#f44336' : '#2196f3'
+                m: 0,
+                flex: 1,
+                '& .MuiTypography-root': {
+                  fontSize: '0.9rem',
+                  lineHeight: 1.4,
+                  fontWeight: index === selectedIndex ? 600 : 400,
+                  letterSpacing: index === selectedIndex ? '0.01em' : 'normal'
                 }
               }}
             />
-          )}
-        </Box>
+          </ListItem>
+        ))}
+      </List>
 
-        {/* List content */}
+      {items.length > 0 && (
         <Box sx={{
-          flex: 1,
-          height: '100%',
+          p: 0.5,
+          borderTop: '1px solid #333',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          flexShrink: 0,
+          backgroundColor: '#1a1a1a'
         }}>
-          <List
-            data-listnum={listNumber}
+          <IconButton
+            onClick={() => onClearList()}
             sx={{
-              height: 'calc(100% - 70px)',
-              overflowY: 'auto',
-              padding: 0,
-              '&::-webkit-scrollbar': {
-                width: '8px',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: '#f1f1f1',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: '#888',
-                borderRadius: '4px',
-              },
-              '&::-webkit-scrollbar-thumb:hover': {
-                background: '#555',
-              },
+              color: '#999',
+              p: 0.5,
+              '&:hover': {
+                color: '#ff4444',
+                backgroundColor: '#333'
+              }
             }}
           >
-            {items.map((item, index) => (
-              <ListItem
-                key={index}
-                data-index={index}
-                selected={selectedIndex === index}
-                onClick={(e) => {
-                  handleItemClick(index, e);
-                  onItemSelect(index);
-                }}
-                onDoubleClick={() => handleDoubleClick(item)}
-                sx={{
-                  cursor: 'pointer',
-                  backgroundColor: selectedIndex === index ? 'black !important' :
-                    listNumber === 2 ?
-                      (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)') :
-                      listNumber === 3 ?
-                        (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.35)' :
-                        (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.35)' :
-                        (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.15)' :
-                        'rgba(244, 67, 54, 0.15)' :
-                      'transparent',
-                  color: selectedIndex === index ? 'white !important' : 'inherit',
-                  borderLeft: selectedIndex === index ? '6px solid #333' : '6px solid transparent',
-                  boxShadow: selectedIndex === index ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
-                  '&:hover': {
-                    backgroundColor: selectedIndex === index ? 'black !important' :
-                      listNumber === 2 ?
-                        (item.importanceValue === 1 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)') :
-                      listNumber === 3 ?
-                        (item.importanceValue === 1 && item.urgencyValue === 1) ? 'rgba(76, 175, 80, 0.45)' :
-                        (item.importanceValue === 0 && item.urgencyValue === 0) ? 'rgba(244, 67, 54, 0.45)' :
-                        (item.importanceValue === 1) ? 'rgba(76, 175, 80, 0.2)' :
-                        'rgba(244, 67, 54, 0.2)' :
-                      'rgba(0, 0, 0, 0.04)',
-                  },
-                  borderRadius: 1,
-                  mb: 0.5,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <ListItemText
-                  primary={typeof item === 'string' ? item : item.idea}
-                  sx={{
-                    wordBreak: 'break-word',
-                    '& .MuiTypography-root': {
-                      whiteSpace: 'pre-wrap',
-                      color: selectedIndex === index ? 'white' : 'rgba(0, 0, 0, 0.87)',
-                      fontWeight: 400,
-                      fontSize: '0.875rem',
-                      lineHeight: 1.5,
-                    }
-                  }}
-                />
-              </ListItem>
-            ))}
-          </List>
+            <ClearIcon fontSize="small" />
+          </IconButton>
         </Box>
-      </Box>
-
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={2000}
-        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-          severity={notification.severity}
-          sx={{ width: '100%' }}
-          elevation={6}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
-    </>
+      )}
+    </Box>
   );
 };
 

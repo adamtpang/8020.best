@@ -4,13 +4,15 @@
 const path = require('path');
 const fs = require('fs');
 
-// Always use production env file in Railway/Vercel
-const envPath = path.resolve(__dirname, '.env.production');
+// Use correct env file based on NODE_ENV
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+const envPath = path.resolve(__dirname, envFile);
 
 // Debug environment setup
 console.log('Environment setup:');
 console.log('- Working directory:', process.cwd());
 console.log('- Environment file path:', envPath);
+console.log('- Environment:', process.env.NODE_ENV || 'development');
 console.log('- File exists:', fs.existsSync(envPath));
 
 // Initialize Stripe
@@ -45,18 +47,12 @@ const mongoose = require('mongoose');
 
 const app = express();
 
-// CORS configuration - MUST BE FIRST
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://8020.best');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
+// Configure CORS - MUST BE BEFORE ROUTES
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
@@ -75,48 +71,23 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// MongoDB connection options
-const mongooseOptions = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-};
-
-// MongoDB connection with retries
-const connectWithRetry = async (retries = 5, delay = 5000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      console.log(`MongoDB connection attempt ${i + 1} of ${retries}`);
-      await mongoose.connect(process.env.MONGO_URI, mongooseOptions);
-      console.log('Connected to MongoDB');
-
-      const PORT = process.env.PORT || 5000;
-      app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
-      });
-
-      return;
-    } catch (err) {
-      console.error('MongoDB connection error:', {
-        message: err.message,
-        code: err.code,
-        codeName: err.codeName
-      });
-
-      if (i === retries - 1) {
-        console.error('Max retries reached. Exiting...');
-        process.exit(1);
-      }
-
-      console.log(`Retrying in ${delay / 1000} seconds...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-};
-
-// Start connection process
-connectWithRetry();
+// MongoDB connection
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('Connected to MongoDB');
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+    });
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', {
+      message: err.message,
+      code: err.code,
+      codeName: err.codeName
+    });
+    process.exit(1);
+  });
 
 // Error handling middleware
 app.use((err, req, res, next) => {

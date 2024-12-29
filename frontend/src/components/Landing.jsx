@@ -6,22 +6,18 @@ import { useNavigate } from 'react-router-dom';
 import { auth, provider } from '../firebase-config';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import axiosInstance from '../axios-config';
+import { useAuth } from '../contexts/AuthContext';
 
 const Landing = () => {
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [hasPurchased, setHasPurchased] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      setUser(user);
-      if (user) {
-        checkPurchaseStatus(user);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
+    if (user) {
+      checkPurchaseStatus(user);
+    }
+  }, [user]);
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -57,12 +53,32 @@ const Landing = () => {
 
   const checkPurchaseStatus = async (user) => {
     try {
+      console.log('Checking purchase status for:', user.email);
       const response = await axiosInstance.get('/api/purchases/check-purchase', {
         params: { email: user.email }
       });
-      setHasPurchased(response.data.hasPurchased);
+      console.log('Purchase status response:', {
+        data: response.data,
+        status: response.status,
+        headers: response.headers
+      });
+
+      const hasLicense = response.data.hasPurchased;
+      console.log('Has license:', hasLicense);
+      setHasPurchased(hasLicense);
+
+      if (hasLicense) {
+        console.log('User has license, redirecting to app...');
+        navigate('/app');
+      } else {
+        console.log('User does not have license, showing buy button...');
+      }
     } catch (error) {
-      console.error('Error checking purchase status:', error);
+      console.error('Error checking purchase status:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       setHasPurchased(false);
     }
   };

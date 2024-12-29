@@ -21,6 +21,22 @@ const purchaseSchema = new mongoose.Schema({
   },
   amount: {
     type: Number
+  },
+  list1: {
+    type: [String],
+    default: []
+  },
+  list2: {
+    type: [String],
+    default: []
+  },
+  list3: {
+    type: [String],
+    default: []
+  },
+  lastUpdated: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true
