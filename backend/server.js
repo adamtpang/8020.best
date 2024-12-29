@@ -75,19 +75,48 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('Connected to MongoDB');
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
-    });
-  })
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
-  });
+// MongoDB connection options
+const mongooseOptions = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+};
+
+// MongoDB connection with retries
+const connectWithRetry = async (retries = 5, delay = 5000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`MongoDB connection attempt ${i + 1} of ${retries}`);
+      await mongoose.connect(process.env.MONGO_URI, mongooseOptions);
+      console.log('Connected to MongoDB');
+
+      const PORT = process.env.PORT || 5000;
+      app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+      });
+
+      return;
+    } catch (err) {
+      console.error('MongoDB connection error:', {
+        message: err.message,
+        code: err.code,
+        codeName: err.codeName
+      });
+
+      if (i === retries - 1) {
+        console.error('Max retries reached. Exiting...');
+        process.exit(1);
+      }
+
+      console.log(`Retrying in ${delay / 1000} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+};
+
+// Start connection process
+connectWithRetry();
 
 // Error handling middleware
 app.use((err, req, res, next) => {
