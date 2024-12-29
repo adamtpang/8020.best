@@ -49,9 +49,12 @@ const app = express();
 
 // Configure CORS - MUST BE BEFORE ROUTES
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: [
+    'http://localhost:5173',
+    'https://8020.best',
+    'https://www.8020.best'
+  ],
+  credentials: true
 }));
 
 // Body parsing middleware

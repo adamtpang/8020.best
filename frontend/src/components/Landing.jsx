@@ -84,165 +84,140 @@ const Landing = () => {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        mt={4}
+    <Box
+      sx={{
+        height: '100vh',
+        backgroundColor: '#1a1a1a',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 2,
+        color: '#ffffff',
+        overflow: 'hidden'
+      }}
+    >
+      <Container
+        maxWidth="sm"
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 1.5,
+          overflow: 'hidden',
+          height: '100%',
+          maxHeight: '100vh',
+          mt: 12
+        }}
       >
-        {/* Logo */}
-        <Box mb={4}>
-          <img
-            src="/images/logo.png"
-            alt="8020.best Logo"
-            style={{
-              maxWidth: '200px',
-              height: 'auto'
-            }}
-          />
-        </Box>
-
-        {/* Auth Controls - Only show Sign Out here */}
-        {user && (
-          <Box sx={{
-            position: 'absolute',
-            top: 16,
-            right: 16,
+        <Box
+          sx={{
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            gap: 2
-          }}>
-            <Avatar
-              src={user.photoURL}
-              alt={user.displayName}
-              sx={{ width: 40, height: 40 }}
-            />
-            <Button
-              onClick={handleSignOut}
-              variant="outlined"
-              sx={{
-                color: 'black',
-                borderColor: 'black',
-                '&:hover': {
-                  borderColor: '#333',
-                  backgroundColor: 'rgba(0,0,0,0.04)'
-                }
-              }}
-            >
-              Sign Out
-            </Button>
+            backgroundColor: '#222222',
+            p: 2,
+            borderRadius: 2,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            border: '1px solid #333333',
+            overflow: 'hidden'
+          }}
+        >
+          <Typography
+            variant="h3"
+            component="h1"
+            sx={{
+              fontWeight: 'bold',
+              textAlign: 'center',
+              color: '#ffffff',
+              mb: 2,
+              letterSpacing: '-0.02em'
+            }}
+          >
+            8020.best
+          </Typography>
+
+          <Box sx={{ mb: 2, maxWidth: '400px' }}>
+            <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 'bold', letterSpacing: '0.05em' }}>
+              The Problem
+            </Typography>
+            <Typography sx={{ color: '#cccccc', mb: 2, fontSize: '1rem' }}>
+              Your todo list is overwhelming and keeps growing.
+            </Typography>
+
+            <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 'bold', letterSpacing: '0.05em' }}>
+              The Solution
+            </Typography>
+            <Typography sx={{ color: '#cccccc', mb: 2, fontSize: '1rem' }}>
+              Focus on the 20% of tasks that create 80% of impact.
+            </Typography>
+
+            <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 'bold', letterSpacing: '0.05em' }}>
+              How It Works
+            </Typography>
+            <Typography sx={{ color: '#cccccc', mb: 0, fontSize: '1rem', lineHeight: 1.4 }}>
+              1. Paste your todo list<br />
+              2. Rate tasks by importance and urgency<br />
+              3. Get a focused calendar of high-impact tasks
+            </Typography>
           </Box>
-        )}
 
-        {/* Content */}
-        <Grid container spacing={4} justifyContent="center" sx={{ mt: { xs: 8, md: 12 } }}>
-          <Grid item xs={12} md={8} textAlign="center">
-            <Typography
-              variant="h3"
-              component="h1"
-              gutterBottom
-              sx={{
-                fontWeight: 'bold',
-                mb: 3
-              }}
-            >
-              Are you an overwhelmed achiever?
-            </Typography>
-
-            <Typography
-              variant="h4"
-              component="h2"
-              gutterBottom
-              sx={{
-                color: 'text.secondary',
-                mb: 6
-              }}
-            >
-              Cut your todolist by 80% with 8020.best
-            </Typography>
-
-            {/* Show Google Sign In if not signed in */}
-            {!user && (
+          {!user ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
               <Button
                 onClick={handleGoogleSignIn}
                 variant="contained"
-                size="large"
                 sx={{
-                  mt: 4,
-                  backgroundColor: 'black',
-                  py: 2,
-                  px: 4,
-                  fontSize: '1.2rem',
+                  backgroundColor: '#333333',
+                  color: '#ffffff',
                   '&:hover': {
-                    backgroundColor: '#333'
-                  }
+                    backgroundColor: '#444444'
+                  },
+                  py: 1.5,
+                  px: 5,
+                  fontSize: '1rem',
+                  fontWeight: 'medium',
+                  borderRadius: '8px',
+                  textTransform: 'none'
                 }}
               >
-                Continue with Google
+                Sign in with Google
               </Button>
-            )}
-
-            {/* Show Stripe button if signed in but hasn't purchased */}
-            {user && !hasPurchased && (
-              <Box sx={{ mt: 4 }}>
-                <stripe-buy-button
-                  buy-button-id="buy_btn_1Qb97NFL7C10dNyGk3l9vJhG"
-                  publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
-                  client-reference-id={user.email}
-                  customer-email={user.email}
-                  success-url={window.location.origin}
-                  cancel-url={window.location.origin}
-                >
-                </stripe-buy-button>
-              </Box>
-            )}
-
-            {/* Show proceed button if purchased */}
-            {user && hasPurchased && (
-              <Button
-                variant="contained"
-                onClick={() => navigate('/app')}
-                size="large"
+            </Box>
+          ) : !hasPurchased ? (
+            <Box sx={{ textAlign: 'center', width: '100%' }}>
+              <Typography
+                variant="subtitle1"
                 sx={{
-                  py: 2.5,
-                  px: 8,
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  backgroundColor: 'black',
-                  position: 'relative',
-                  '&:hover': {
-                    backgroundColor: '#333',
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: -3,
-                    left: -3,
-                    right: -3,
-                    bottom: -3,
-                    background: 'linear-gradient(45deg, #ff0000, #ff8800, #ffd000, #00ff88, #00ffff, #0066ff, #9900ff)',
-                    borderRadius: '8px',
-                    zIndex: -1,
-                    animation: 'borderAnimation 4s linear infinite',
-                  },
-                  '@keyframes borderAnimation': {
-                    '0%': {
-                      filter: 'hue-rotate(0deg)',
-                    },
-                    '100%': {
-                      filter: 'hue-rotate(360deg)',
-                    }
-                  }
+                  mb: 2,
+                  color: '#cccccc',
+                  fontWeight: 'medium'
                 }}
               >
-                Ready to 10x your productivity?
-              </Button>
-            )}
-          </Grid>
-        </Grid>
-      </Box>
-    </Container>
+                Get instant access to the 80/20 tool
+              </Typography>
+              <div id="buy-button-container"></div>
+            </Box>
+          ) : null}
+        </Box>
+
+        <Box
+          component="a"
+          href="https://anchormarianas.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{
+            color: '#666666',
+            textDecoration: 'none',
+            '&:hover': {
+              color: '#999999'
+            }
+          }}
+        >
+          anchormarianas
+        </Box>
+      </Container>
+    </Box>
   );
 };
 
