@@ -1,35 +1,30 @@
 // src/components/Product.jsx
 
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { auth } from '../firebase-config';
 import { signOut } from 'firebase/auth';
-import { useAuth } from '../contexts/AuthContext';
-import axiosInstance from '../axios-config';
+import { auth } from '../firebase-config';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
-  Button,
-  Typography,
-  Snackbar,
-  Alert,
   Container,
   Tabs,
   Tab,
+  Slider,
+  Typography,
+  Button,
   IconButton,
   Tooltip,
-  Slider,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import {
   ContentPaste as PasteIcon,
   ContentCopy as CopyIcon,
 } from '@mui/icons-material';
-
-// Local imports
 import ItemList from "./Product/ItemList";
 import useDataPersistence from './Product/hooks/useDataPersistence';
 
 const Product = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [list1, setList1] = useState([]);
   const [list2, setList2] = useState([]);
@@ -38,10 +33,64 @@ const Product = () => {
   const [selectedIndex2, setSelectedIndex2] = useState(null);
   const [selectedIndex3, setSelectedIndex3] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
-  const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
   const [rating, setRating] = useState(0);
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { loadData, saveData, isSyncing } = useDataPersistence();
+  const { loadData, saveData, isSyncing, isSyncError } = useDataPersistence();
+
+  // Load initial data
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        setIsLoading(true);
+        const data = await loadData();
+        if (data) {
+          console.log('Successfully loaded data:', data);
+          setList1(data.list1 || []);
+          setList2(data.list2 || []);
+          setList3(data.list3 || []);
+        } else {
+          console.log('No data loaded, using empty lists');
+          setList1([]);
+          setList2([]);
+          setList3([]);
+        }
+      } catch (error) {
+        console.error('Error initializing data:', error);
+        setNotification({
+          open: true,
+          message: 'Failed to load your data. Please try refreshing the page.',
+          severity: 'error'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeData();
+  }, [loadData]);
+
+  // Save data when lists change
+  useEffect(() => {
+    if (isLoading) return; // Don't save while initial load is happening
+
+    const saveTimeout = setTimeout(async () => {
+      try {
+        await saveData({ list1, list2, list3 });
+        console.log('Data saved successfully');
+      } catch (error) {
+        console.error('Error saving data:', error);
+        setNotification({
+          open: true,
+          message: 'Failed to save your changes. Please try again.',
+          severity: 'error'
+        });
+      }
+    }, 500);
+
+    return () => clearTimeout(saveTimeout);
+  }, [list1, list2, list3, saveData, isLoading]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -79,7 +128,7 @@ const Product = () => {
         if (selectedIndex !== null) {
           const item = currentList[selectedIndex];
           handleDeleteItems(activeTab + 1, [item]);
-          handleAddItem(activeTab + 2, item, rating);
+          handleAddItem(item, rating, activeTab + 2);
         }
       } else if (e.key === 'Backspace') {
         const currentList = activeTab === 0 ? list1 : activeTab === 1 ? list2 : list3;
@@ -96,56 +145,6 @@ const Product = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTab, rating, list1, list2, list3, selectedIndex1, selectedIndex2, selectedIndex3]);
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!user) {
-      navigate('/');
-    }
-  }, [user, navigate]);
-
-  // Load initial data
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        const data = await loadData();
-        console.log('Initializing data:', data);
-        if (data) {
-          // Set all lists at once to prevent race conditions
-          setList1(data.list1 || []);
-          setList2(data.list2 || []);
-          setList3(data.list3 || []);
-        }
-      } catch (error) {
-        console.error('Error initializing data:', error);
-      }
-    };
-
-    if (user) {
-      initializeData();
-    }
-  }, [user, loadData]);
-
-  // Save data when lists change
-  useEffect(() => {
-    if (!user) return;
-
-    console.log('Lists changed, preparing to save:', { list1, list2, list3 });
-    const saveTimeout = setTimeout(async () => {
-      try {
-        await saveData({
-          list1,
-          list2,
-          list3
-        });
-        console.log('Data saved successfully');
-      } catch (error) {
-        console.error('Error saving data:', error);
-      }
-    }, 500); // Reduced debounce time
-
-    return () => clearTimeout(saveTimeout);
-  }, [list1, list2, list3, user, saveData]);
-
   const handleItemSelect = (listNumber, index) => {
     setSelectedIndex1(listNumber === 1 ? index : null);
     setSelectedIndex2(listNumber === 2 ? index : null);
@@ -153,6 +152,7 @@ const Product = () => {
   };
 
   const handleDeleteItems = (listNumber, items) => {
+    console.log('Deleting items:', { listNumber, items });
     switch (listNumber) {
       case 1:
         setList1(prev => prev.filter(item => !items.includes(item)));
@@ -166,45 +166,67 @@ const Product = () => {
     }
   };
 
-  const handleClearList = (listNumber) => {
+  const handleAddItem = (text, rating = undefined, targetListNumber = null) => {
+    console.log('handleAddItem called:', { text, rating, targetListNumber });
+
+    if (!text) return;
+
+    const cleanText = String(text).split(',').pop().trim();
+    const listNumber = targetListNumber || 1;
+
+    let itemWithRating;
+    let targetList;
+
     switch (listNumber) {
       case 1:
-        setList1([]);
+        itemWithRating = cleanText;
+        targetList = setList1;
         break;
       case 2:
-        setList2([]);
+        itemWithRating = `${rating},${cleanText}`;
+        targetList = setList2;
         break;
       case 3:
-        setList3([]);
-        break;
-    }
-  };
+        // For list3, we need to preserve both ratings
+        const parts = String(text).split(',');
+        const firstRating = parts.length > 1 ? parts[0] : '0';
+        itemWithRating = `${firstRating},${rating},${cleanText}`;
+        targetList = setList3;
 
-  const getListTitle = (index) => {
-    switch (index) {
-      case 0: return "Importance?";
-      case 1: return "Urgent?";
-      case 2: return "Calendar?";
-      default: return `List ${index + 1}`;
+        // Sort list3 by both ratings (11 > 10 > 01 > 00)
+        setList3(prev => {
+          const newList = [...prev, itemWithRating];
+          return newList.sort((a, b) => {
+            const [aImportance, aUrgency] = a.split(',');
+            const [bImportance, bUrgency] = b.split(',');
+
+            // Convert ratings to numbers for comparison
+            const aScore = (Number(aImportance) * 2) + Number(aUrgency); // 11=3, 10=2, 01=1, 00=0
+            const bScore = (Number(bImportance) * 2) + Number(bUrgency);
+
+            return bScore - aScore; // Sort in descending order
+          });
+        });
+        return; // Return early since we've already handled list3
+      default:
+        return;
     }
+
+    targetList(prev => [itemWithRating, ...prev]);
   };
 
   const handleClipboardImport = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      // Create a Set to remove duplicates, then convert back to array
       const newItems = [...new Set(
         text
           .split('\n')
           .map(line => line.trim())
           .filter(line => line.length > 0)
-      )]
-        .sort((a, b) => a.length - b.length);
+      )];
 
       if (newItems.length > 0) {
-        // Also remove duplicates against existing items in list1
         const uniqueNewItems = newItems.filter(item => !list1.includes(item));
-
         if (uniqueNewItems.length > 0) {
           setList1(prev => [...uniqueNewItems, ...prev]);
           setNotification({
@@ -232,28 +254,41 @@ const Product = () => {
 
   const handleClipboardExport = async () => {
     try {
-      let currentList;
-      switch (activeTab) {
-        case 0:
-          currentList = list1;
-          break;
-        case 1:
-          currentList = list2.map(item => item.text || item);
-          break;
-        case 2:
-          currentList = list3.map(item => item.text || item);
-          break;
-        default:
-          currentList = [];
-      }
-
+      const currentList = activeTab === 0 ? list1 : activeTab === 1 ? list2 : list3;
       const text = currentList.join('\n');
       await navigator.clipboard.writeText(text);
-      setNotification({
-        open: true,
-        message: `Exported ${currentList.length} items to clipboard`,
-        severity: 'success'
-      });
+
+      // Special message for calendar tab
+      if (activeTab === 2) {
+        setNotification({
+          open: true,
+          message: (
+            <span>
+              Calendar tasks copied! Visit{' '}
+              <a
+                href="https://caldump.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: '#4caf50',
+                  textDecoration: 'none',
+                  fontWeight: 'bold'
+                }}
+              >
+                caldump.com
+              </a>
+              {' '}to easily add them to your calendar.
+            </span>
+          ),
+          severity: 'success'
+        });
+      } else {
+        setNotification({
+          open: true,
+          message: `Exported ${currentList.length} items to clipboard`,
+          severity: 'success'
+        });
+      }
     } catch (error) {
       console.error('Error exporting to clipboard:', error);
       setNotification({
@@ -264,137 +299,82 @@ const Product = () => {
     }
   };
 
-  const handleAddItem = (listNumber, text, rating) => {
-    // Normalize text by trimming and converting to lowercase for comparison
-    const normalizedText = text.trim().toLowerCase();
-
-    let itemWithRating = text;
-    if (rating !== undefined) {
-      if (listNumber === 2) {
-        itemWithRating = `${rating},${text}`;
-      } else if (listNumber === 3) {
-        itemWithRating = `${rating},${rating},${text}`;
-      }
-    }
-
-    // Extract text part for duplicate checking
-    const getTextPart = (item) => {
-      const parts = item.split(',');
-      return parts[parts.length - 1].trim().toLowerCase();
-    };
-
-    switch (listNumber) {
-      case 1:
-        setList1(prev => {
-          // Check if normalized text already exists in list1
-          if (prev.some(item => item.trim().toLowerCase() === normalizedText)) return prev;
-          return [itemWithRating, ...prev];
-        });
-        break;
-      case 2:
-        setList2(prev => {
-          // Check if normalized text part already exists in list2
-          if (prev.some(item => getTextPart(item) === normalizedText)) return prev;
-          const newList = [...prev, itemWithRating];
-          return newList.sort((a, b) => {
-            const ratingA = parseInt(a.split(',')[0]);
-            const ratingB = parseInt(b.split(',')[0]);
-            return ratingB - ratingA;
-          });
-        });
-        break;
-      case 3:
-        setList3(prev => {
-          // Check if normalized text part already exists in list3
-          if (prev.some(item => getTextPart(item) === normalizedText)) return prev;
-          const newList = [...prev, itemWithRating];
-          return newList.sort((a, b) => {
-            const [rating1A, rating2A] = a.split(',').slice(0, 2).map(Number);
-            const [rating1B, rating2B] = b.split(',').slice(0, 2).map(Number);
-            if (rating1A !== rating1B) {
-              return rating1B - rating1A;
-            }
-            return rating2B - rating2A;
-          });
-        });
-        break;
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to sign out. Please try again.',
+        severity: 'error'
+      });
     }
   };
 
   return (
-    <Box
-      sx={{
-        height: '100vh',
-        backgroundColor: '#000000',
+    <Box sx={{
+      height: '100vh',
+      backgroundColor: '#000000',
+      display: 'flex',
+      overflow: 'hidden',
+      p: { xs: 1, sm: 2, md: 3 },
+      position: 'fixed',
+      width: '100%',
+      top: 0,
+      left: 0
+    }}>
+      <Container maxWidth="md" sx={{
         display: 'flex',
-        overflow: 'hidden',
-        p: 3,
-        position: 'fixed',
-        width: '100%',
-        top: 0,
-        left: 0
-      }}
-    >
-      <Container
-        maxWidth="md"
-        sx={{
+        height: 'calc(100vh - 16px)',
+        overflow: 'hidden'
+      }}>
+        <Box sx={{
           display: 'flex',
-          height: 'calc(100vh - 48px)',
+          flexDirection: 'column',
+          width: '100%',
+          maxWidth: '800px',
+          margin: '0 auto',
+          backgroundColor: '#111111',
+          borderRadius: { xs: 1, sm: 2 },
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          p: { xs: 1, sm: 2 },
+          border: '1px solid #222',
           overflow: 'hidden'
-        }}
-      >
-        <Box
-          sx={{
+        }}>
+          <Box sx={{
+            mb: { xs: 1, sm: 2 },
             display: 'flex',
-            flexDirection: 'column',
-            width: '100%',
-            maxWidth: '800px',
-            margin: '0 auto',
-            backgroundColor: '#111111',
-            borderRadius: 2,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-            p: 2,
-            border: '1px solid #222',
-            overflow: 'hidden'
-          }}
-        >
-          {/* Header */}
-          <Box
-            sx={{
-              mb: 2,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              pb: 2,
-              borderBottom: '1px solid',
-              borderColor: '#222',
-              flexShrink: 0
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            pb: { xs: 1, sm: 2 },
+            borderBottom: '1px solid #222',
+            flexShrink: 0
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
               <Typography
                 variant="h4"
                 component="h1"
                 sx={{
                   fontWeight: 'bold',
-                  color: '#ffffff' // White text
+                  color: '#ffffff',
+                  fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                 }}
               >
                 8020.best
               </Typography>
-              <Box
-                sx={{
-                  display: 'flex',
-                  gap: 1,
-                  backgroundColor: '#222',
-                  borderRadius: 1,
-                  p: 0.5
-                }}
-              >
+              <Box sx={{
+                display: 'flex',
+                gap: 0.5,
+                backgroundColor: '#222',
+                borderRadius: 1,
+                p: 0.5
+              }}>
                 <Tooltip title="Import from clipboard">
                   <IconButton
                     onClick={handleClipboardImport}
-                    size="large"
+                    size="small"
                     sx={{
                       color: '#999',
                       '&:hover': {
@@ -403,13 +383,13 @@ const Product = () => {
                       }
                     }}
                   >
-                    <PasteIcon />
+                    <PasteIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Export to clipboard">
                   <IconButton
                     onClick={handleClipboardExport}
-                    size="large"
+                    size="small"
                     sx={{
                       color: '#999',
                       '&:hover': {
@@ -418,109 +398,88 @@ const Product = () => {
                       }
                     }}
                   >
-                    <CopyIcon />
+                    <CopyIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
               </Box>
             </Box>
             <Button
-              onClick={() => signOut(auth)}
+              onClick={handleSignOut}
               variant="outlined"
+              size="small"
               sx={{
                 color: '#999',
                 borderColor: '#333',
                 '&:hover': {
                   borderColor: '#666',
                   backgroundColor: '#222'
-                }
+                },
+                px: { xs: 2, sm: 3 }
               }}
             >
               Sign Out
             </Button>
           </Box>
 
-          {/* Rating Scale */}
-          <Box sx={{ mb: 2, flexShrink: 0, px: 2 }}>
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              color: '#fff'
-            }}>
-              <Slider
-                value={rating}
-                onChange={(_, newValue) => setRating(newValue)}
-                min={0}
-                max={1}
-                step={1}
-                marks={[
-                  { value: 0, label: '0' },
-                  { value: 1, label: '1' }
-                ]}
-                sx={{
-                  color: '#666',
-                  '& .MuiSlider-thumb': {
-                    backgroundColor: '#fff',
-                  },
-                  '& .MuiSlider-track': {
-                    backgroundColor: '#666',
-                  },
-                  '& .MuiSlider-rail': {
-                    backgroundColor: '#444',
-                  },
-                  '& .MuiSlider-mark': {
-                    backgroundColor: '#555',
-                  },
-                  '& .MuiSlider-markLabel': {
-                    color: '#999',
-                  }
-                }}
-              />
-            </Box>
-          </Box>
-
-          {/* Tabs */}
-          <Box sx={{ mb: 2, flexShrink: 0 }}>
-            <Tabs
-              value={activeTab}
-              onChange={(_, newValue) => setActiveTab(newValue)}
-              sx={{
-                '& .MuiTabs-indicator': {
-                  backgroundColor: '#fff'
-                },
-                '& .MuiTab-root': {
-                  color: '#999',
-                  fontSize: '1rem',
-                  textTransform: 'none',
-                  minWidth: 120,
-                  '&.Mui-selected': {
-                    color: '#fff',
-                    fontWeight: 'bold'
-                  }
-                }
-              }}
-            >
-              <Tab label={`${getListTitle(0)} (${list1.length})`} />
-              <Tab label={`${getListTitle(1)} (${list2.length})`} />
-              <Tab label={`${getListTitle(2)} (${list3.length})`} />
-            </Tabs>
-          </Box>
-
-          {/* Active List */}
-          <Box
+          <Slider
+            value={rating}
+            onChange={(_, newValue) => setRating(newValue)}
+            min={0}
+            max={1}
+            step={1}
+            marks={[
+              { value: 0, label: '0' },
+              { value: 1, label: '1' }
+            ]}
             sx={{
-              flex: 1,
-              width: '100%',
-              maxWidth: '800px',
-              mx: 'auto',
-              backgroundColor: '#1a1a1a',
-              borderRadius: 1,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-              border: '1px solid #333',
-              overflow: 'hidden',
-              display: 'flex'
+              mb: 2,
+              color: '#666',
+              '& .MuiSlider-thumb': {
+                backgroundColor: '#fff',
+              },
+              '& .MuiSlider-track': {
+                backgroundColor: '#666',
+              },
+              '& .MuiSlider-rail': {
+                backgroundColor: '#444',
+              },
+              '& .MuiSlider-mark': {
+                backgroundColor: '#555',
+              },
+              '& .MuiSlider-markLabel': {
+                color: '#999',
+              }
+            }}
+          />
+
+          <Tabs
+            value={activeTab}
+            onChange={(_, newValue) => setActiveTab(newValue)}
+            sx={{
+              mb: 2,
+              '& .MuiTabs-indicator': {
+                backgroundColor: '#fff'
+              },
+              '& .MuiTab-root': {
+                color: '#999',
+                '&.Mui-selected': {
+                  color: '#fff'
+                }
+              }
             }}
           >
+            <Tab label={`Important? (${list1.length})`} />
+            <Tab label={`Urgent? (${list2.length})`} />
+            <Tab label={`Calendar? (${list3.length})`} />
+          </Tabs>
+
+          <Box sx={{
+            flex: 1,
+            backgroundColor: '#1a1a1a',
+            borderRadius: 1,
+            border: '1px solid #333',
+            overflow: 'hidden'
+          }}>
             {activeTab === 0 && (
               <ItemList
                 items={list1}
@@ -528,8 +487,8 @@ const Product = () => {
                 selectedIndex={selectedIndex1}
                 onItemSelect={(index) => handleItemSelect(1, index)}
                 onDeleteItems={(items) => handleDeleteItems(1, items)}
-                onClearList={() => handleClearList(1)}
-                onAddItem={(text) => handleAddItem(1, text)}
+                onAddItem={handleAddItem}
+                rating={rating}
               />
             )}
             {activeTab === 1 && (
@@ -539,8 +498,8 @@ const Product = () => {
                 selectedIndex={selectedIndex2}
                 onItemSelect={(index) => handleItemSelect(2, index)}
                 onDeleteItems={(items) => handleDeleteItems(2, items)}
-                onClearList={() => handleClearList(2)}
-                onAddItem={(text) => handleAddItem(2, text)}
+                onAddItem={handleAddItem}
+                rating={rating}
               />
             )}
             {activeTab === 2 && (
@@ -550,13 +509,12 @@ const Product = () => {
                 selectedIndex={selectedIndex3}
                 onItemSelect={(index) => handleItemSelect(3, index)}
                 onDeleteItems={(items) => handleDeleteItems(3, items)}
-                onClearList={() => handleClearList(3)}
-                onAddItem={(text) => handleAddItem(3, text)}
+                onAddItem={handleAddItem}
+                rating={rating}
               />
             )}
           </Box>
 
-          {/* Notification */}
           <Snackbar
             open={notification.open}
             autoHideDuration={3000}

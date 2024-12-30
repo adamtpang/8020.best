@@ -201,21 +201,31 @@ const Landing = () => {
           ) : null}
         </Box>
 
-        <Box
-          component="a"
-          href="https://anchormarianas.com"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Typography
+          variant="body2"
           sx={{
-            color: '#666666',
-            textDecoration: 'none',
-            '&:hover': {
-              color: '#999999'
-            }
+            color: '#999',
+            mt: 1,
+            textAlign: 'center',
+            fontSize: { xs: '0.75rem', sm: '0.875rem' }
           }}
         >
-          anchormarianas
-        </Box>
+          by{' '}
+          <a
+            href="https://adampang.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: '#999',
+              textDecoration: 'none',
+              transition: 'color 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.target.style.color = '#fff'}
+            onMouseLeave={(e) => e.target.style.color = '#999'}
+          >
+            adampang.com :)
+          </a>
+        </Typography>
       </Container>
     </Box>
   );

@@ -9,7 +9,10 @@ const useDataPersistence = () => {
   const lastSavedData = useRef(null);
 
   const loadData = useCallback(async () => {
-    if (!user) return null;
+    if (!user?.email) {
+      console.log('No user email available for loading data');
+      return null;
+    }
 
     try {
       setIsSyncing(true);
@@ -20,19 +23,35 @@ const useDataPersistence = () => {
         params: { email: user.email }
       });
 
+      if (!response.data) {
+        console.error('No data received from server');
+        return null;
+      }
+
       console.log('Loaded data:', response.data);
 
-      // Validate the data structure
+      // Validate and clean the data structure
       const data = {
-        list1: Array.isArray(response.data.list1) ? response.data.list1 : [],
-        list2: Array.isArray(response.data.list2) ? response.data.list2 : [],
-        list3: Array.isArray(response.data.list3) ? response.data.list3 : []
+        list1: Array.isArray(response.data.list1) ? response.data.list1.filter(Boolean) : [],
+        list2: Array.isArray(response.data.list2) ? response.data.list2.filter(Boolean) : [],
+        list3: Array.isArray(response.data.list3) ?
+          response.data.list3.filter(Boolean).sort((a, b) => {
+            const [aImportance, aUrgency] = a.split(',');
+            const [bImportance, bUrgency] = b.split(',');
+            const aScore = (Number(aImportance) * 2) + Number(aUrgency);
+            const bScore = (Number(bImportance) * 2) + Number(bUrgency);
+            return bScore - aScore;
+          }) : []
       };
 
       lastSavedData.current = data;
       return data;
     } catch (error) {
-      console.error('Error loading data:', error.response?.data || error.message);
+      console.error('Error loading data:', error);
+      if (error.response) {
+        console.error('Response error:', error.response.data);
+        console.error('Status code:', error.response.status);
+      }
       setIsSyncError(true);
       return null;
     } finally {
@@ -41,14 +60,28 @@ const useDataPersistence = () => {
   }, [user]);
 
   const saveData = useCallback(async (lists) => {
-    if (!user) return;
+    if (!user?.email) {
+      console.log('No user email available for saving data');
+      return;
+    }
 
-    // Validate lists before saving
+    // Clean and validate lists before saving
     const validatedLists = {
-      list1: Array.isArray(lists.list1) ? lists.list1 : [],
-      list2: Array.isArray(lists.list2) ? lists.list2 : [],
-      list3: Array.isArray(lists.list3) ? lists.list3 : []
+      list1: Array.isArray(lists.list1) ? lists.list1.filter(Boolean) : [],
+      list2: Array.isArray(lists.list2) ? lists.list2.filter(Boolean) : [],
+      list3: Array.isArray(lists.list3) ? lists.list3.filter(Boolean) : []
     };
+
+    // Sort list3 by ratings
+    if (validatedLists.list3.length > 0) {
+      validatedLists.list3.sort((a, b) => {
+        const [aImportance, aUrgency] = a.split(',');
+        const [bImportance, bUrgency] = b.split(',');
+        const aScore = (Number(aImportance) * 2) + Number(aUrgency);
+        const bScore = (Number(bImportance) * 2) + Number(bUrgency);
+        return bScore - aScore;
+      });
+    }
 
     // Don't save if the data hasn't changed
     const currentData = JSON.stringify(validatedLists);
@@ -68,16 +101,31 @@ const useDataPersistence = () => {
         lists: validatedLists
       });
 
+      if (!response.data?.success) {
+        throw new Error('Save operation did not return success');
+      }
+
       console.log('Save response:', response.data);
       lastSavedData.current = validatedLists;
     } catch (error) {
-      console.error('Error saving data:', error.response?.data || error.message);
+      console.error('Error saving data:', error);
+      if (error.response) {
+        console.error('Response error:', error.response.data);
+        console.error('Status code:', error.response.status);
+      }
       setIsSyncError(true);
-      throw error; // Propagate error to component
+      throw error;
     } finally {
       setIsSyncing(false);
     }
   }, [user]);
+
+  // Add an effect to load data when user changes
+  useEffect(() => {
+    if (user?.email) {
+      loadData();
+    }
+  }, [user, loadData]);
 
   return {
     loadData,
