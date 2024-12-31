@@ -73,15 +73,16 @@ const Landing = () => {
   return (
     <Box
       sx={{
-        height: '100vh',
+        minHeight: '100vh',
         backgroundColor: '#1a1a1a',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        p: 2,
+        justifyContent: 'flex-start',
+        p: { xs: 1, sm: 2 },
         color: '#ffffff',
-        overflow: 'hidden'
+        overflowY: 'auto',
+        pb: 4
       }}
     >
       <Container
@@ -91,10 +92,9 @@ const Landing = () => {
           flexDirection: 'column',
           alignItems: 'center',
           gap: 1.5,
-          overflow: 'hidden',
-          height: '100%',
-          maxHeight: '100vh',
-          mt: 12
+          width: '100%',
+          mt: { xs: 4, sm: 8 },
+          mb: { xs: 2, sm: 4 }
         }}
       >
         <Box
@@ -103,11 +103,12 @@ const Landing = () => {
             flexDirection: 'column',
             alignItems: 'center',
             backgroundColor: '#222222',
-            p: 2,
+            p: { xs: 2, sm: 3 },
             borderRadius: 2,
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
             border: '1px solid #333333',
-            overflow: 'hidden'
+            width: '100%',
+            maxWidth: '100%'
           }}
         >
           <Typography
@@ -118,31 +119,32 @@ const Landing = () => {
               textAlign: 'center',
               color: '#ffffff',
               mb: 2,
-              letterSpacing: '-0.02em'
+              letterSpacing: '-0.02em',
+              fontSize: { xs: '2rem', sm: '3rem' }
             }}
           >
             8020.best
           </Typography>
 
-          <Box sx={{ mb: 2, maxWidth: '400px' }}>
+          <Box sx={{ mb: 2, maxWidth: '400px', width: '100%' }}>
             <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 'bold', letterSpacing: '0.05em' }}>
               The Problem
             </Typography>
-            <Typography sx={{ color: '#cccccc', mb: 2, fontSize: '1rem' }}>
+            <Typography sx={{ color: '#cccccc', mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Your todo list is overwhelming and keeps growing.
             </Typography>
 
             <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 'bold', letterSpacing: '0.05em' }}>
               The Solution
             </Typography>
-            <Typography sx={{ color: '#cccccc', mb: 2, fontSize: '1rem' }}>
+            <Typography sx={{ color: '#cccccc', mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Focus on the 20% of tasks that create 80% of impact.
             </Typography>
 
             <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 'bold', letterSpacing: '0.05em' }}>
               How It Works
             </Typography>
-            <Typography sx={{ color: '#cccccc', mb: 2, fontSize: '1rem', lineHeight: 1.4 }}>
+            <Typography sx={{ color: '#cccccc', mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' }, lineHeight: 1.4 }}>
               1. Paste your todo list<br />
               2. Rate tasks by importance and urgency<br />
               3. Get a focused calendar of high-impact tasks
@@ -160,9 +162,9 @@ const Landing = () => {
                   '&:hover': {
                     backgroundColor: '#444444'
                   },
-                  py: 1.5,
-                  px: 5,
-                  fontSize: '1rem',
+                  py: { xs: 1, sm: 1.5 },
+                  px: { xs: 3, sm: 5 },
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
                   fontWeight: 'medium',
                   borderRadius: '8px',
                   textTransform: 'none'
@@ -174,7 +176,7 @@ const Landing = () => {
           ) : !hasPurchased ? (
             <Box sx={{ textAlign: 'center', width: '100%' }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ minHeight: '50px' }}>
+                <Box sx={{ minHeight: '50px', width: '100%' }}>
                   <stripe-buy-button
                     buy-button-id="buy_btn_1Qb97NFL7C10dNyGk3l9vJhG"
                     publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
@@ -186,7 +188,7 @@ const Landing = () => {
                   variant="body2"
                   sx={{
                     color: '#666',
-                    fontSize: '0.875rem'
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
                   }}
                 >
                   Signed in as {user.email}
@@ -204,9 +206,9 @@ const Landing = () => {
                       borderColor: '#666',
                       backgroundColor: '#222'
                     },
-                    py: 1.5,
-                    px: 3,
-                    fontSize: '1rem',
+                    py: { xs: 1, sm: 1.5 },
+                    px: { xs: 2, sm: 3 },
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
                     fontWeight: 'medium',
                     borderRadius: '8px',
                     textTransform: 'none'
