@@ -15,23 +15,21 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:3001',
-    'http://localhost:5173',  // Add Vite's default port
+    'http://localhost:5173',
     'https://8020.best',
     'https://www.8020.best'
   ],
   credentials: true
 }));
 
-// Raw body handler for webhooks - must be before any body parsers
-app.post(['/webhook', '/api/webhook'], express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
+// Webhook handler - must be before any body parsers
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
+    const sig = req.headers['stripe-signature'];
     const event = stripe.webhooks.constructEvent(
       req.body,
       sig,
-      endpointSecret
+      process.env.STRIPE_WEBHOOK_SECRET
     );
 
     if (event.type === 'checkout.session.completed') {
