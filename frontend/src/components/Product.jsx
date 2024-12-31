@@ -182,33 +182,29 @@ const Product = () => {
     const cleanText = String(text).split(',').pop().trim();
     const listNumber = targetListNumber || 1;
 
-    let itemWithRating;
-    let targetList;
-
     switch (listNumber) {
       case 1:
-        itemWithRating = cleanText;
-        targetList = setList1;
+        setList1(prev => [cleanText, ...prev]);
         break;
       case 2:
-        itemWithRating = `${rating},${cleanText}`;
-        targetList = prev => {
-          const newList = [...prev, itemWithRating];
+        setList2(prev => {
+          const newItem = `${rating},${cleanText}`;
+          const newList = [...prev, newItem];
           // Sort list2 by rating (1 > 0)
           return newList.sort((a, b) => {
             const aRating = Number(a.split(',')[0]);
             const bRating = Number(b.split(',')[0]);
             return bRating - aRating;
           });
-        };
+        });
         break;
       case 3:
-        // For list3, we need to preserve both ratings
-        const parts = String(text).split(',');
-        const firstRating = parts.length > 1 ? parts[0] : '0';
-        itemWithRating = `${firstRating},${rating},${cleanText}`;
-        targetList = prev => {
-          const newList = [...prev, itemWithRating];
+        setList3(prev => {
+          // For list3, we need to preserve both ratings
+          const parts = String(text).split(',');
+          const firstRating = parts.length > 1 ? parts[0] : '0';
+          const newItem = `${firstRating},${rating},${cleanText}`;
+          const newList = [...prev, newItem];
           // Sort list3 by both ratings (11 > 10 > 01 > 00)
           return newList.sort((a, b) => {
             const [aImportance, aUrgency] = a.split(',');
@@ -218,13 +214,11 @@ const Product = () => {
             const bScore = (Number(bImportance) * 2) + Number(bUrgency);
             return bScore - aScore; // Sort in descending order
           });
-        };
+        });
         break;
       default:
-        return;
+        break;
     }
-
-    targetList(prev => Array.isArray(prev) ? [itemWithRating, ...prev] : [itemWithRating]);
   };
 
   const handleClipboardImport = async () => {
