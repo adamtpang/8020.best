@@ -19,20 +19,6 @@ const Landing = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/buy-button.js';
-    script.async = true;
-    document.head.appendChild(script);
-
-    return () => {
-      const existingScript = document.querySelector('script[src="https://js.stripe.com/v3/buy-button.js"]');
-      if (existingScript) {
-        document.head.removeChild(existingScript);
-      }
-    };
-  }, []);
-
   const handleGoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
@@ -57,14 +43,19 @@ const Landing = () => {
       const response = await axiosInstance.get('/api/purchases/check-purchase', {
         params: { email: user.email }
       });
-      console.log('Purchase status response:', {
-        data: response.data,
-        status: response.status,
-        headers: response.headers
-      });
+      console.log('Purchase status response:', response.data);
 
       const hasLicense = response.data.hasPurchased;
       console.log('Has license:', hasLicense);
+
+      // Only sign out if they previously had access (hasPurchased was true)
+      if (!hasLicense && hasPurchased) {
+        console.log('License was revoked, signing out user...');
+        await signOut(auth);
+        setHasPurchased(false);
+        return;
+      }
+
       setHasPurchased(hasLicense);
 
       if (hasLicense) {
@@ -74,11 +65,7 @@ const Landing = () => {
         console.log('User does not have license, showing buy button...');
       }
     } catch (error) {
-      console.error('Error checking purchase status:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
+      console.error('Error checking purchase status:', error);
       setHasPurchased(false);
     }
   };
@@ -186,17 +173,48 @@ const Landing = () => {
             </Box>
           ) : !hasPurchased ? (
             <Box sx={{ textAlign: 'center', width: '100%' }}>
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  mb: 2,
-                  color: '#cccccc',
-                  fontWeight: 'medium'
-                }}
-              >
-                Get instant access to the 80/20 tool
-              </Typography>
-              <div id="buy-button-container"></div>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ minHeight: '50px' }}>
+                  <stripe-buy-button
+                    buy-button-id="buy_btn_1Qb97NFL7C10dNyGk3l9vJhG"
+                    publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+                    client-reference-id={user?.email}
+                  >
+                  </stripe-buy-button>
+                </Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: '#666',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Signed in as {user.email}
+                </Typography>
+                <Button
+                  onClick={async () => {
+                    await signOut(auth);
+                    handleGoogleSignIn();
+                  }}
+                  variant="outlined"
+                  sx={{
+                    color: '#999',
+                    borderColor: '#333',
+                    '&:hover': {
+                      borderColor: '#666',
+                      backgroundColor: '#222'
+                    },
+                    py: 1.5,
+                    px: 3,
+                    fontSize: '1rem',
+                    fontWeight: 'medium',
+                    borderRadius: '8px',
+                    textTransform: 'none'
+                  }}
+                >
+                  Switch Account
+                </Button>
+              </Box>
             </Box>
           ) : null}
         </Box>
