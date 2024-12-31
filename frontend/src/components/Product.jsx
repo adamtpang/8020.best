@@ -192,35 +192,39 @@ const Product = () => {
         break;
       case 2:
         itemWithRating = `${rating},${cleanText}`;
-        targetList = setList2;
+        targetList = prev => {
+          const newList = [...prev, itemWithRating];
+          // Sort list2 by rating (1 > 0)
+          return newList.sort((a, b) => {
+            const aRating = Number(a.split(',')[0]);
+            const bRating = Number(b.split(',')[0]);
+            return bRating - aRating;
+          });
+        };
         break;
       case 3:
         // For list3, we need to preserve both ratings
         const parts = String(text).split(',');
         const firstRating = parts.length > 1 ? parts[0] : '0';
         itemWithRating = `${firstRating},${rating},${cleanText}`;
-        targetList = setList3;
-
-        // Sort list3 by both ratings (11 > 10 > 01 > 00)
-        setList3(prev => {
+        targetList = prev => {
           const newList = [...prev, itemWithRating];
+          // Sort list3 by both ratings (11 > 10 > 01 > 00)
           return newList.sort((a, b) => {
             const [aImportance, aUrgency] = a.split(',');
             const [bImportance, bUrgency] = b.split(',');
-
             // Convert ratings to numbers for comparison
             const aScore = (Number(aImportance) * 2) + Number(aUrgency); // 11=3, 10=2, 01=1, 00=0
             const bScore = (Number(bImportance) * 2) + Number(bUrgency);
-
             return bScore - aScore; // Sort in descending order
           });
-        });
-        return; // Return early since we've already handled list3
+        };
+        break;
       default:
         return;
     }
 
-    targetList(prev => [itemWithRating, ...prev]);
+    targetList(prev => Array.isArray(prev) ? [itemWithRating, ...prev] : [itemWithRating]);
   };
 
   const handleClipboardImport = async () => {
