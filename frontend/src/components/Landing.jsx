@@ -177,12 +177,14 @@ const Landing = () => {
             <Box sx={{ textAlign: 'center', width: '100%' }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ minHeight: '50px', width: '100%' }}>
-                  <stripe-buy-button
-                    buy-button-id="buy_btn_1Qb97NFL7C10dNyGk3l9vJhG"
-                    publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
-                    client-reference-id={user?.email}
-                  >
-                  </stripe-buy-button>
+                  {user?.email && (
+                    <stripe-buy-button
+                      buy-button-id="buy_btn_1Qb97NFL7C10dNyGk3l9vJhG"
+                      publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
+                      prefetch={true}
+                    >
+                    </stripe-buy-button>
+                  )}
                 </Box>
                 <Typography
                   variant="body2"
