@@ -46,24 +46,24 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
 
-      // Use the client_reference_id which contains the signed-in user's email
-      const userEmail = (session.client_reference_id || '').toLowerCase();
+      // Try to get the email from client_reference_id first, then fall back to customer email
+      const userEmail = (session.client_reference_id || session.customer_details?.email || '').toLowerCase();
       if (!userEmail) {
-        console.error('No client_reference_id (user email) found in session');
+        console.error('No email found in session');
         return res.status(400).send('No user email provided');
       }
 
-      console.log('Processing purchase for signed-in user:', userEmail);
+      console.log('Processing purchase for user:', userEmail);
 
       // Log the session details
       console.log('Stripe session details:', {
         id: session.id,
         userEmail: userEmail,
-        customerEmail: session.customer_details.email,
+        customerEmail: session.customer_details?.email,
         paymentStatus: session.payment_status
       });
 
-      // Perform the MongoDB update using the signed-in user's email
+      // Perform the MongoDB update
       const updateResult = await mongoose.connection.collection('users').updateOne(
         { email: userEmail },
         {
@@ -82,7 +82,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       const user = await mongoose.connection.collection('users').findOne({ email: userEmail });
       console.log('User document after update:', user);
 
-      console.log('Purchase recorded for signed-in user:', userEmail);
+      console.log('Purchase recorded for user:', userEmail);
     }
 
     res.json({ received: true });
