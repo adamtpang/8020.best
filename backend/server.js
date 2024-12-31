@@ -32,6 +32,7 @@ app.use(cors({
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const sig = req.headers['stripe-signature'];
+    console.log('\n=== WEBHOOK HANDLER START ===');
     console.log('Webhook received with signature:', sig);
     console.log('Webhook secret:', process.env.STRIPE_WEBHOOK_SECRET ? 'Present' : 'Missing');
 
@@ -46,24 +47,28 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
 
-      // Try to get the email from client_reference_id first, then fall back to customer email
-      const userEmail = (session.client_reference_id || session.customer_details?.email || '').toLowerCase();
+      // Get the user's email from client_reference_id (this is the Firebase user's email)
+      const userEmail = (session.client_reference_id || '').toLowerCase();
       if (!userEmail) {
-        console.error('No email found in session');
+        console.error('No client_reference_id (user email) found in session');
         return res.status(400).send('No user email provided');
       }
 
-      console.log('Processing purchase for user:', userEmail);
+      console.log('Processing purchase for Firebase user:', userEmail);
 
       // Log the session details
       console.log('Stripe session details:', {
         id: session.id,
         userEmail: userEmail,
         customerEmail: session.customer_details?.email,
-        paymentStatus: session.payment_status
+        paymentStatus: session.payment_status,
+        clientReferenceId: session.client_reference_id
       });
 
-      // Perform the MongoDB update
+      // Log MongoDB connection state
+      console.log('MongoDB connection state before update:', mongoose.connection.readyState);
+
+      // Perform the MongoDB update using the Firebase user's email
       const updateResult = await mongoose.connection.collection('users').updateOne(
         { email: userEmail },
         {
@@ -78,16 +83,22 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
       console.log('MongoDB update result:', updateResult);
 
-      // Verify the update
+      // Verify the update immediately
       const user = await mongoose.connection.collection('users').findOne({ email: userEmail });
       console.log('User document after update:', user);
 
-      console.log('Purchase recorded for user:', userEmail);
+      // Double check the collection
+      const allUsers = await mongoose.connection.collection('users').find({}).toArray();
+      console.log('All users in database:', allUsers);
+
+      console.log('Purchase recorded for Firebase user:', userEmail);
+      console.log('=== WEBHOOK HANDLER END ===\n');
     }
 
     res.json({ received: true });
   } catch (err) {
     console.error('Webhook Error:', err.message);
+    console.error('Full webhook error:', err);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 });
@@ -106,10 +117,15 @@ router.get('/purchases/check-purchase', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
     const normalizedEmail = email.toLowerCase();
+    console.log('\n=== CHECK PURCHASE START ===');
     console.log('Checking purchase status for:', normalizedEmail);
 
     // Log MongoDB connection status
     console.log('MongoDB connection state:', mongoose.connection.readyState);
+
+    // List all users first
+    const allUsers = await mongoose.connection.collection('users').find({}).toArray();
+    console.log('All users in database:', allUsers);
 
     // Try to find user with case-insensitive email
     const user = await mongoose.connection.collection('users').findOne({
@@ -119,6 +135,7 @@ router.get('/purchases/check-purchase', async (req, res) => {
 
     const hasPurchased = user?.hasPurchased || false;
     console.log('Has purchased value:', hasPurchased);
+    console.log('=== CHECK PURCHASE END ===\n');
 
     res.json({ hasPurchased });
   } catch (error) {
@@ -182,6 +199,45 @@ router.post('/purchases/save-lists', async (req, res) => {
   } catch (error) {
     console.error('Error saving lists:', error);
     res.status(500).json({ error: 'Failed to save lists' });
+  }
+});
+
+// Create checkout session endpoint
+router.post('/create-checkout-session', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    console.log('Creating checkout session for:', email);
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: '8020.best License',
+              description: 'Lifetime access to 8020.best'
+            },
+            unit_amount: 1000, // $10.00
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: 'https://8020.best/success',
+      cancel_url: 'https://8020.best',
+      client_reference_id: email.toLowerCase(), // Store the Firebase user's email
+      automatic_tax: { enabled: true }
+    });
+
+    res.json({ sessionId: session.id });
+  } catch (error) {
+    console.error('Error creating checkout session:', error);
+    res.status(500).json({ error: 'Failed to create checkout session' });
   }
 });
 

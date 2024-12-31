@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 const Landing = () => {
   const { user } = useAuth();
   const [hasPurchased, setHasPurchased] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -68,6 +69,12 @@ const Landing = () => {
       console.error('Error checking purchase status:', error);
       setHasPurchased(false);
     }
+  };
+
+  const handlePurchase = () => {
+    if (!user?.email) return;
+    const checkoutUrl = `https://buy.stripe.com/bIYeXH6aL8EG18c5ko?client_reference_id=${encodeURIComponent(user.email)}`;
+    window.location.href = checkoutUrl;
   };
 
   return (
@@ -177,14 +184,27 @@ const Landing = () => {
             <Box sx={{ textAlign: 'center', width: '100%' }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ minHeight: '50px', width: '100%' }}>
-                  {user?.email && (
-                    <stripe-buy-button
-                      buy-button-id="buy_btn_1Qb97NFL7C10dNyGk3l9vJhG"
-                      publishable-key="pk_live_51J7Ti4FL7C10dNyGubXiYMWwF6jPahwvwDjXXooFE9VbI1Brh6igKsmNKAqmFoYflQveSCQ8WR1N47kowzJ1drrQ00ijl4Euus"
-                      prefetch={true}
-                    >
-                    </stripe-buy-button>
-                  )}
+                  <Button
+                    onClick={handlePurchase}
+                    variant="contained"
+                    sx={{
+                      backgroundColor: '#635BFF',
+                      color: '#ffffff',
+                      '&:hover': {
+                        backgroundColor: '#5851E1'
+                      },
+                      py: { xs: 1.5, sm: 2 },
+                      px: { xs: 4, sm: 6 },
+                      fontSize: { xs: '1rem', sm: '1.125rem' },
+                      fontWeight: 'medium',
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      width: '100%',
+                      maxWidth: '300px'
+                    }}
+                  >
+                    Buy License
+                  </Button>
                 </Box>
                 <Typography
                   variant="body2"
