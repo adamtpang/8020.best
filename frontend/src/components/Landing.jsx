@@ -73,7 +73,14 @@ const Landing = () => {
 
   const handlePurchase = () => {
     if (!user?.email) return;
-    const checkoutUrl = `https://buy.stripe.com/bIYeXH6aL8EG18c5ko?client_reference_id=${encodeURIComponent(user.email)}`;
+    // Construct URL with properly encoded parameters
+    const baseUrl = 'https://buy.stripe.com/bIYeXH6aL8EG18c5ko';
+    const params = new URLSearchParams({
+      client_reference_id: user.email,
+      prefilled_email: user.email
+    });
+    const checkoutUrl = `${baseUrl}?${params.toString()}`;
+    console.log('Redirecting to checkout with email:', user.email);
     window.location.href = checkoutUrl;
   };
 

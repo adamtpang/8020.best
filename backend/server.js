@@ -47,10 +47,22 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
 
-      // Get the user's email from client_reference_id (this is the Firebase user's email)
-      const userEmail = (session.client_reference_id || '').toLowerCase();
+      // Try multiple sources for the user email
+      const userEmail = (
+        session.client_reference_id ||
+        session.metadata?.userEmail ||
+        session.customer_details?.email ||
+        ''
+      ).toLowerCase();
+
+      console.log('Session data:', {
+        client_reference_id: session.client_reference_id,
+        metadata: session.metadata,
+        customer_email: session.customer_details?.email
+      });
+
       if (!userEmail) {
-        console.error('No client_reference_id (user email) found in session');
+        console.error('No email found in session');
         return res.status(400).send('No user email provided');
       }
 
