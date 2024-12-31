@@ -254,14 +254,14 @@ router.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-// Mount API routes
+// Mount API routes first
 app.use('/api', router);
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-// Catch-all route to serve index.html
-app.get('*', (req, res) => {
+// Catch-all route to serve index.html for any path
+app.get('/*', function (req, res) {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
