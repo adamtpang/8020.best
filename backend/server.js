@@ -15,29 +15,33 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:3001',
+    'http://localhost:5173',  // Add Vite's default port
     'https://8020.best',
     'https://www.8020.best'
   ],
   credentials: true
 }));
 
-// Raw body for webhooks
-app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+// Raw body handler for webhooks - must be before any body parsers
+app.post(['/webhook', '/api/webhook'], express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   try {
     const event = stripe.webhooks.constructEvent(
       req.body,
       sig,
-      process.env.STRIPE_WEBHOOK_SECRET
+      endpointSecret
     );
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
-      console.log('Processing purchase for:', session.customer_details.email);
+      const customerEmail = session.customer_details.email;
+
+      console.log('Processing purchase for:', customerEmail);
 
       await mongoose.connection.collection('users').updateOne(
-        { email: session.customer_details.email },
+        { email: customerEmail },
         {
           $set: {
             hasPurchased: true,
@@ -47,7 +51,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         },
         { upsert: true }
       );
-      console.log('Purchase recorded successfully');
+      console.log('Purchase recorded successfully for:', customerEmail);
     }
 
     res.json({ received: true });
