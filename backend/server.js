@@ -48,7 +48,15 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       const customerEmail = session.customer_details.email;
       console.log('Processing purchase for:', customerEmail);
 
-      await mongoose.connection.collection('users').updateOne(
+      // Log the session details
+      console.log('Stripe session details:', {
+        id: session.id,
+        customerEmail: customerEmail,
+        paymentStatus: session.payment_status
+      });
+
+      // Perform the MongoDB update
+      const updateResult = await mongoose.connection.collection('users').updateOne(
         { email: customerEmail },
         {
           $set: {
@@ -59,6 +67,13 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         },
         { upsert: true }
       );
+
+      console.log('MongoDB update result:', updateResult);
+
+      // Verify the update
+      const user = await mongoose.connection.collection('users').findOne({ email: customerEmail });
+      console.log('User document after update:', user);
+
       console.log('Purchase recorded for:', customerEmail);
     }
 
@@ -84,12 +99,23 @@ router.get('/purchases/check-purchase', async (req, res) => {
     }
     console.log('Checking purchase status for:', email);
 
-    const user = await mongoose.connection.collection('users').findOne({ email });
-    console.log('User found:', user);
+    // Log MongoDB connection status
+    console.log('MongoDB connection state:', mongoose.connection.readyState);
 
-    res.json({ hasPurchased: user?.hasPurchased || false });
+    const user = await mongoose.connection.collection('users').findOne({ email });
+    console.log('User document found:', user);
+
+    const hasPurchased = user?.hasPurchased || false;
+    console.log('Has purchased value:', hasPurchased);
+
+    res.json({ hasPurchased });
   } catch (error) {
     console.error('Error checking purchase:', error);
+    console.error('Full error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
     res.status(500).json({ error: 'Failed to check purchase status' });
   }
 });
