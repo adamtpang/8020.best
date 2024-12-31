@@ -22,7 +22,8 @@ app.use(cors({
   origin: [
     'http://localhost:3001',
     'https://8020.best',
-    'https://www.8020.best'
+    'https://www.8020.best',
+    'https://8020best-production.up.railway.app'
   ],
   credentials: true
 }));
