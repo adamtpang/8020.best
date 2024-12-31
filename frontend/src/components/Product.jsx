@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase-config';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Box,
   Container,
@@ -16,6 +17,7 @@ import {
   Tooltip,
   Snackbar,
   Alert,
+  Avatar,
 } from "@mui/material";
 import {
   ContentPaste as PasteIcon,
@@ -25,6 +27,7 @@ import ItemList from "./Product/ItemList";
 import useDataPersistence from './Product/hooks/useDataPersistence';
 
 const Product = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [list1, setList1] = useState([]);
   const [list2, setList2] = useState([]);
@@ -403,22 +406,35 @@ const Product = () => {
                 </Tooltip>
               </Box>
             </Box>
-            <Button
-              onClick={handleSignOut}
-              variant="outlined"
-              size="small"
-              sx={{
-                color: '#999',
-                borderColor: '#333',
-                '&:hover': {
-                  borderColor: '#666',
-                  backgroundColor: '#222'
-                },
-                px: { xs: 2, sm: 3 }
-              }}
-            >
-              Sign Out
-            </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {user?.photoURL && (
+                <Avatar
+                  src={user.photoURL}
+                  alt={user.email}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    border: '1px solid #333'
+                  }}
+                />
+              )}
+              <Button
+                onClick={handleSignOut}
+                variant="outlined"
+                size="small"
+                sx={{
+                  color: '#999',
+                  borderColor: '#333',
+                  '&:hover': {
+                    borderColor: '#666',
+                    backgroundColor: '#222'
+                  },
+                  px: { xs: 2, sm: 3 }
+                }}
+              >
+                Sign Out
+              </Button>
+            </Box>
           </Box>
 
           <Slider

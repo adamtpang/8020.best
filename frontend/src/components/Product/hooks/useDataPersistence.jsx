@@ -96,16 +96,13 @@ const useDataPersistence = () => {
       setIsSyncError(false);
       console.log('Saving lists for user:', user.email, validatedLists);
 
-      const response = await axiosInstance.post('/api/purchases/save-lists', {
+      await axiosInstance.post('/api/purchases/save-lists', {
         email: user.email,
-        lists: validatedLists
+        list1: validatedLists.list1,
+        list2: validatedLists.list2,
+        list3: validatedLists.list3
       });
 
-      if (!response.data?.success) {
-        throw new Error('Save operation did not return success');
-      }
-
-      console.log('Save response:', response.data);
       lastSavedData.current = validatedLists;
     } catch (error) {
       console.error('Error saving data:', error);
