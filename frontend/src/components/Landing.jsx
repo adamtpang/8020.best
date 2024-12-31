@@ -142,7 +142,7 @@ const Landing = () => {
             <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 'bold', letterSpacing: '0.05em' }}>
               How It Works
             </Typography>
-            <Typography sx={{ color: '#cccccc', mb: 0, fontSize: '1rem', lineHeight: 1.4 }}>
+            <Typography sx={{ color: '#cccccc', mb: 2, fontSize: '1rem', lineHeight: 1.4 }}>
               1. Paste your todo list<br />
               2. Rate tasks by importance and urgency<br />
               3. Get a focused calendar of high-impact tasks
