@@ -98,6 +98,11 @@ const Product = () => {
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't handle keyboard shortcuts if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
       if (e.key === '[') {
         setActiveTab(prev => (prev > 0 ? prev - 1 : prev));
       } else if (e.key === ']') {
