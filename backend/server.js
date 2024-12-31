@@ -1,80 +1,82 @@
 // server.js
 
-// Load environment variables first
-const path = require('path');
-const fs = require('fs');
-
-// Use correct env file based on NODE_ENV
-const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
-const envPath = path.resolve(__dirname, envFile);
-
-// Debug environment setup
-console.log('Environment setup:');
-console.log('- Working directory:', process.cwd());
-console.log('- Environment file path:', envPath);
-console.log('- Environment:', process.env.NODE_ENV || 'development');
-console.log('- File exists:', fs.existsSync(envPath));
-
-// Initialize Stripe
-let stripe;
-
-try {
-  require('dotenv').config({ path: envPath });
-
-  // Validate required environment variables
-  const requiredEnvVars = ['STRIPE_SECRET_KEY', 'MONGO_URI'];
-  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
-  if (missingVars.length > 0) {
-    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
-  }
-
-  // Initialize Stripe here
-  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-  console.log('Stripe initialized successfully');
-
-  console.log('Environment variables loaded successfully');
-  console.log('- STRIPE_KEY_EXISTS:', !!process.env.STRIPE_SECRET_KEY);
-  console.log('- MONGO_URI_EXISTS:', !!process.env.MONGO_URI);
-} catch (error) {
-  console.error('Failed to load environment variables or initialize Stripe:', error.message);
-  process.exit(1);
-}
+require('dotenv').config({
+  path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development'
+});
 
 const express = require('express');
-const cors = require('cors');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const mongoose = require('mongoose');
+const cors = require('cors');
 
 const app = express();
 
-// Configure CORS - MUST BE BEFORE ROUTES
+// CORS middleware
 app.use(cors({
   origin: [
-    'http://localhost:5173',
+    'http://localhost:3001',
     'https://8020.best',
     'https://www.8020.best'
   ],
   credentials: true
 }));
 
-// Body parsing middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Raw body for webhooks
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
 
-// Import routes
-const purchasesRouter = require('./routes/purchases');
-const webhookRouter = require('./routes/webhook');
+  try {
+    const event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
 
-// Pass stripe instance to routes
-app.use('/webhook', webhookRouter(stripe));  // Pass stripe to webhook route
-app.use('/', purchasesRouter);
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      console.log('Processing purchase for:', session.customer_details.email);
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+      await mongoose.connection.collection('users').updateOne(
+        { email: session.customer_details.email },
+        {
+          $set: {
+            hasPurchased: true,
+            purchaseDate: new Date(),
+            stripeSessionId: session.id
+          }
+        },
+        { upsert: true }
+      );
+      console.log('Purchase recorded successfully');
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    console.error('Webhook Error:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
 });
 
-// MongoDB connection
+// JSON parsing for other routes
+app.use(express.json());
+
+// Purchase check endpoint
+app.get('/api/purchases/check-purchase', async (req, res) => {
+  try {
+    const { email } = req.query;
+    console.log('Checking purchase status for:', email);
+
+    const user = await mongoose.connection.collection('users').findOne({ email });
+    console.log('User found:', user);
+
+    res.json({ hasPurchased: user?.hasPurchased || false });
+  } catch (error) {
+    console.error('Error checking purchase:', error);
+    res.status(500).json({ error: 'Failed to check purchase status' });
+  }
+});
+
+// Connect to MongoDB and start server
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('Connected to MongoDB');
@@ -84,30 +86,6 @@ mongoose.connect(process.env.MONGO_URI)
     });
   })
   .catch(err => {
-    console.error('MongoDB connection error:', {
-      message: err.message,
-      code: err.code,
-      codeName: err.codeName
-    });
+    console.error('MongoDB connection error:', err);
     process.exit(1);
   });
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something broke!' });
-});
-
-// Graceful shutdown
-const gracefulShutdown = async () => {
-  try {
-    await mongoose.connection.close();
-    process.exit(0);
-  } catch (err) {
-    console.error('Error during shutdown:', err);
-    process.exit(1);
-  }
-};
-
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
