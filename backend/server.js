@@ -45,19 +45,27 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
-      const customerEmail = session.customer_details.email;
-      console.log('Processing purchase for:', customerEmail);
+
+      // Use the client_reference_id which contains the signed-in user's email
+      const userEmail = (session.client_reference_id || '').toLowerCase();
+      if (!userEmail) {
+        console.error('No client_reference_id (user email) found in session');
+        return res.status(400).send('No user email provided');
+      }
+
+      console.log('Processing purchase for signed-in user:', userEmail);
 
       // Log the session details
       console.log('Stripe session details:', {
         id: session.id,
-        customerEmail: customerEmail,
+        userEmail: userEmail,
+        customerEmail: session.customer_details.email,
         paymentStatus: session.payment_status
       });
 
-      // Perform the MongoDB update
+      // Perform the MongoDB update using the signed-in user's email
       const updateResult = await mongoose.connection.collection('users').updateOne(
-        { email: customerEmail },
+        { email: userEmail },
         {
           $set: {
             hasPurchased: true,
@@ -71,10 +79,10 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       console.log('MongoDB update result:', updateResult);
 
       // Verify the update
-      const user = await mongoose.connection.collection('users').findOne({ email: customerEmail });
+      const user = await mongoose.connection.collection('users').findOne({ email: userEmail });
       console.log('User document after update:', user);
 
-      console.log('Purchase recorded for:', customerEmail);
+      console.log('Purchase recorded for signed-in user:', userEmail);
     }
 
     res.json({ received: true });
@@ -97,12 +105,16 @@ router.get('/purchases/check-purchase', async (req, res) => {
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
-    console.log('Checking purchase status for:', email);
+    const normalizedEmail = email.toLowerCase();
+    console.log('Checking purchase status for:', normalizedEmail);
 
     // Log MongoDB connection status
     console.log('MongoDB connection state:', mongoose.connection.readyState);
 
-    const user = await mongoose.connection.collection('users').findOne({ email });
+    // Try to find user with case-insensitive email
+    const user = await mongoose.connection.collection('users').findOne({
+      email: normalizedEmail
+    });
     console.log('User document found:', user);
 
     const hasPurchased = user?.hasPurchased || false;
