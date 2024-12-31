@@ -110,6 +110,9 @@ const ItemList = ({ items, listNumber, selectedIndex, onItemSelect, onDeleteItem
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
             onKeyPress={handleKeyPress}
+            onFocus={() => {
+              onItemSelect(null); // Clear selection when input is focused
+            }}
             placeholder="Add new task..."
             variant="outlined"
             size="small"
