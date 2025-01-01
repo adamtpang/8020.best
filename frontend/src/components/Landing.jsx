@@ -140,6 +140,20 @@ const Landing = () => {
             8020.best
           </Typography>
 
+          <Box
+            component="img"
+            src="/images/8020best-screenshot.png"
+            alt="8020.best screenshot"
+            sx={{
+              width: '100%',
+              maxWidth: '400px',
+              height: 'auto',
+              borderRadius: 2,
+              mb: 3,
+              border: '1px solid #333'
+            }}
+          />
+
           <Box sx={{ mb: 2, maxWidth: '400px', width: '100%' }}>
             <Typography variant="subtitle1" sx={{ mb: 0.5, fontWeight: 'bold', letterSpacing: '0.05em' }}>
               The Problem
@@ -272,7 +286,7 @@ const Landing = () => {
             onMouseEnter={(e) => e.target.style.color = '#fff'}
             onMouseLeave={(e) => e.target.style.color = '#999'}
           >
-            adampang.com :)
+            adampang.com
           </a>
         </Typography>
       </Container>
