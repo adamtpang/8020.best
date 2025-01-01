@@ -5,7 +5,10 @@ import {
   ListItem,
   ListItemText,
   TextField,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import { Clear as ClearIcon } from '@mui/icons-material';
 
 const ItemList = ({ items, listNumber, selectedIndex, onItemSelect, onDeleteItems, onAddItem, rating }) => {
   const [newTask, setNewTask] = useState('');
@@ -99,6 +102,10 @@ const ItemList = ({ items, listNumber, selectedIndex, onItemSelect, onDeleteItem
         setNewTask('');
       }
     }
+  };
+
+  const handleClearList = () => {
+    onDeleteItems(items);
   };
 
   return (
@@ -195,6 +202,31 @@ const ItemList = ({ items, listNumber, selectedIndex, onItemSelect, onDeleteItem
           </ListItem>
         ))}
       </List>
+
+      {items.length > 0 && (
+        <Box sx={{
+          p: { xs: 1, sm: 1.5 },
+          borderTop: '1px solid #333',
+          display: 'flex',
+          justifyContent: 'center'
+        }}>
+          <Tooltip title={`Clear ${listNumber === 1 ? 'Important' : listNumber === 2 ? 'Urgent' : 'Calendar'} List`}>
+            <IconButton
+              onClick={handleClearList}
+              size="small"
+              sx={{
+                color: '#666',
+                '&:hover': {
+                  color: '#fff',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+            >
+              <ClearIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
     </Box>
   );
 };
