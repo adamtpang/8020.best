@@ -1,60 +1,98 @@
-# AI Task Filter
+# 8020.best - AI-Powered Task Prioritization
 
-A command-line tool that helps prioritize and filter tasks using AI in two modes:
-1. Eisenhower Matrix: Categorizes tasks by urgency and importance
-2. Problem Vectors: Filters tasks based on how they address specific problems
+An application that helps prioritize tasks using AI, based on the Eisenhower Matrix methodology.
 
-## Requirements
-- Python 3.7+
-- Replicate API key (set in .env file)
+## Features
+- AI analysis of tasks to determine importance and urgency
+- Clean, modern UI for task management
+- Credit system with 100 free credits for new users
+- Secure user authentication
 
-## Setup
-1. Create a `.env` file in the project root
-2. Add your Replicate API key: `REPLICATE_API_TOKEN=your_key_here`
+## Project Structure
+- `frontend/` - React/Vite frontend application
+- `backend/` - Node.js/Express backend API
 
-## Usage
+## Setup Instructions
 
-### Prepare Input
-1. Create a text file (e.g., `input.txt`) with your tasks/notes
-2. Each line should be a separate task or note to analyze
+### Prerequisites
+- Node.js 14+ and npm
+- MongoDB database
+- Firebase project (for authentication)
+- Replicate API account (for AI analysis)
 
-### Text Preprocessing
-The input text is automatically preprocessed before AI analysis:
-- Removes duplicate lines
-- Removes empty lines
-- Sorts lines by character length (shortest to longest)
-- Creates a new processed file with "_processed" suffix
+### Environment Variables Setup
 
-You can also preprocess files separately using:
-```bash
-python preprocess.py input.txt [--output output.txt]
-```
+For security reasons, environment variables containing API keys and credentials are not committed to version control. Follow these steps to set up your environment:
 
-### Run the Program
-1. Run `python main.py`
-2. Choose filtering mode:
-   - Mode 1: Eisenhower Matrix
-     - Categorizes tasks into: do_first, schedule, delegate, eliminate
-     - Based on urgency and importance
-   - Mode 2: Problem Vectors
-     - Enter up to 3 specific problems (e.g., debt, loneliness)
-     - Tasks are filtered based on how they address these problems
-3. Enter the name of your input file
+1. **Backend Setup**
+   - Copy `.env.example` to create new `.env.development` and `.env.production` files:
+   ```bash
+   cp backend/.env.example backend/.env.development
+   cp backend/.env.example backend/.env.production
+   ```
+   - Edit these files to add your actual credentials:
+     - `MONGO_URI` - Your MongoDB connection string
+     - `STRIPE_SECRET_KEY` - Your Stripe secret key (for payments)
+     - `STRIPE_WEBHOOK_SECRET` - Your Stripe webhook secret
+     - `REPLICATE_API_TOKEN` - Get from https://replicate.com/account/api-tokens
+     - `JWT_SECRET` - A secure random string for JWT authentication
 
-### Results
-- Eisenhower Matrix mode:
-  - Results saved in `eisenhower_matrix` directory
-  - Categories:
-    - do_first: urgent and important
-    - schedule: important, not urgent
-    - delegate: urgent, not important
-    - eliminate: neither urgent nor important
-    - uncategorized: processing errors
+2. **Frontend Setup**
+   - Copy `.env.example` to create new `.env.development` and `.env.production` files:
+   ```bash
+   cp frontend/.env.example frontend/.env.development
+   cp frontend/.env.example frontend/.env.production
+   ```
+   - Edit these files to add your Firebase credentials:
+     - `VITE_FIREBASE_API_KEY` - Firebase API key
+     - `VITE_FIREBASE_AUTH_DOMAIN` - Firebase auth domain
+     - And other Firebase configuration values
 
-- Problem Vectors mode:
-  - Results saved in `problem_vectors` directory
-  - A file for each specified problem
-  - `none.txt` for tasks that don't address any problems
+### Installation
 
-### Note
-Tasks are never deleted, only categorized and filtered. All input is preserved across different categories, making it easy to review and reprioritize as needed.
+1. **Install root dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Install frontend and backend dependencies**
+   ```bash
+   cd frontend && npm install
+   cd ../backend && npm install
+   cd ..
+   ```
+
+3. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+   This will start both frontend and backend in development mode.
+
+## Credit System
+
+- New users start with 100 free credits
+- Each task analyzed consumes 1 credit
+- Additional credits can be purchased through the application
+
+## Security Best Practices
+
+- **Environment Variables**: Never commit actual API keys or secrets to version control
+- **Development**: For local development, use the mock authentication option if Firebase auth fails
+- **API Security**: The backend implements rate limiting and proper authentication
+
+## Deployment
+
+Follow these steps to deploy the application:
+
+1. Build the frontend:
+   ```bash
+   cd frontend && npm run build
+   ```
+
+2. Set up your production environment variables using your hosting provider's environment management
+
+3. Deploy the backend to your server or cloud provider
+
+## License
+
+[MIT License](LICENSE)
