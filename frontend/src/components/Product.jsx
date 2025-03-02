@@ -18,6 +18,9 @@ import {
   Snackbar,
   Alert,
   Avatar,
+  CircularProgress,
+  Backdrop,
+  Chip,
 } from "@mui/material";
 import {
   ContentPaste as PasteIcon,
@@ -25,49 +28,51 @@ import {
 } from '@mui/icons-material';
 import ItemList from "./Product/ItemList";
 import useDataPersistence from './Product/hooks/useDataPersistence';
+import MainLayout from "./Product/components/MainLayout";
+import InstructionsDialog from "./Product/dialogs/InstructionsDialog";
+import TrashDialog from "./Product/dialogs/TrashDialog";
+import { analyzeTasks as analyzeTasksAPI, categorizeTasks } from '../services/aiPrioritization';
+import CreditPurchaseDialog from './Product/dialogs/CreditPurchaseDialog';
+import { getCredits } from '../services/api';
 
 const Product = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(0);
   const [list1, setList1] = useState([]);
   const [list2, setList2] = useState([]);
   const [list3, setList3] = useState([]);
-  const [selectedIndex1, setSelectedIndex1] = useState(null);
-  const [selectedIndex2, setSelectedIndex2] = useState(null);
-  const [selectedIndex3, setSelectedIndex3] = useState(null);
-  const [activeTab, setActiveTab] = useState(0);
-  const [rating, setRating] = useState(0);
+  const [newItem, setNewItem] = useState('');
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [trashedItems, setTrashedItems] = useState([]);
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  const [credits, setCredits] = useState(null);
+  const [showCreditPurchase, setShowCreditPurchase] = useState(false);
+  const [creditsNeeded, setCreditsNeeded] = useState(1);
 
-  const { loadData, saveData, isSyncing, isSyncError } = useDataPersistence();
+  const { loadData, saveData, isLoading, isSyncing, isSyncError, setSyncSuccess, setSyncError } = useDataPersistence();
 
-  // Load initial data
+  // Load data on mount
   useEffect(() => {
     const initializeData = async () => {
       try {
-        setIsLoading(true);
         const data = await loadData();
         if (data) {
-          console.log('Successfully loaded data:', data);
           setList1(data.list1 || []);
           setList2(data.list2 || []);
           setList3(data.list3 || []);
-        } else {
-          console.log('No data loaded, using empty lists');
-          setList1([]);
-          setList2([]);
-          setList3([]);
         }
       } catch (error) {
-        console.error('Error initializing data:', error);
+        console.error('Error loading data:', error);
         setNotification({
           open: true,
           message: 'Failed to load your data. Please try refreshing the page.',
           severity: 'error'
         });
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -76,7 +81,7 @@ const Product = () => {
 
   // Save data when lists change
   useEffect(() => {
-    if (isLoading) return; // Don't save while initial load is happening
+    if (isLoading) return;
 
     const saveTimeout = setTimeout(async () => {
       try {
@@ -95,68 +100,80 @@ const Product = () => {
     return () => clearTimeout(saveTimeout);
   }, [list1, list2, list3, saveData, isLoading]);
 
-  // Handle keyboard navigation
+  // Only analyze automatically on initial load or when specifically triggered
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Don't handle keyboard shortcuts if user is typing in an input
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-        return;
-      }
+    const analyzeTasksIfNeeded = async () => {
+      // Skip if already analyzed, no tasks, or currently analyzing
+      if (hasAnalyzed || list1.length === 0 || isAnalyzing) return;
 
-      if (e.key === '[') {
-        setActiveTab(prev => (prev > 0 ? prev - 1 : prev));
-      } else if (e.key === ']') {
-        setActiveTab(prev => (prev < 2 ? prev + 1 : prev));
-      } else if (e.key === 'ArrowLeft') {
-        setRating(0);
-      } else if (e.key === 'ArrowRight') {
-        setRating(1);
-      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        e.preventDefault(); // Prevent page scroll
-        const currentList = activeTab === 0 ? list1 : activeTab === 1 ? list2 : list3;
-        const currentIndex = activeTab === 0 ? selectedIndex1 : activeTab === 1 ? selectedIndex2 : selectedIndex3;
+      await handleAnalyzeTasks();
+      setHasAnalyzed(true);
+    };
 
-        if (currentList.length > 0) {
-          let newIndex;
-          if (currentIndex === null) {
-            newIndex = 0;
-          } else {
-            if (e.key === 'ArrowUp') {
-              newIndex = currentIndex > 0 ? currentIndex - 1 : currentList.length - 1;
-            } else {
-              newIndex = currentIndex < currentList.length - 1 ? currentIndex + 1 : 0;
-            }
-          }
-          handleItemSelect(activeTab + 1, newIndex);
-        }
-      } else if (e.key === 'Enter' && activeTab < 2) {
-        const currentList = activeTab === 0 ? list1 : list2;
-        const selectedIndex = activeTab === 0 ? selectedIndex1 : selectedIndex2;
+    analyzeTasksIfNeeded();
+  }, [list1, hasAnalyzed]);
 
-        if (selectedIndex !== null) {
-          const item = currentList[selectedIndex];
-          handleDeleteItems(activeTab + 1, [item]);
-          handleAddItem(item, rating, activeTab + 2);
-        }
-      } else if (e.key === 'Backspace') {
-        const currentList = activeTab === 0 ? list1 : activeTab === 1 ? list2 : list3;
-        const selectedIndex = activeTab === 0 ? selectedIndex1 : activeTab === 1 ? selectedIndex2 : selectedIndex3;
-
-        if (selectedIndex !== null) {
-          const item = currentList[selectedIndex];
-          handleDeleteItems(activeTab + 1, [item]);
-        }
+  // Load credits on component mount
+  useEffect(() => {
+    const loadCredits = async () => {
+      try {
+        const data = await getCredits();
+        setCredits(data.credits);
+      } catch (error) {
+        console.error('Error loading credits:', error);
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, rating, list1, list2, list3, selectedIndex1, selectedIndex2, selectedIndex3]);
+    loadCredits();
+  }, []);
 
-  const handleItemSelect = (listNumber, index) => {
-    setSelectedIndex1(listNumber === 1 ? index : null);
-    setSelectedIndex2(listNumber === 2 ? index : null);
-    setSelectedIndex3(listNumber === 3 ? index : null);
+  // Check for credit purchase dialog trigger
+  useEffect(() => {
+    const shouldShowPurchase = localStorage.getItem('showCreditPurchase');
+    if (shouldShowPurchase === 'true') {
+      const needed = Number(localStorage.getItem('creditsNeeded') || 1);
+      setCreditsNeeded(needed);
+      setShowCreditPurchase(true);
+    }
+  }, []);
+
+  // Function to analyze tasks that can be called manually
+  const handleAnalyzeTasks = async () => {
+    if (list1.length === 0 || isAnalyzing) return;
+
+    try {
+      setIsAnalyzing(true);
+      const analysis = await analyzeTasksAPI(list1);
+      const { important, urgent, regular } = categorizeTasks(list1, analysis);
+
+      setList1(regular);
+      setList2(important);
+      setList3(urgent);
+
+      // Update notification
+      setSyncSuccess(true);
+      setHasAnalyzed(true);
+      setTimeout(() => setSyncSuccess(false), 3000);
+
+      // Update credits from localStorage if available
+      const updatedCredits = localStorage.getItem('credits');
+      if (updatedCredits) {
+        setCredits(Number(updatedCredits));
+      }
+    } catch (error) {
+      console.error('Error during analysis:', error);
+      setSyncError(true);
+      setTimeout(() => setSyncError(false), 3000);
+
+      // Check if error is due to insufficient credits
+      if (error.response && error.response.status === 403) {
+        const needed = error.response.data.creditsNeeded || 1;
+        setCreditsNeeded(needed);
+        setShowCreditPurchase(true);
+      }
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleDeleteItems = (listNumber, items) => {
@@ -172,53 +189,17 @@ const Product = () => {
         setList3(prev => prev.filter(item => !items.includes(item)));
         break;
     }
+    // Add to trash
+    setTrashedItems(prev => [...items, ...prev]);
   };
 
-  const handleAddItem = (text, rating = undefined, targetListNumber = null) => {
-    console.log('handleAddItem called:', { text, rating, targetListNumber });
+  const handleAddItem = (e) => {
+    e?.preventDefault();
+    if (!newItem.trim()) return;
 
-    if (!text) return;
-
-    const cleanText = String(text).split(',').pop().trim();
-    const listNumber = targetListNumber || 1;
-
-    switch (listNumber) {
-      case 1:
-        setList1(prev => [cleanText, ...prev]);
-        break;
-      case 2:
-        setList2(prev => {
-          const newItem = `${rating},${cleanText}`;
-          const newList = [...prev, newItem];
-          // Sort list2 by rating (1 > 0)
-          return newList.sort((a, b) => {
-            const aRating = Number(a.split(',')[0]);
-            const bRating = Number(b.split(',')[0]);
-            return bRating - aRating;
-          });
-        });
-        break;
-      case 3:
-        setList3(prev => {
-          // For list3, we need to preserve both ratings
-          const parts = String(text).split(',');
-          const firstRating = parts.length > 1 ? parts[0] : '0';
-          const newItem = `${firstRating},${rating},${cleanText}`;
-          const newList = [...prev, newItem];
-          // Sort list3 by both ratings (11 > 10 > 01 > 00)
-          return newList.sort((a, b) => {
-            const [aImportance, aUrgency] = a.split(',');
-            const [bImportance, bUrgency] = b.split(',');
-            // Convert ratings to numbers for comparison
-            const aScore = (Number(aImportance) * 2) + Number(aUrgency); // 11=3, 10=2, 01=1, 00=0
-            const bScore = (Number(bImportance) * 2) + Number(bUrgency);
-            return bScore - aScore; // Sort in descending order
-          });
-        });
-        break;
-      default:
-        break;
-    }
+    setList1(prev => [newItem.trim(), ...prev]);
+    setNewItem('');
+    setHasAnalyzed(false); // Reset analyzed state when new items are added
   };
 
   const handleClipboardImport = async () => {
@@ -240,6 +221,7 @@ const Product = () => {
             message: `Imported ${uniqueNewItems.length} unique items`,
             severity: 'success'
           });
+          setHasAnalyzed(false); // Reset analyzed state on import
         } else {
           setNotification({
             open: true,
@@ -258,43 +240,16 @@ const Product = () => {
     }
   };
 
-  const handleClipboardExport = async () => {
+  const handleExportList3 = async () => {
     try {
       const currentList = activeTab === 0 ? list1 : activeTab === 1 ? list2 : list3;
       const text = currentList.join('\n');
       await navigator.clipboard.writeText(text);
-
-      // Special message for calendar tab
-      if (activeTab === 2) {
-        setNotification({
-          open: true,
-          message: (
-            <span>
-              Calendar tasks copied! Visit{' '}
-              <a
-                href="https://caldump.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: '#4caf50',
-                  textDecoration: 'none',
-                  fontWeight: 'bold'
-                }}
-              >
-                caldump.com
-              </a>
-              {' '}to easily add them to your calendar.
-            </span>
-          ),
-          severity: 'success'
-        });
-      } else {
-        setNotification({
-          open: true,
-          message: `Exported ${currentList.length} items to clipboard`,
-          severity: 'success'
-        });
-      }
+      setNotification({
+        open: true,
+        message: `Exported ${currentList.length} items to clipboard`,
+        severity: 'success'
+      });
     } catch (error) {
       console.error('Error exporting to clipboard:', error);
       setNotification({
@@ -303,6 +258,25 @@ const Product = () => {
         severity: 'error'
       });
     }
+  };
+
+  const handleRestoreFromTrash = (items) => {
+    setList1(prev => [...items, ...prev]);
+    setTrashedItems(prev => prev.filter(item => !items.includes(item)));
+    setNotification({
+      open: true,
+      message: `Restored ${items.length} item${items.length === 1 ? '' : 's'}`,
+      severity: 'success'
+    });
+  };
+
+  const handleClearTrash = () => {
+    setTrashedItems([]);
+    setNotification({
+      open: true,
+      message: 'Trash cleared',
+      severity: 'success'
+    });
   };
 
   const handleSignOut = async () => {
@@ -319,158 +293,49 @@ const Product = () => {
     }
   };
 
+  // Handle credit purchase dialog close
+  const handleCreditPurchaseClose = () => {
+    setShowCreditPurchase(false);
+
+    // Refresh credits after purchase dialog closes
+    getCredits()
+      .then(data => setCredits(data.credits))
+      .catch(err => console.error('Error updating credits:', err));
+  };
+
   return (
-    <Box sx={{
-      height: '100vh',
-      backgroundColor: '#000000',
-      display: 'flex',
-      overflow: 'hidden',
-      p: { xs: 1, sm: 2, md: 3 },
-      position: 'fixed',
-      width: '100%',
-      top: 0,
-      left: 0
-    }}>
-      <Container maxWidth="md" sx={{
-        display: 'flex',
-        height: 'calc(100vh - 16px)',
-        overflow: 'hidden'
-      }}>
-        <Box sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          width: '100%',
-          maxWidth: '800px',
-          margin: '0 auto',
-          backgroundColor: '#111111',
-          borderRadius: { xs: 1, sm: 2 },
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          p: { xs: 1, sm: 2 },
-          border: '1px solid #222',
-          overflow: 'hidden'
-        }}>
-          <Box sx={{
-            mb: { xs: 1, sm: 2 },
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            pb: { xs: 1, sm: 2 },
-            borderBottom: '1px solid #222',
-            flexShrink: 0
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{
-                  fontWeight: 'bold',
-                  color: '#ffffff',
-                  fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
-                }}
-              >
-                8020.best
-              </Typography>
-              <Box sx={{
-                display: 'flex',
-                gap: 0.5,
-                backgroundColor: '#222',
-                borderRadius: 1,
-                p: 0.5
-              }}>
-                <Tooltip title="Import from clipboard">
-                  <IconButton
-                    onClick={handleClipboardImport}
-                    size="small"
-                    sx={{
-                      color: '#999',
-                      '&:hover': {
-                        backgroundColor: '#333',
-                        color: '#fff'
-                      }
-                    }}
-                  >
-                    <PasteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Export to clipboard">
-                  <IconButton
-                    onClick={handleClipboardExport}
-                    size="small"
-                    sx={{
-                      color: '#999',
-                      '&:hover': {
-                        backgroundColor: '#333',
-                        color: '#fff'
-                      }
-                    }}
-                  >
-                    <CopyIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {user?.photoURL && (
-                <Avatar
-                  src={user.photoURL}
-                  alt={user.email}
-                  sx={{
-                    width: 32,
-                    height: 32,
-                    border: '1px solid #333'
-                  }}
-                />
-              )}
-              <Button
-                onClick={handleSignOut}
-                variant="outlined"
+    <>
+      <MainLayout
+        navigate={navigate}
+        newItem={newItem}
+        setNewItem={setNewItem}
+        handleClipboardImport={handleClipboardImport}
+        handleAddItem={handleAddItem}
+        handleExportList3={handleExportList3}
+        setIsInputFocused={setIsInputFocused}
+        setIsInstructionsOpen={setIsInstructionsOpen}
+        setIsTrashOpen={setIsTrashOpen}
+        isSyncing={isSyncing || isAnalyzing}
+        isSyncError={isSyncError}
+        trashedItems={trashedItems}
+        onTriggerAnalysis={handleAnalyzeTasks}
+        isAnalyzing={isAnalyzing}
+        credits={credits}
+      >
+        <div style={{ padding: '10px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            {credits !== null && (
+              <Chip
+                label={`${credits} credits`}
+                color={credits > 10 ? 'primary' : 'error'}
                 size="small"
-                sx={{
-                  color: '#999',
-                  borderColor: '#333',
-                  '&:hover': {
-                    borderColor: '#666',
-                    backgroundColor: '#222'
-                  },
-                  px: { xs: 2, sm: 3 }
-                }}
-              >
-                Sign Out
-              </Button>
-            </Box>
-          </Box>
-
-          <Slider
-            value={rating}
-            onChange={(_, newValue) => setRating(newValue)}
-            min={0}
-            max={1}
-            step={1}
-            marks={[
-              { value: 0, label: '0' },
-              { value: 1, label: '1' }
-            ]}
-            sx={{
-              mb: 2,
-              color: '#666',
-              '& .MuiSlider-thumb': {
-                backgroundColor: '#fff',
-              },
-              '& .MuiSlider-track': {
-                backgroundColor: '#666',
-              },
-              '& .MuiSlider-rail': {
-                backgroundColor: '#444',
-              },
-              '& .MuiSlider-mark': {
-                backgroundColor: '#555',
-              },
-              '& .MuiSlider-markLabel': {
-                color: '#999',
-              }
-            }}
-          />
-
+                onClick={() => setShowCreditPurchase(true)}
+                sx={{ mr: 1, cursor: 'pointer' }}
+              />
+            )}
+          </div>
+        </div>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           <Tabs
             value={activeTab}
             onChange={(_, newValue) => setActiveTab(newValue)}
@@ -487,9 +352,9 @@ const Product = () => {
               }
             }}
           >
-            <Tab label={`Important? (${list1.length})`} />
-            <Tab label={`Urgent? (${list2.length})`} />
-            <Tab label={`Calendar? (${list3.length})`} />
+            <Tab label={`Unimportant (${list1.length})`} />
+            <Tab label={`Important (${list2.length})`} />
+            <Tab label={`Urgent (${list3.length})`} />
           </Tabs>
 
           <Box sx={{
@@ -503,57 +368,77 @@ const Product = () => {
               <ItemList
                 items={list1}
                 listNumber={1}
-                selectedIndex={selectedIndex1}
-                onItemSelect={(index) => handleItemSelect(1, index)}
                 onDeleteItems={(items) => handleDeleteItems(1, items)}
                 onAddItem={handleAddItem}
-                rating={rating}
               />
             )}
             {activeTab === 1 && (
               <ItemList
                 items={list2}
                 listNumber={2}
-                selectedIndex={selectedIndex2}
-                onItemSelect={(index) => handleItemSelect(2, index)}
                 onDeleteItems={(items) => handleDeleteItems(2, items)}
                 onAddItem={handleAddItem}
-                rating={rating}
               />
             )}
             {activeTab === 2 && (
               <ItemList
                 items={list3}
                 listNumber={3}
-                selectedIndex={selectedIndex3}
-                onItemSelect={(index) => handleItemSelect(3, index)}
                 onDeleteItems={(items) => handleDeleteItems(3, items)}
                 onAddItem={handleAddItem}
-                rating={rating}
               />
             )}
           </Box>
-
-          <Snackbar
-            open={notification.open}
-            autoHideDuration={3000}
-            onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          >
-            <Alert
-              onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-              severity={notification.severity}
-              sx={{
-                width: '100%',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-              }}
-            >
-              {notification.message}
-            </Alert>
-          </Snackbar>
         </Box>
-      </Container>
-    </Box>
+      </MainLayout>
+
+      {/* AI Analysis Backdrop */}
+      <Backdrop
+        sx={{
+          color: '#fff',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          flexDirection: 'column',
+          gap: 2
+        }}
+        open={isAnalyzing}
+      >
+        <CircularProgress color="inherit" />
+        <Typography variant="h6">Analyzing tasks with AI...</Typography>
+      </Backdrop>
+
+      <InstructionsDialog
+        open={isInstructionsOpen}
+        onClose={() => setIsInstructionsOpen(false)}
+      />
+
+      <TrashDialog
+        open={isTrashOpen}
+        onClose={() => setIsTrashOpen(false)}
+        items={trashedItems}
+        onRestore={handleRestoreFromTrash}
+        onClear={handleClearTrash}
+      />
+
+      <CreditPurchaseDialog
+        open={showCreditPurchase}
+        onClose={handleCreditPurchaseClose}
+        creditsNeeded={creditsNeeded}
+      />
+
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={3000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+      >
+        <Alert
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 

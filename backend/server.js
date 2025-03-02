@@ -9,6 +9,9 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const purchasesRouter = require('./routes/purchases');
+const aiRouter = require('./routes/ai');
+const usersRouter = require('./routes/users');
 
 const app = express();
 
@@ -254,8 +257,11 @@ router.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-// Mount API routes first
+// Mount routers
 app.use('/api', router);
+app.use('/api/ai', aiRouter);
+app.use('/api/purchases', purchasesRouter);
+app.use('/api/users', usersRouter);
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../frontend/dist')));

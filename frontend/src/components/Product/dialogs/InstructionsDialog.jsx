@@ -6,8 +6,19 @@ import {
   DialogActions,
   Button,
   Typography,
-  Box
+  Box,
+  Divider,
+  Grid,
+  Paper,
+  Stack
 } from '@mui/material';
+import {
+  PriorityHigh as UrgentIcon,
+  StarOutline as ImportantIcon,
+  AutoAwesome as AIIcon,
+  CreditCard as CreditIcon,
+  CheckCircleOutline as CheckIcon
+} from '@mui/icons-material';
 
 const InstructionsDialog = ({ open, onClose }) => {
   return (
@@ -16,74 +27,152 @@ const InstructionsDialog = ({ open, onClose }) => {
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      PaperProps={{
+        sx: { borderRadius: 3 }
+      }}
     >
-      <DialogTitle sx={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+      <DialogTitle sx={{
+        borderBottom: '1px solid rgba(0,0,0,0.08)',
+        py: 2.5,
+        px: 3,
+        typography: 'h5',
+        fontWeight: 600,
+        color: 'primary.main'
+      }}>
         How to Use 8020.best
       </DialogTitle>
-      <DialogContent>
-        <Box sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>Step by Step Guide</Typography>
-          <Box sx={{ pl: 2 }}>
-            <Typography paragraph>
-              1. <b>Import Items</b><br />
-              • Paste your items using the clipboard icon, or<br />
-              • Type items one by one in the input box
+
+      <DialogContent sx={{ py: 4, px: 3 }}>
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={6}>
+            <Stack spacing={3}>
+              <Box>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                  <AIIcon color="primary" sx={{ mr: 1 }} />
+                  Quick Start Guide
+                </Typography>
+
+                <Stack spacing={2} sx={{ mt: 2 }}>
+                  <Paper elevation={0} sx={{ p: 2, borderRadius: 2, bgcolor: 'grey.50', border: '1px solid rgba(0,0,0,0.05)' }}>
+                    <Typography variant="subtitle2" gutterBottom>1. Input Tasks</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Add your tasks one per line in the text field
+                    </Typography>
+                  </Paper>
+
+                  <Paper elevation={0} sx={{ p: 2, borderRadius: 2, bgcolor: 'grey.50', border: '1px solid rgba(0,0,0,0.05)' }}>
+                    <Typography variant="subtitle2" gutterBottom>2. Click "Analyze Tasks"</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Our AI will categorize them based on importance and urgency
+                    </Typography>
+                  </Paper>
+
+                  <Paper elevation={0} sx={{ p: 2, borderRadius: 2, bgcolor: 'grey.50', border: '1px solid rgba(0,0,0,0.05)' }}>
+                    <Typography variant="subtitle2" gutterBottom>3. Review Categories</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Focus on urgent and important tasks first
+                    </Typography>
+                  </Paper>
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                  <CreditIcon color="primary" sx={{ mr: 1 }} />
+                  Credits System
+                </Typography>
+
+                <Paper elevation={0} sx={{ p: 2, borderRadius: 2, bgcolor: 'grey.50', border: '1px solid rgba(0,0,0,0.05)' }}>
+                  <Stack spacing={1.5}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CheckIcon fontSize="small" color="success" sx={{ mr: 1 }} />
+                      <Typography variant="body2">Start with 100 free credits</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CheckIcon fontSize="small" color="success" sx={{ mr: 1 }} />
+                      <Typography variant="body2">1 credit per task analyzed</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CheckIcon fontSize="small" color="success" sx={{ mr: 1 }} />
+                      <Typography variant="body2">Purchase more credits when needed</Typography>
+                    </Box>
+                  </Stack>
+                </Paper>
+              </Box>
+            </Stack>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+              <ImportantIcon color="primary" sx={{ mr: 1 }} />
+              Understanding Categories
             </Typography>
 
-            <Typography paragraph>
-              2. <b>Rate Items by Importance</b><br />
-              • Navigate items using Up/Down arrow keys<br />
-              • Use Left/Right arrow keys to set importance (0 or 1)<br />
-              • Press Enter to move item to next list
-            </Typography>
+            <Stack spacing={2} sx={{ mt: 2 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: 'error.50',
+                  border: '1px solid',
+                  borderColor: 'error.100'
+                }}
+              >
+                <Typography variant="subtitle1" color="error.main" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                  <UrgentIcon fontSize="small" sx={{ mr: 1 }} /> Urgent Tasks
+                </Typography>
+                <Typography variant="body2">
+                  Time-sensitive tasks that need immediate attention. Do these first to meet deadlines.
+                </Typography>
+              </Paper>
 
-            <Typography paragraph>
-              3. <b>Rate Items by Urgency</b><br />
-              • Navigate to second list using ] key<br />
-              • Use Left/Right arrow keys to set urgency (0 or 1)<br />
-              • Press Enter to move item to final list
-            </Typography>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: 'warning.50',
+                  border: '1px solid',
+                  borderColor: 'warning.100'
+                }}
+              >
+                <Typography variant="subtitle1" color="warning.dark" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                  <ImportantIcon fontSize="small" sx={{ mr: 1 }} /> Important Tasks
+                </Typography>
+                <Typography variant="body2">
+                  High-impact tasks aligned with your long-term goals. Schedule these for focused work.
+                </Typography>
+              </Paper>
 
-            <Typography paragraph>
-              4. <b>Review Final List</b><br />
-              • Items are automatically sorted by importance and urgency<br />
-              • Format: importance,urgency,item<br />
-              • Use the copy icon to export your prioritized items
-            </Typography>
-          </Box>
-
-          <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Keyboard Shortcuts</Typography>
-          <Box sx={{ pl: 2 }}>
-            <Typography>
-              • <b>[ and ]</b> - Move between lists<br />
-              • <b>↑/↓</b> - Navigate items<br />
-              • <b>←/→</b> - Toggle rating (0/1)<br />
-              • <b>Enter</b> - Move item forward<br />
-              • <b>Delete/Backspace</b> - Remove item
-            </Typography>
-          </Box>
-
-          <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Item Ratings</Typography>
-          <Box sx={{ pl: 2 }}>
-            <Typography>
-              • <b>1,1</b> - Problem & Urgent<br />
-              • <b>1,0</b> - Problem, Not Urgent<br />
-              • <b>0,1</b> - Not Problem, Urgent<br />
-              • <b>0,0</b> - Not Problem, Not Urgent
-            </Typography>
-          </Box>
-        </Box>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: 'success.50',
+                  border: '1px solid',
+                  borderColor: 'success.100'
+                }}
+              >
+                <Typography variant="subtitle1" color="success.dark" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                  <CheckIcon fontSize="small" sx={{ mr: 1 }} /> Unimportant Tasks
+                </Typography>
+                <Typography variant="body2">
+                  Tasks with lower impact. Consider delegating, postponing, or eliminating these.
+                </Typography>
+              </Paper>
+            </Stack>
+          </Grid>
+        </Grid>
       </DialogContent>
-      <DialogActions>
+
+      <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
         <Button
           onClick={onClose}
           variant="contained"
-          sx={{
-            backgroundColor: 'black',
-            '&:hover': {
-              backgroundColor: '#333',
-            }
-          }}
+          color="primary"
+          sx={{ px: 3, py: 1, borderRadius: 2, textTransform: 'none' }}
         >
           Got it
         </Button>

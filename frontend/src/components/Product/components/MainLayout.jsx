@@ -1,5 +1,14 @@
 import React from 'react';
-import { Box, Container, IconButton, Slider, TextField } from '@mui/material';
+import {
+  Box,
+  IconButton,
+  TextField,
+  CircularProgress,
+  Tooltip,
+  Button,
+  Badge,
+  Chip,
+} from '@mui/material';
 import {
   ArrowBack,
   ContentPaste,
@@ -7,31 +16,29 @@ import {
   HelpOutline,
   DeleteOutlined,
   Check,
-  SyncProblem
+  SyncProblem,
+  Psychology,
+  CreditCard,
 } from '@mui/icons-material';
-import CircularProgress from '@mui/material/CircularProgress';
 
 const MainLayout = ({
   navigate,
-  sliderValue,
-  setSliderValue,
   newItem,
   setNewItem,
   handleClipboardImport,
   handleAddItem,
   handleExportList3,
   setIsInputFocused,
-  setSelectedIndex1,
-  setSelectedIndex2,
-  setSelectedIndex3,
-  setActiveList,
   setIsInstructionsOpen,
   setIsTrashOpen,
   isSyncing,
   isSyncError,
   children,
   readingModeControls,
-  trashedItems
+  trashedItems,
+  onTriggerAnalysis,
+  isAnalyzing,
+  credits,
 }) => {
   return (
     <Box
@@ -60,78 +67,100 @@ const MainLayout = ({
           flexDirection: 'column',
           gap: 2
         }}>
-          {/* Row 1: Back Button and Sync Status */}
+          {/* Row 1: Back Button, Sync Status, Credits */}
           <Box sx={{
             display: 'flex',
             alignItems: 'center',
             gap: 2,
-            width: '100%'
+            width: '100%',
+            justifyContent: 'space-between'
           }}>
-            <IconButton
-              onClick={() => navigate('/')}
-              size="small"
-              sx={{ color: 'black' }}
-            >
-              <ArrowBack />
-            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <IconButton
+                onClick={() => navigate('/')}
+                size="small"
+                sx={{ color: 'black' }}
+              >
+                <ArrowBack />
+              </IconButton>
 
-            {/* Sync Status Indicator */}
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              opacity: 0.7,
-              transition: 'opacity 0.3s ease'
-            }}>
-              {isSyncing ? (
-                <CircularProgress
-                  size={16}
-                  thickness={6}
-                  sx={{ color: 'black' }}
-                />
-              ) : isSyncError ? (
-                <SyncProblem
-                  sx={{
-                    color: 'error.main',
-                    fontSize: 18
-                  }}
-                />
-              ) : (
-                <Check
-                  sx={{
-                    color: 'success.main',
-                    fontSize: 18,
-                    animation: 'fadeIn 0.3s ease'
-                  }}
-                />
+              {/* Sync Status Indicator */}
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                opacity: 0.7,
+                transition: 'opacity 0.3s ease'
+              }}>
+                {isSyncing ? (
+                  <CircularProgress
+                    size={16}
+                    thickness={6}
+                    sx={{ color: 'black' }}
+                  />
+                ) : isSyncError ? (
+                  <SyncProblem
+                    sx={{
+                      color: 'error.main',
+                      fontSize: 18
+                    }}
+                  />
+                ) : (
+                  <Check
+                    sx={{
+                      color: 'success.main',
+                      fontSize: 18,
+                      animation: 'fadeIn 0.3s ease'
+                    }}
+                  />
+                )}
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Credits Display */}
+              {credits !== null && (
+                <Tooltip title="Available credits for AI analysis">
+                  <Chip
+                    icon={<CreditCard fontSize="small" />}
+                    label={`${credits} credits`}
+                    color={credits > 10 ? 'primary' : 'error'}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      borderColor: credits > 10 ? 'primary.main' : 'error.main',
+                      '& .MuiChip-icon': {
+                        color: credits > 10 ? 'primary.main' : 'error.main',
+                      }
+                    }}
+                  />
+                </Tooltip>
+              )}
+
+              {/* AI Analysis Button */}
+              {onTriggerAnalysis && (
+                <Tooltip title="Analyze tasks with AI">
+                  <span>
+                    <Button
+                      onClick={onTriggerAnalysis}
+                      disabled={isAnalyzing || (credits !== null && credits < 1)}
+                      variant="outlined"
+                      size="small"
+                      startIcon={isAnalyzing ? <CircularProgress size={16} /> : <Psychology />}
+                      sx={{
+                        color: 'black',
+                        borderColor: 'black',
+                        '&:hover': {
+                          borderColor: 'black',
+                          backgroundColor: 'rgba(0,0,0,0.04)',
+                        }
+                      }}
+                    >
+                      {isAnalyzing ? 'Analyzing...' : 'Analyze Tasks'}
+                    </Button>
+                  </span>
+                </Tooltip>
               )}
             </Box>
-          </Box>
-
-          {/* Slider Row */}
-          <Box sx={{
-            display: 'flex',
-            gap: 2,
-            alignItems: 'center',
-            width: '100%',
-          }}>
-            <Slider
-              value={sliderValue}
-              onChange={(_, newValue) => setSliderValue(newValue)}
-              step={1}
-              marks
-              min={0}
-              max={1}
-              sx={{
-                width: '100%',
-                flexShrink: 0,
-                '& .MuiSlider-track': { backgroundColor: 'black' },
-                '& .MuiSlider-rail': { backgroundColor: '#ccc' },
-                '& .MuiSlider-thumb': { backgroundColor: 'black' },
-                '& .MuiSlider-mark': { backgroundColor: '#bbb' },
-                '& .MuiSlider-markActive': { backgroundColor: 'black' }
-              }}
-              size="small"
-            />
           </Box>
 
           {/* Import/Export Controls Row */}
@@ -156,16 +185,8 @@ const MainLayout = ({
                 placeholder="Add new item..."
                 size="small"
                 fullWidth
-                onFocus={() => {
-                  setIsInputFocused(true);
-                  setSelectedIndex1(null);
-                  setSelectedIndex2(null);
-                  setSelectedIndex3(null);
-                  setActiveList(1);
-                }}
-                onBlur={() => {
-                  setIsInputFocused(false);
-                }}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.stopPropagation();
@@ -185,7 +206,7 @@ const MainLayout = ({
         </Box>
       </Box>
 
-      {/* Main content area - Simplified structure */}
+      {/* Main content area */}
       <Box
         sx={{
           flex: 1,
@@ -259,11 +280,10 @@ const MainLayout = ({
             </Box>
           )}
         </Box>
-
         {readingModeControls}
       </Box>
     </Box>
   );
-};
+}
 
 export default MainLayout;
