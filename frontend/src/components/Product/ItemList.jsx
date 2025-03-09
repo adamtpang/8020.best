@@ -1,123 +1,102 @@
-import React, { useState } from 'react';
-import {
-  Box,
-  List,
-  ListItem,
-  ListItemText,
-  TextField,
-  IconButton,
-  Tooltip,
-} from '@mui/material';
-import { Clear as ClearIcon } from '@mui/icons-material';
+import React from 'react';
+import { Box, Typography, IconButton, Paper, Tooltip } from '@mui/material';
+import { ContentCopy as CopyIcon } from '@mui/icons-material';
 
-const ItemList = ({ items, listNumber, onDeleteItems, onAddItem }) => {
-  const [newTask, setNewTask] = useState('');
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && newTask.trim() && listNumber === 1) {
-      onAddItem(newTask.trim(), undefined, 1);
-      setNewTask('');
-    }
+const ItemList = ({ items, color = '#f5f5f5' }) => {
+  const handleCopyToClipboard = async (text) => {
+    await navigator.clipboard.writeText(text);
   };
 
-  const handleClearList = () => {
-    onDeleteItems(items);
-  };
+  if (items.length === 0) {
+    return (
+      <Box
+        sx={{
+          p: 3,
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 2,
+          backgroundColor: color,
+          border: '1px dashed rgba(0, 150, 136, 0.2)',
+          color: 'text.secondary',
+          fontStyle: 'italic',
+          fontSize: '0.9rem'
+        }}
+      >
+        No items yet
+      </Box>
+    );
+  }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {listNumber === 1 && (
-        <Box sx={{ p: { xs: 1, sm: 1.5 }, borderBottom: '1px solid #333', flexShrink: 0 }}>
-          <TextField
-            fullWidth
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Add new task..."
-            variant="outlined"
-            size="small"
-            InputProps={{
-              sx: {
-                color: '#fff',
-                backgroundColor: '#222',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#333',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#444',
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#666',
-                },
-              }
-            }}
-          />
-        </Box>
-      )}
-
-      <List sx={{
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        py: 0,
-        '& .MuiListItem-root': {
-          py: { xs: 0.75, sm: 1 },
-          px: { xs: 1, sm: 1.5 },
-          borderBottom: '1px solid #333',
-          '&:last-child': {
-            borderBottom: 'none'
-          }
-        }
-      }}>
+    <Box>
+      <Paper
+        elevation={0}
+        sx={{
+          overflow: 'hidden',
+          borderRadius: '4px'
+        }}
+      >
         {items.map((item, index) => (
-          <ListItem
+          <Box
             key={index}
             sx={{
-              color: '#fff',
+              p: 2,
+              backgroundColor: color,
+              mb: index !== items.length - 1 ? '2px' : 0,
+              transition: 'all 0.2s',
+              position: 'relative',
               '&:hover': {
-                backgroundColor: '#222',
+                backgroundColor: `rgba(0, 150, 136, 0.08)`,
+                transform: 'translateX(3px)'
+              },
+              '&:hover .copy-button': {
+                opacity: 1
               }
             }}
           >
-            <ListItemText
-              primary={item}
+            <Typography
               sx={{
-                '& .MuiTypography-root': {
-                  fontSize: { xs: '0.875rem', sm: '0.9rem' },
-                  lineHeight: 1.4,
-                }
-              }}
-            />
-          </ListItem>
-        ))}
-      </List>
-
-      {items.length > 0 && (
-        <Box sx={{
-          p: { xs: 1, sm: 1.5 },
-          borderTop: '1px solid #333',
-          display: 'flex',
-          justifyContent: 'center'
-        }}>
-          <Tooltip title={`Clear ${listNumber === 1 ? 'Important' : listNumber === 2 ? 'Urgent' : 'Calendar'} List`}>
-            <IconButton
-              onClick={handleClearList}
-              size="small"
-              sx={{
-                color: '#666',
-                '&:hover': {
-                  color: '#fff',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                }
+                fontSize: '0.95rem',
+                lineHeight: 1.5,
+                color: 'text.primary',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                paddingRight: '30px'
               }}
             >
-              <ClearIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      )}
+              {item}
+            </Typography>
+
+            <Tooltip title="Copy to clipboard">
+              <IconButton
+                size="small"
+                className="copy-button"
+                onClick={() => handleCopyToClipboard(item)}
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: '8px',
+                  transform: 'translateY(-50%)',
+                  opacity: 0,
+                  transition: 'opacity 0.2s',
+                  backgroundColor: 'rgba(255,255,255,0.8)',
+                  '&:hover': {
+                    backgroundColor: 'white'
+                  },
+                  width: '24px',
+                  height: '24px'
+                }}
+              >
+                <CopyIcon fontSize="small" sx={{ fontSize: '14px' }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ))}
+      </Paper>
     </Box>
   );
-}
+};
 
 export default ItemList;

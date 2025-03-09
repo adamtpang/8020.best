@@ -1,12 +1,10 @@
 import axios from 'axios';
 
 // Set the base URL based on the environment
-const baseURL = process.env.NODE_ENV === 'production'
-    ? 'https://8020.best'
-    : 'http://localhost:3000';
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Create an axios instance with default config
-const axiosInstance = axios.create({
+const api = axios.create({
     baseURL,
     timeout: 20000, // 20 seconds
     headers: {
@@ -14,17 +12,22 @@ const axiosInstance = axios.create({
     }
 });
 
-// Add a request interceptor for authentication
-axiosInstance.interceptors.request.use(
-    (config) => {
-        // Get token from local storage
-        const token = localStorage.getItem('token');
+// Add a response interceptor for error handling
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        console.error('API Error:', error.response?.data || error.message);
+        return Promise.reject(error);
+    }
+);
 
-        // If token exists, add it to the headers
+// Add auth token to requests when available
+api.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
         if (token) {
             config.headers['x-auth-token'] = token;
         }
-
         return config;
     },
     (error) => {
@@ -32,25 +35,31 @@ axiosInstance.interceptors.request.use(
     }
 );
 
-// Add a response interceptor for error handling
-axiosInstance.interceptors.response.use(
-    (response) => {
-        return response;
-    },
+// Handle response errors
+api.interceptors.response.use(
+    (response) => response,
     (error) => {
         // Handle authentication errors
         if (error.response && error.response.status === 401) {
-            // Clear local storage and redirect to login page
+            console.error('API Auth Error:', error.response.data);
+
+            // Clear local storage but don't force reload
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            window.location.href = '/login';
-        }
 
+            // Don't force page navigation - this can cause refresh loops
+            // window.location.href = '/';
+
+            // Log the error instead
+            console.warn('Authentication error: 401 Unauthorized. User token cleared.');
+        }
         return Promise.reject(error);
     }
 );
 
-export default axiosInstance;
+// Export the API instance both as default and named export
+export { api };
+export default api;
 
 /**
  * Create a new user account
@@ -58,7 +67,7 @@ export default axiosInstance;
  * @returns {Promise} - Response from the server
  */
 export const register = async (userData) => {
-    const response = await axiosInstance.post('/api/users/register', userData);
+    const response = await api.post('/api/users/register', userData);
     return response.data;
 };
 
@@ -68,7 +77,7 @@ export const register = async (userData) => {
  * @returns {Promise} - Response with user data and token
  */
 export const login = async (credentials) => {
-    const response = await axiosInstance.post('/api/users/login', credentials);
+    const response = await api.post('/api/users/login', credentials);
 
     // Store token and user data in local storage
     if (response.data.token) {
@@ -89,40 +98,83 @@ export const logout = () => {
 };
 
 /**
- * Get the current user's credit balance
- * @returns {Promise} - Response with credit balance
+ * Get current user data
+ * @returns {Promise} - Response with user data
  */
-export const getCredits = async () => {
-    const response = await axiosInstance.get('/api/purchases/credits');
-
-    // Store credits in local storage
-    localStorage.setItem('credits', response.data.credits);
-
+export const getCurrentUser = async () => {
+    const response = await api.get('/api/users/me');
     return response.data;
 };
 
 /**
- * Create a payment intent for credit purchase
- * @param {string} creditPackage - Package type ('small' or 'large')
- * @returns {Promise} - Response with client secret
+ * Get available credit packages
+ * @returns {Promise} - Response with available packages
  */
-export const createPaymentIntent = async (creditPackage) => {
-    const response = await axiosInstance.post('/api/purchases/create-payment-intent', {
-        creditPackage
-    });
-
+export const getCreditPackages = async () => {
+    const response = await api.get('/api/purchases/credit-packages');
     return response.data;
 };
 
 /**
- * Confirm successful payment and add credits
- * @param {string} paymentIntentId - Stripe payment intent ID
- * @returns {Promise} - Response with success status
+ * Create a checkout session for buying credits
+ * @param {string} packageId - Credit package ID
+ * @param {string} successUrl - URL to redirect to on success
+ * @param {string} cancelUrl - URL to redirect to on cancel
+ * @returns {Promise} - Response with checkout URL
  */
-export const confirmPayment = async (paymentIntentId) => {
-    const response = await axiosInstance.post('/api/purchases/payment-success', {
-        paymentIntentId
+export const createCheckoutSession = async (packageId, successUrl, cancelUrl) => {
+    const response = await api.post('/api/purchases/buy-credits', {
+        packageId,
+        successUrl,
+        cancelUrl
     });
+    return response.data;
+};
 
+/**
+ * Check if a purchase was successful
+ * @returns {Promise} - Response with success status and updated credits
+ */
+export const checkPurchaseSuccess = async () => {
+    const response = await api.get('/api/purchases/check-success');
+    return response.data;
+};
+
+/**
+ * Grant credits to a user (for admins)
+ * @param {Object} data - Credit grant data { email, userId, amount }
+ * @returns {Promise} - Response with grant result
+ */
+export const grantCredits = async (data) => {
+    const response = await api.post('/api/admin/grant-credits', data);
+    return response.data;
+};
+
+/**
+ * Get admin stats
+ * @returns {Promise} - Response with admin stats
+ */
+export const getAdminStats = async () => {
+    const response = await api.get('/api/admin/stats');
+    return response.data;
+};
+
+/**
+ * Get all users (admin only)
+ * @returns {Promise} - Response with users list
+ */
+export const getUsers = async () => {
+    const response = await api.get('/api/admin/users');
+    return response.data;
+};
+
+/**
+ * Update user settings (admin only)
+ * @param {string} userId - User ID
+ * @param {Object} userData - User data to update
+ * @returns {Promise} - Response with updated user
+ */
+export const updateUser = async (userId, userData) => {
+    const response = await api.put(`/api/admin/user/${userId}`, userData);
     return response.data;
 };

@@ -1,47 +1,53 @@
 const express = require('express');
 const router = express.Router();
-const { analyzeTasks } = require('../services/taskAnalysis');
-const auth = require('../middleware/auth');
-const { hasEnoughCredits, deductCredits } = require('../services/creditService');
+const { analyzeTask, analyzeTasks } = require('../services/taskAnalysis');
 
-// Analyze tasks with authentication and credit check
-router.post('/analyze-tasks', auth, async (req, res) => {
+// Analyze a single task (simplified, no auth for now)
+router.post('/analyze-task', async (req, res) => {
     try {
-        const { tasks } = req.body;
-        if (!Array.isArray(tasks) || tasks.length === 0) {
-            return res.status(400).json({ error: 'Invalid tasks array' });
+        const { task } = req.body;
+
+        if (!task) {
+            return res.status(400).json({ error: 'No task provided' });
         }
 
-        // Calculate credits needed based on number of tasks
-        const creditsNeeded = tasks.length; // 1 credit per task
+        const result = await analyzeTask(task);
 
-        // Check if user has enough credits
-        const hasCredits = await hasEnoughCredits(req.user.id, creditsNeeded);
-        if (!hasCredits) {
-            return res.status(403).json({
-                error: 'Insufficient credits',
-                creditsNeeded
-            });
-        }
-
-        // Analyze tasks
-        const results = await analyzeTasks(tasks);
-
-        // Deduct credits after successful analysis
-        const remainingCredits = await deductCredits(req.user.id, creditsNeeded);
-
-        // Return results and credit information
         res.json({
-            results,
-            credits: {
-                used: creditsNeeded,
-                remaining: remainingCredits
+            result: {
+                important: result.importance === 1,
+                urgent: result.urgency === 1
             }
         });
+    } catch (error) {
+        console.error('Error analyzing task:', error);
+        res.status(500).json({ error: 'Failed to analyze task' });
+    }
+});
+
+// Analyze multiple tasks (simplified, no auth for now)
+router.post('/analyze-tasks', async (req, res) => {
+    try {
+        const { tasks } = req.body;
+
+        if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
+            return res.status(400).json({ error: 'No tasks provided or invalid format' });
+        }
+
+        const results = await analyzeTasks(tasks);
+
+        res.json({ results });
     } catch (error) {
         console.error('Error analyzing tasks:', error);
         res.status(500).json({ error: 'Failed to analyze tasks' });
     }
+});
+
+/**
+ * Simple test endpoint
+ */
+router.get('/test', (req, res) => {
+    res.json({ message: 'AI API is working!' });
 });
 
 module.exports = router;

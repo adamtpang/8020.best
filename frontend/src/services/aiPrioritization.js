@@ -1,76 +1,193 @@
-import axiosInstance from "./api";
+import axios from 'axios';
+import { auth } from '../firebase-config';
 
-// Throttling mechanism
-let throttleTimeout = null;
-let lastAnalysisTime = 0;
-const THROTTLE_WAIT = 2000; // 2 seconds
+// Create an axios instance for AI requests with auth
+const aiAxiosInstance = axios.create({
+    baseURL: 'http://localhost:5000',
+    timeout: 60000, // 60 second timeout
+    headers: {
+        'Content-Type': 'application/json'
+    }
+});
+
+// Add auth token to requests
+aiAxiosInstance.interceptors.request.use(async (config) => {
+    const user = auth.currentUser;
+    if (user) {
+        const token = await user.getIdToken();
+        config.headers['x-auth-token'] = token;
+    }
+    return config;
+});
+
+// Progress tracking
+let progressCallbacks = [];
+
+// Add startTime to keep track of when the analysis started
+let startTime = null;
 
 /**
- * Analyze tasks using the AI service with credit tracking
+ * Register a callback to receive progress updates
+ * @param {Function} callback - Function to call with progress updates
+ * @returns {Function} Function to unregister the callback
+ */
+export const onProgressUpdate = (callback) => {
+    if (typeof callback === 'function') {
+        progressCallbacks.push(callback);
+        return () => {
+            progressCallbacks = progressCallbacks.filter(cb => cb !== callback);
+        };
+    }
+    return () => { };
+};
+
+/**
+ * Update progress and notify all registered callbacks
+ *
+ * @param {number} completed - Number of completed tasks
+ * @param {number} total - Total number of tasks
+ */
+const updateProgress = (completed, total) => {
+    // Initialize startTime when we start processing
+    if (completed === 0 && total > 0) {
+        startTime = Date.now();
+    }
+
+    const progress = {
+        completed,
+        total,
+        percent: total > 0 ? Math.round((completed / total) * 100) : 0,
+        startTime // Include startTime in the progress object
+    };
+
+    progressCallbacks.forEach(callback => {
+        try {
+            callback(progress);
+        } catch (error) {
+            console.error('Error in progress callback:', error);
+        }
+    });
+};
+
+/**
+ * Analyze tasks using the AI service
  *
  * @param {Array} tasks - List of tasks to analyze
- * @returns {Object} Analysis results and credit information
+ * @returns {Object} Analysis results
  */
 export const analyzeTasks = async (tasks) => {
     if (!tasks || tasks.length === 0) return {};
 
-    // Check if we need to throttle
-    const now = Date.now();
-    const timeElapsed = now - lastAnalysisTime;
+    // Reset progress
+    updateProgress(0, tasks.length);
 
-    if (timeElapsed < THROTTLE_WAIT) {
-        // Clear any existing timeout
-        if (throttleTimeout) {
-            clearTimeout(throttleTimeout);
-        }
-
-        // Wait for the remaining throttle time
-        return new Promise((resolve) => {
-            throttleTimeout = setTimeout(async () => {
-                const result = await makeAnalysisRequest(tasks);
-                resolve(result);
-            }, THROTTLE_WAIT - timeElapsed);
-        });
+    // Use mock analysis in development mode
+    if (import.meta.env.MODE === 'development') {
+        return mockAnalysis(tasks);
     }
 
-    // No throttling needed, make the request immediately
-    return makeAnalysisRequest(tasks);
+    try {
+        // Process tasks in batches for better progress tracking
+        const results = {};
+
+        for (let i = 0; i < tasks.length; i++) {
+            const task = tasks[i];
+
+            try {
+                // Send task to backend for analysis
+                const response = await aiAxiosInstance.post('/api/ai/analyze-task', { task });
+                results[task] = response.data.result;
+            } catch (error) {
+                console.error(`Error analyzing task "${task}":`, error);
+                results[task] = { important: false, urgent: false };
+            }
+
+            // Update progress
+            updateProgress(i + 1, tasks.length);
+        }
+
+        return results;
+    } catch (error) {
+        console.error('Error analyzing tasks:', error);
+        throw error;
+    }
 };
 
 /**
- * Make the actual API request for analysis
+ * Mock analysis for development testing
  *
  * @param {Array} tasks - List of tasks to analyze
- * @returns {Object} Analysis results and credit information
+ * @returns {Object} Mock analysis results
  */
-const makeAnalysisRequest = async (tasks) => {
-    try {
-        lastAnalysisTime = Date.now();
-        const token = localStorage.getItem('token');
+const mockAnalysis = async (tasks) => {
+    const results = {};
 
-        const response = await axiosInstance.post('/api/ai/analyze-tasks',
-            { tasks },
-            { headers: { 'x-auth-token': token } }
-        );
+    // For each task, simulate processing and create mock results
+    for (let i = 0; i < tasks.length; i++) {
+        const task = tasks[i];
 
-        // Store credits info in localStorage for display
-        if (response.data.credits) {
-            localStorage.setItem('credits', response.data.credits.remaining);
+        // Simulate processing time (300-700ms)
+        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
+
+        // Check for special cases that should always be important
+        // Looking for URLs/links and potentially tweetable ideas
+        const containsURL = /https?:\/\/\S+/.test(task) ||
+            /www\.\S+/.test(task) ||
+            task.includes('.com') ||
+            task.includes('.org') ||
+            task.includes('.net');
+
+        const isPotentiallyTweetable = task.length < 280 &&
+            (task.startsWith('"') ||
+                task.includes('idea:') ||
+                task.includes('tweet') ||
+                task.includes('share') ||
+                /^[A-Z].*[.!?]$/.test(task)); // Complete thought
+
+        // If this is a URL or tweetable idea, make it important but not urgent
+        if (containsURL || isPotentiallyTweetable) {
+            results[task] = {
+                important: true,
+                urgent: false
+            };
+
+            // Update progress
+            updateProgress(i + 1, tasks.length);
+            continue;
         }
 
-        return response.data.results;
-    } catch (error) {
-        console.error('Error analyzing tasks:', error);
+        // Otherwise use a random distribution for the 2x2 matrix
+        const rand = Math.random();
+        let isImportant, isUrgent;
 
-        // Handle credit-related errors
-        if (error.response && error.response.status === 403) {
-            // Show credit purchase dialog
-            localStorage.setItem('showCreditPurchase', 'true');
-            localStorage.setItem('creditsNeeded', error.response.data.creditsNeeded);
+        if (rand < 0.25) {
+            // Important + Urgent
+            isImportant = true;
+            isUrgent = true;
+        } else if (rand < 0.5) {
+            // Important + Not Urgent
+            isImportant = true;
+            isUrgent = false;
+        } else if (rand < 0.75) {
+            // Not Important + Urgent
+            isImportant = false;
+            isUrgent = true;
+        } else {
+            // Not Important + Not Urgent
+            isImportant = false;
+            isUrgent = false;
         }
 
-        throw error;
+        results[task] = {
+            important: isImportant,
+            urgent: isUrgent
+        };
+
+        // Update progress
+        updateProgress(i + 1, tasks.length);
     }
+
+    return results;
 };
 
 /**
@@ -81,25 +198,36 @@ const makeAnalysisRequest = async (tasks) => {
  * @returns {Object} Categorized tasks
  */
 export const categorizeTasks = (tasks, analysis) => {
-    const important = [];
-    const urgent = [];
-    const regular = [];
+    const importantUrgent = [];
+    const importantNotUrgent = [];
+    const notImportantUrgent = [];
+    const notImportantNotUrgent = [];
 
     tasks.forEach(task => {
+        if (!task.trim()) return; // Skip empty tasks
+
         const result = analysis[task];
         if (!result) {
-            regular.push(task);
+            // If no analysis, put in Not Important + Not Urgent by default
+            notImportantNotUrgent.push(task);
             return;
         }
 
-        if (result.urgent) {
-            urgent.push(task);
-        } else if (result.important) {
-            important.push(task);
+        if (result.important && result.urgent) {
+            importantUrgent.push(task);
+        } else if (result.important && !result.urgent) {
+            importantNotUrgent.push(task);
+        } else if (!result.important && result.urgent) {
+            notImportantUrgent.push(task);
         } else {
-            regular.push(task);
+            notImportantNotUrgent.push(task);
         }
     });
 
-    return { important, urgent, regular };
+    return {
+        importantUrgent,
+        importantNotUrgent,
+        notImportantUrgent,
+        notImportantNotUrgent
+    };
 };

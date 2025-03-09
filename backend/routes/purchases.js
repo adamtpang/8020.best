@@ -1,82 +1,72 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const Stripe = require('stripe');
 const User = require('../models/User');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { requireAuth } = require('../middleware/auth');
 
-// Create a payment intent for credit purchase
-router.post('/create-payment-intent', auth, async (req, res) => {
-    try {
-        const { creditPackage } = req.body;
+// Initialize Stripe with the API key
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_key');
 
-        // Define credit packages and their costs
-        const packages = {
-            small: { credits: 100, amount: 100 }, // $1 for 100 credits
-            large: { credits: 1100, amount: 1000 }, // $10 for 1100 credits (10% bonus)
-        };
-
-        // Validate package selection
-        if (!packages[creditPackage]) {
-            return res.status(400).json({ error: 'Invalid credit package' });
+/**
+ * @route GET /api/purchases/credit-packages
+ * @desc Get available credit packages (mock data for now)
+ * @access Public
+ */
+router.get('/credit-packages', (req, res) => {
+    // Return mock data for now
+    const mockPackages = {
+        credit_small: {
+            id: 'credit_small',
+            name: '300 Credits',
+            price: 4.99,
+            credits: 300,
+            description: 'Good for occasional use (300 note analyses)'
+        },
+        credit_medium: {
+            id: 'credit_medium',
+            name: '1,000 Credits',
+            price: 9.99,
+            credits: 1000,
+            description: 'Best value for regular users (1,000 note analyses)'
+        },
+        credit_large: {
+            id: 'credit_large',
+            name: '5,000 Credits',
+            price: 34.99,
+            credits: 5000,
+            description: 'Ideal for power users (5,000 note analyses)'
         }
+    };
 
-        // Create a payment intent
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: packages[creditPackage].amount,
-            currency: 'usd',
-            metadata: {
-                userId: req.user.id,
-                creditPackage,
-                credits: packages[creditPackage].credits
-            }
-        });
-
-        res.json({
-            clientSecret: paymentIntent.client_secret
-        });
-    } catch (error) {
-        console.error('Error creating payment intent:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
+    res.json({ packages: mockPackages });
 });
 
-// Handle successful payment webhook and add credits to user
-router.post('/payment-success', async (req, res) => {
-    try {
-        const { paymentIntentId } = req.body;
-
-        // Verify the payment intent
-        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-        if (paymentIntent.status === 'succeeded') {
-            const { userId, credits } = paymentIntent.metadata;
-
-            // Add credits to user
-            await User.findByIdAndUpdate(
-                userId,
-                { $inc: { credits: Number(credits) } },
-                { new: true }
-            );
-
-            res.json({ success: true });
-        } else {
-            res.status(400).json({ error: 'Payment not successful' });
-        }
-    } catch (error) {
-        console.error('Error handling payment success:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
+/**
+ * @route POST /api/purchases/buy-credits
+ * @desc Simulated endpoint for buying credits (will be implemented later)
+ * @access Private
+ */
+router.post('/buy-credits', requireAuth, (req, res) => {
+    // For now, just simulate a successful response
+    res.json({
+        success: true,
+        message: 'Credit purchasing will be implemented later',
+        url: '#'
+    });
 });
 
-// Get user's current credit balance
-router.get('/credits', auth, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id).select('credits');
-        res.json({ credits: user.credits || 0 });
-    } catch (error) {
-        console.error('Error fetching credit balance:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
+/**
+ * @route GET /api/purchases/check-success
+ * @desc Check if a purchase was successful
+ * @access Private
+ */
+router.get('/check-success', requireAuth, (req, res) => {
+    // For now, return a simulated response
+    res.json({
+        success: true,
+        credits: 100,
+        message: 'Credits granted (simulated)'
+    });
 });
 
 module.exports = router;

@@ -1,29 +1,48 @@
-// Import Firebase
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getAnalytics } from 'firebase/analytics';
+// Mock Firebase configuration for development
+// This file provides mock implementations of Firebase services
+// to prevent errors when Firebase credentials are not available
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+// Create mock implementations
+const app = {
+  name: 'mock-firebase-app',
+  options: {}
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const auth = {
+  currentUser: null,
+  onAuthStateChanged: (callback) => {
+    console.log('Mock Firebase: onAuthStateChanged called');
+    // Return an unsubscribe function
+    return () => { };
+  },
+  signInWithEmailAndPassword: (email, password) => {
+    console.log('Mock Firebase: signInWithEmailAndPassword called with', email);
+    return Promise.resolve({ user: { email, uid: 'mock-uid' } });
+  },
+  signInWithPopup: () => {
+    console.log('Mock Firebase: signInWithPopup called');
+    return Promise.resolve({
+      user: { email: 'mock-google@example.com', uid: 'mock-google-uid' }
+    });
+  },
+  signOut: () => {
+    console.log('Mock Firebase: signOut called');
+    return Promise.resolve();
+  }
+};
 
-// Initialize Analytics
-const analytics = getAnalytics(app);
+const provider = {
+  addScope: () => { },
+  setCustomParameters: () => { },
+  providerId: 'google.com'
+};
 
-// Initialize Auth
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
+const analytics = {
+  logEvent: (eventName, params) => {
+    console.log('Mock Firebase Analytics: logEvent', eventName, params);
+  }
+};
 
-// Export what we need
+// Export mock objects
 export { auth, provider, analytics };
 export default app;

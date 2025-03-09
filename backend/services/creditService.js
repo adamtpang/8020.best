@@ -8,7 +8,10 @@ const User = require('../models/User');
  */
 const hasEnoughCredits = async (userId, requiredCredits = 1) => {
     try {
-        const user = await User.findById(userId);
+        // If userId is an object with _id property, use that (for compatibility with Mongoose documents)
+        const id = userId._id ? userId._id : userId;
+
+        const user = await User.findById(id);
         if (!user) {
             throw new Error('User not found');
         }
@@ -28,8 +31,11 @@ const hasEnoughCredits = async (userId, requiredCredits = 1) => {
  */
 const deductCredits = async (userId, amount = 1) => {
     try {
+        // If userId is an object with _id property, use that (for compatibility with Mongoose documents)
+        const id = userId._id ? userId._id : userId;
+
         const user = await User.findByIdAndUpdate(
-            userId,
+            id,
             { $inc: { credits: -amount } },
             { new: true }
         );
@@ -53,8 +59,11 @@ const deductCredits = async (userId, amount = 1) => {
  */
 const addCredits = async (userId, amount) => {
     try {
+        // If userId is an object with _id property, use that (for compatibility with Mongoose documents)
+        const id = userId._id ? userId._id : userId;
+
         const user = await User.findByIdAndUpdate(
-            userId,
+            id,
             { $inc: { credits: amount } },
             { new: true }
         );
@@ -77,7 +86,10 @@ const addCredits = async (userId, amount) => {
  */
 const getCredits = async (userId) => {
     try {
-        const user = await User.findById(userId);
+        // If userId is an object with _id property, use that (for compatibility with Mongoose documents)
+        const id = userId._id ? userId._id : userId;
+
+        const user = await User.findById(id);
         if (!user) {
             throw new Error('User not found');
         }
