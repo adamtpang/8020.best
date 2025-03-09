@@ -43,3 +43,4 @@ eisenhower_matrix/
 problem_vectors/
 *.txt
 node_modules
+backend/serviceAccountKey.json
