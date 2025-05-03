@@ -1,12 +1,15 @@
 import axios from 'axios';
 import { auth } from '../firebase-config';
 
-// Create an axios instance for AI requests with auth
+// Use the environment variable for the base URL
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Create an axios instance with the proper base URL
 const aiAxiosInstance = axios.create({
-    baseURL: 'http://localhost:5000',
-    timeout: 60000, // 60 second timeout
+    baseURL: baseURL.replace(/\/api$/, ''), // Remove '/api' if it exists at the end
+    timeout: 30000, // 30 seconds timeout
     headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
     }
 });
 
