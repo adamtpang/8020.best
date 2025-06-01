@@ -13,8 +13,12 @@ const { isValidUrl } = require('../utils/textUtils');
 dotenv.config();
 
 // Default model configuration - can be changed via .env
-const DEFAULT_MODEL = "anthropic/claude-3.5-haiku";
+const DEFAULT_MODEL = "meta/meta-llama-3-8b-instruct";
 const MODEL_CONFIG = {
+    "meta/meta-llama-3-8b-instruct": {
+        version: "latest", // Llama models use 'latest'
+        maxTokens: 50
+    },
     "anthropic/claude-3.5-haiku": {
         version: "20240307", // This needs to be updated as new versions are released
         maxTokens: 20
@@ -22,6 +26,10 @@ const MODEL_CONFIG = {
     "anthropic/claude-3.7-sonnet": {
         version: "20240827",
         maxTokens: 10
+    },
+    "openai/gpt-4o-mini": {
+        version: "latest",
+        maxTokens: 30
     }
 };
 
@@ -64,30 +72,30 @@ async function analyzeTask(task) {
  */
 async function analyzeWithReplicate(task) {
     try {
-        const prompt = `Task: "${task}"
+        const prompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-Classify this task using two simple questions:
+You are a productivity expert specializing in the Eisenhower Matrix. Classify tasks based on:
 
-1. Is this IMPORTANT? (Does it matter for long-term goals or wellbeing?)
-   - Examples: Career tasks, health matters, securing valuables, financial planning
+IMPORTANT = contributes to long-term goals, values, wellbeing, or meaningful outcomes
+URGENT = requires immediate attention, has deadlines, or consequences for delay
 
-2. Is this URGENT? (Does it need immediate attention or have a deadline?)
-   - Examples: Bills due soon, emergencies, deadlines
+SPECIAL RULES:
+- URLs/links = ALWAYS important (knowledge to save)
+- Creative ideas/content = ALWAYS important
+- Financial/health/security matters = ALWAYS important
+- "Someday maybe" items = usually not important
 
-IMPORTANT GUIDELINES:
-- Links/URLs should ALWAYS be considered IMPORTANT (but not urgent)
-- Ideas worth sharing or tweeting should ALWAYS be considered IMPORTANT (but not urgent)
-- Notes or content to save for later reference should be considered IMPORTANT (but not urgent)
+Reply with ONLY one word: "important_urgent", "important", or "unimportant"<|eot_id|><|start_header_id|>user<|end_header_id|>
 
-Reply with only one of:
-- "important_urgent" - if YES to both questions
-- "important" - if YES to importance but NO to urgency
-- "unimportant" - if NO to importance`;
+Task: "${task}"
+
+Classification:<|eot_id|><|start_header_id|>assistant<|end_header_id|>`;
 
         const input = {
             prompt: prompt,
             max_tokens: parseInt(MAX_TOKENS, 10),
-            system_prompt: "You are a productivity assistant. Classify each task as 'important_urgent' (do now), 'important' (do next), or 'unimportant' (do never). Tasks involving personal security, documents, finances, wellbeing, links/URLs, and ideas worth sharing should be considered important."
+            temperature: 0.1, // Low temperature for consistent classification
+            top_p: 0.9
         };
 
         // Create a prediction using the configured model
