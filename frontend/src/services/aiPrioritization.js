@@ -1,236 +1,183 @@
 import axios from 'axios';
-import { auth } from '../firebase-config';
 
-// Use the environment variable for the base URL
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = '/api';
 
-// Create an axios instance with the proper base URL
-const aiAxiosInstance = axios.create({
-    baseURL: baseURL.replace(/\/api$/, ''), // Remove '/api' if it exists at the end
-    timeout: 30000, // 30 seconds timeout
-    headers: {
+const api = axios.create({
+    baseURL: API_URL,
+    timeout: 90000, // 90 seconds for potentially long AI analysis
+});
+
+/**
+ * Establishes a connection to the backend to stream ranked tasks.
+ * Uses Server-Sent Events (SSE) to receive data.
+ *
+ * @param {string[]} tasks - An array of task strings.
+ * @param {function} onData - Callback function to handle incoming task data.
+ * @param {function} onError - Callback function to handle errors.
+ * @param {function} onClose - Callback function for when the stream closes.
+ * @returns {EventSource} The EventSource instance to allow for closing the connection.
+ */
+export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onClose }, authToken = null) => {
+    // Prepare headers
+    const headers = {
         'Content-Type': 'application/json',
-    }
-});
-
-// Add auth token to requests
-aiAxiosInstance.interceptors.request.use(async (config) => {
-    const user = auth.currentUser;
-    if (user) {
-        const token = await user.getIdToken();
-        config.headers['x-auth-token'] = token;
-    }
-    return config;
-});
-
-// Progress tracking
-let progressCallbacks = [];
-
-// Add startTime to keep track of when the analysis started
-let startTime = null;
-
-/**
- * Register a callback to receive progress updates
- * @param {Function} callback - Function to call with progress updates
- * @returns {Function} Function to unregister the callback
- */
-export const onProgressUpdate = (callback) => {
-    if (typeof callback === 'function') {
-        progressCallbacks.push(callback);
-        return () => {
-            progressCallbacks = progressCallbacks.filter(cb => cb !== callback);
-        };
-    }
-    return () => { };
-};
-
-/**
- * Update progress and notify all registered callbacks
- *
- * @param {number} completed - Number of completed tasks
- * @param {number} total - Total number of tasks
- */
-const updateProgress = (completed, total) => {
-    // Initialize startTime when we start processing
-    if (completed === 0 && total > 0) {
-        startTime = Date.now();
-    }
-
-    const progress = {
-        completed,
-        total,
-        percent: total > 0 ? Math.round((completed / total) * 100) : 0,
-        startTime // Include startTime in the progress object
     };
-
-    progressCallbacks.forEach(callback => {
-        try {
-            callback(progress);
-        } catch (error) {
-            console.error('Error in progress callback:', error);
-        }
-    });
-};
-
-/**
- * Analyze tasks using the AI service
- *
- * @param {Array} tasks - List of tasks to analyze
- * @returns {Object} Analysis results
- */
-export const analyzeTasks = async (tasks) => {
-    if (!tasks || tasks.length === 0) return {};
-
-    // Reset progress
-    updateProgress(0, tasks.length);
-
-    // Use mock analysis in development mode
-    if (import.meta.env.MODE === 'development') {
-        return mockAnalysis(tasks);
+    
+    // Add auth token if provided
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
     }
+    
+    // Create a fetch request for the streaming endpoint
+    fetch('/api/ai/rank-tasks', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ tasks, userPriorities }),
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to start analysis');
+        }
+        return response.body;
+    })
+    .then(body => {
+        const reader = body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-    try {
-        // Process tasks in batches for better progress tracking
-        const results = {};
+        function readChunk() {
+            return reader.read().then(({ done, value }) => {
+                if (done) {
+                    // Process any remaining complete JSON objects in buffer
+                    if (buffer.trim()) {
+                        processBuffer();
+                    }
+                    onClose?.();
+                    return;
+                }
 
-        for (let i = 0; i < tasks.length; i++) {
-            const task = tasks[i];
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n').filter(line => line.trim());
+                
+                console.log('Raw chunk received:', chunk);
 
-            try {
-                // Send task to backend for analysis
-                const response = await aiAxiosInstance.post('/api/ai/analyze-task', { task });
-                results[task] = response.data.result;
-            } catch (error) {
-                console.error(`Error analyzing task "${task}":`, error);
-                results[task] = { important: false, urgent: false };
+                for (const line of lines) {
+                    console.log('Processing line:', line);
+                    
+                    // Handle Server-Sent Events format
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            console.log('Parsed SSE data:', data);
+                            
+                            if (data.type === 'chunk') {
+                                // Add chunk content to buffer
+                                buffer += data.content;
+                                console.log('Buffer now:', buffer);
+                                
+                                // Try to extract complete JSON objects from buffer
+                                processBuffer();
+                            } else if (data.type === 'end') {
+                                // Process any remaining complete JSON objects in buffer
+                                processBuffer();
+                                onClose?.();
+                                return;
+                            } else if (data.type === 'error') {
+                                onError?.(new Error(data.message));
+                                return;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing SSE chunk:', e);
+                        }
+                    } 
+                    // Handle raw JSON lines (direct from AI)
+                    else if (line.trim().startsWith('{') && line.trim().endsWith('}')) {
+                        try {
+                            const taskData = JSON.parse(line.trim());
+                            console.log('Parsed raw JSON task data:', taskData);
+                            onData?.(taskData);
+                        } catch (e) {
+                            console.error('Error parsing raw JSON line:', e, line);
+                        }
+                    }
+                }
+
+                return readChunk();
+            });
+        }
+        
+        function processBuffer() {
+            // Look for complete JSON objects in the buffer
+            let braceCount = 0;
+            let start = -1;
+            
+            for (let i = 0; i < buffer.length; i++) {
+                if (buffer[i] === '{') {
+                    if (braceCount === 0) {
+                        start = i;
+                    }
+                    braceCount++;
+                } else if (buffer[i] === '}') {
+                    braceCount--;
+                    if (braceCount === 0 && start >= 0) {
+                        // Found a complete JSON object
+                        const jsonStr = buffer.substring(start, i + 1);
+                        try {
+                            const taskData = JSON.parse(jsonStr);
+                            console.log('Parsed complete task data:', taskData);
+                            onData?.(taskData);
+                        } catch (e) {
+                            console.error('Error parsing complete JSON:', e, jsonStr);
+                        }
+                        
+                        // Remove processed part from buffer
+                        buffer = buffer.substring(i + 1);
+                        
+                        // Restart processing from the beginning of the remaining buffer
+                        if (buffer.includes('{')) {
+                            processBuffer();
+                        }
+                        return;
+                    }
+                }
             }
-
-            // Update progress
-            updateProgress(i + 1, tasks.length);
         }
 
-        return results;
-    } catch (error) {
-        console.error('Error analyzing tasks:', error);
-        throw error;
-    }
-};
-
-/**
- * Mock analysis for development testing
- *
- * @param {Array} tasks - List of tasks to analyze
- * @returns {Object} Mock analysis results
- */
-const mockAnalysis = async (tasks) => {
-    const results = {};
-
-    // For each task, simulate processing and create mock results
-    for (let i = 0; i < tasks.length; i++) {
-        const task = tasks[i];
-
-        // Simulate processing time (300-700ms)
-        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
-
-        // Check for special cases that should always be important
-        // Looking for URLs/links and potentially tweetable ideas
-        const containsURL = /https?:\/\/\S+/.test(task) ||
-            /www\.\S+/.test(task) ||
-            task.includes('.com') ||
-            task.includes('.org') ||
-            task.includes('.net');
-
-        const isPotentiallyTweetable = task.length < 280 &&
-            (task.startsWith('"') ||
-                task.includes('idea:') ||
-                task.includes('tweet') ||
-                task.includes('share') ||
-                /^[A-Z].*[.!?]$/.test(task)); // Complete thought
-
-        // If this is a URL or tweetable idea, make it important but not urgent
-        if (containsURL || isPotentiallyTweetable) {
-            results[task] = {
-                important: true,
-                urgent: false
-            };
-
-            // Update progress
-            updateProgress(i + 1, tasks.length);
-            continue;
-        }
-
-        // Otherwise use a random distribution for the 2x2 matrix
-        const rand = Math.random();
-        let isImportant, isUrgent;
-
-        if (rand < 0.25) {
-            // Important + Urgent
-            isImportant = true;
-            isUrgent = true;
-        } else if (rand < 0.5) {
-            // Important + Not Urgent
-            isImportant = true;
-            isUrgent = false;
-        } else if (rand < 0.75) {
-            // Not Important + Urgent
-            isImportant = false;
-            isUrgent = true;
-        } else {
-            // Not Important + Not Urgent
-            isImportant = false;
-            isUrgent = false;
-        }
-
-        results[task] = {
-            important: isImportant,
-            urgent: isUrgent
-        };
-
-        // Update progress
-        updateProgress(i + 1, tasks.length);
-    }
-
-    return results;
-};
-
-/**
- * Categorize tasks based on analysis
- *
- * @param {Array} tasks - Original tasks
- * @param {Object} analysis - Analysis results from AI
- * @returns {Object} Categorized tasks
- */
-export const categorizeTasks = (tasks, analysis) => {
-    const importantUrgent = [];
-    const importantNotUrgent = [];
-    const notImportantUrgent = [];
-    const notImportantNotUrgent = [];
-
-    tasks.forEach(task => {
-        if (!task.trim()) return; // Skip empty tasks
-
-        const result = analysis[task];
-        if (!result) {
-            // If no analysis, put in Not Important + Not Urgent by default
-            notImportantNotUrgent.push(task);
-            return;
-        }
-
-        if (result.important && result.urgent) {
-            importantUrgent.push(task);
-        } else if (result.important && !result.urgent) {
-            importantNotUrgent.push(task);
-        } else if (!result.important && result.urgent) {
-            notImportantUrgent.push(task);
-        } else {
-            notImportantNotUrgent.push(task);
-        }
+        return readChunk();
+    })
+    .catch(error => {
+        onError?.(error);
     });
 
+    // Return a mock EventSource-like object for compatibility
     return {
-        importantUrgent,
-        importantNotUrgent,
-        notImportantUrgent,
-        notImportantNotUrgent
+        close: () => {
+            // In a real implementation, you'd want to abort the fetch
+            console.log('Stream closed');
+        }
     };
+};
+// This is a temporary solution until the EventSource is fully implemented.
+export const getRankedTasks = async (tasks, userContext = {}) => {
+    try {
+        const response = await fetch('/api/ai/rank-tasks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ tasks }),
+        });
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching ranked tasks:', error);
+        return {
+            error: true,
+            message: error.message || 'Failed to connect to the ranking service.',
+            vital_few: [],
+            trivial_many: [],
+        };
+    }
 };

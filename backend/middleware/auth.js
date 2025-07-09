@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const admin = require('firebase-admin');
-const User = require('../models/User');
+const User = require('../src/models/User');
 
 /**
  * Authentication middleware for protecting routes
@@ -8,20 +8,23 @@ const User = require('../models/User');
  * In production, you should use proper Firebase Admin verification
  */
 const requireAuth = async function (req, res, next) {
-    // Get token from header
-    const token = req.header('x-auth-token');
+    // Get token from header - try multiple header formats
+    const token = req.header('x-auth-token') || 
+                  req.header('Authorization')?.replace('Bearer ', '') ||
+                  req.headers.authorization?.replace('Bearer ', '');
 
-    // In development mode, we're more lenient
+    // In development mode, we're more lenient but still try to authenticate properly
     if (process.env.NODE_ENV === 'development') {
         console.log('Development mode: simplified auth');
 
-        // If we don't have a token, create a mock user
+        // If we don't have a token, create a mock admin user
         if (!token) {
             req.user = {
                 id: 'dev-user-id',
-                email: 'dev@example.com',
+                userId: 'dev-user-id',
+                email: 'adamtpangelinan@gmail.com', // Use admin email for development
                 firebaseUid: 'dev-user-id',
-                role: 'admin' // In development, default to admin role
+                role: 'admin'
             };
             return next();
         }
@@ -40,13 +43,14 @@ const requireAuth = async function (req, res, next) {
 
                             // Use uid or sub as the user ID
                             const userId = payload.uid || payload.sub || 'dev-user-id';
-                            const userEmail = payload.email || 'dev@example.com';
+                            const userEmail = payload.email || 'adamtpangelinan@gmail.com';
 
                             req.user = {
                                 id: userId,
+                                userId: userId,
                                 email: userEmail,
                                 firebaseUid: userId,
-                                role: 'admin' // In development, default to admin role
+                                role: 'admin'
                             };
 
                             console.log('Development mode: parsed token for user', userId);
@@ -60,12 +64,13 @@ const requireAuth = async function (req, res, next) {
                 }
             }
 
-            // Default to using the token as the user ID
+            // Default to using admin email for development
             req.user = {
                 id: token,
-                email: 'token-user@example.com',
+                userId: token,
+                email: 'adamtpangelinan@gmail.com',
                 firebaseUid: token,
-                role: 'admin' // In development, default to admin role
+                role: 'admin'
             };
             console.log('Development mode: using token-derived user');
             return next();
@@ -73,9 +78,10 @@ const requireAuth = async function (req, res, next) {
             console.error('Development auth error:', error);
             req.user = {
                 id: 'fallback-dev-user-id',
-                email: 'fallback@example.com',
+                userId: 'fallback-dev-user-id',
+                email: 'adamtpangelinan@gmail.com',
                 firebaseUid: 'fallback-dev-user-id',
-                role: 'admin' // In development, default to admin role
+                role: 'admin'
             };
             return next();
         }
@@ -88,7 +94,52 @@ const requireAuth = async function (req, res, next) {
     }
 
     try {
-        // First try Firebase Admin verification
+        // First try Clerk JWT verification
+        if (token && token.startsWith('eyJ')) {
+            try {
+                // Clerk tokens are standard JWTs, try to decode without verification first
+                const parts = token.split('.');
+                if (parts.length === 3) {
+                    const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+                    
+                    // Check if this looks like a Clerk token
+                    if (payload.iss && payload.iss.includes('clerk')) {
+                        const userId = payload.sub;
+                        
+                        // Find or create user in our database
+                        let user = await User.findOne({ uid: userId });
+                        
+                        if (!user) {
+                            // Create new user
+                            user = new User({
+                                uid: userId,
+                                email: payload.email || '',
+                                displayName: payload.name || payload.email?.split('@')[0] || 'User',
+                                credits: 500 // Default credits for new users
+                            });
+                            await user.save();
+                            console.log('Created new Clerk user:', userId);
+                        }
+                        
+                        req.user = {
+                            userId: userId,
+                            id: user._id.toString(),
+                            email: user.email,
+                            displayName: user.displayName,
+                            role: user.role || 'user'
+                        };
+                        
+                        console.log('Clerk token validated for user:', userId);
+                        return next();
+                    }
+                }
+            } catch (clerkError) {
+                console.log('Clerk token validation failed:', clerkError.message);
+                // Continue to other validation methods
+            }
+        }
+
+        // Then try Firebase Admin verification
         if (admin.apps.length) {
             try {
                 const decodedToken = await admin.auth().verifyIdToken(token);

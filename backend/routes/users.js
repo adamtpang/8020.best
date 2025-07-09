@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../src/models/User');
 
 /**
  * @route   POST /api/users/register
@@ -389,6 +389,311 @@ router.get('/tasks', async (req, res) => {
     } catch (error) {
         console.error('Error retrieving tasks:', error);
         res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// Get user profile
+router.get('/profile/:userId', async (req, res) => {
+    try {
+        const user = await User.findOne({ authProviderId: req.params.userId });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Create or update user profile
+router.post('/profile', async (req, res) => {
+    try {
+        const { authProviderId, email, name, authProvider } = req.body;
+
+        if (!authProviderId || !email || !name || !authProvider) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        let user = await User.findOne({ authProviderId });
+
+        if (user) {
+            // Update existing user
+            user.email = email;
+            user.name = name;
+            user.authProvider = authProvider;
+            await user.save();
+        } else {
+            // Create new user
+            user = new User({
+                authProviderId,
+                email,
+                name,
+                authProvider
+            });
+            await user.save();
+        }
+
+        res.json(user);
+    } catch (error) {
+        console.error('Error creating/updating user profile:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Update life priorities
+router.put('/profile/:userId/priorities', async (req, res) => {
+    try {
+        const { priority1, priority2, priority3 } = req.body;
+
+        const user = await User.findOne({ authProviderId: req.params.userId });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        user.lifePriorities = {
+            priority1: priority1?.trim() || '',
+            priority2: priority2?.trim() || '',
+            priority3: priority3?.trim() || ''
+        };
+
+        await user.save();
+        res.json(user);
+    } catch (error) {
+        console.error('Error updating life priorities:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Complete onboarding
+router.post('/profile/:userId/complete-onboarding', async (req, res) => {
+    try {
+        const user = await User.findOne({ authProviderId: req.params.userId });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        user.usage.onboardingCompleted = true;
+        await user.save();
+
+        res.json({ message: 'Onboarding completed', user });
+    } catch (error) {
+        console.error('Error completing onboarding:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Update user preferences
+router.put('/profile/:userId/preferences', async (req, res) => {
+    try {
+        const { theme, taskCountGoal, showTaskBreakdown } = req.body;
+
+        const user = await User.findOne({ authProviderId: req.params.userId });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (theme) user.preferences.theme = theme;
+        if (typeof taskCountGoal === 'number') user.preferences.taskCountGoal = taskCountGoal;
+        if (typeof showTaskBreakdown === 'boolean') user.preferences.showTaskBreakdown = showTaskBreakdown;
+
+        await user.save();
+        res.json(user);
+    } catch (error) {
+        console.error('Error updating preferences:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get user stats
+router.get('/profile/:userId/stats', async (req, res) => {
+    try {
+        const user = await User.findOne({ authProviderId: req.params.userId });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const stats = {
+            totalAnalyses: user.usage.totalAnalyses,
+            lastActiveDate: user.usage.lastActiveDate,
+            onboardingCompleted: user.usage.onboardingCompleted,
+            hasPriorities: user.hasPriorities(),
+            memberSince: user.createdAt
+        };
+
+        res.json(stats);
+    } catch (error) {
+        console.error('Error fetching user stats:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Clerk authentication routes
+const { requireAuth: clerkAuth } = require('../middleware/auth');
+
+// Get user profile (Clerk-compatible)
+router.get('/clerk/profile', clerkAuth, async (req, res) => {
+    try {
+        const user = await User.findOne({ uid: req.user.userId });
+        if (!user) {
+            // Create user if they don't exist
+            const newUser = new User({
+                uid: req.user.userId,
+                email: req.user.emailAddresses?.[0]?.emailAddress || '',
+                displayName: req.user.firstName ? `${req.user.firstName} ${req.user.lastName}`.trim() : ''
+            });
+            await newUser.save();
+            return res.json({
+                uid: newUser.uid,
+                email: newUser.email,
+                displayName: newUser.displayName,
+                credits: newUser.credits,
+                lifePriorities: newUser.lifePriorities,
+                selectedModel: newUser.selectedModel,
+                createdAt: newUser.createdAt
+            });
+        }
+        
+        res.json({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            credits: user.credits,
+            lifePriorities: user.lifePriorities,
+            selectedModel: user.selectedModel,
+            createdAt: user.createdAt
+        });
+    } catch (error) {
+        console.error('Error fetching Clerk user profile:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Update life priorities (Clerk-compatible)
+router.put('/clerk/priorities', clerkAuth, async (req, res) => {
+    try {
+        const { priority1, priority2, priority3 } = req.body;
+        
+        const user = await User.findOneAndUpdate(
+            { uid: req.user.userId },
+            {
+                lifePriorities: {
+                    priority1: priority1 || '',
+                    priority2: priority2 || '',
+                    priority3: priority3 || ''
+                },
+                lastUsed: new Date()
+            },
+            { new: true, upsert: true }
+        );
+        
+        res.json({ 
+            message: 'Priorities updated successfully',
+            lifePriorities: user.lifePriorities 
+        });
+    } catch (error) {
+        console.error('Error updating Clerk user priorities:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Update selected model (Clerk-compatible)
+router.put('/clerk/model', clerkAuth, async (req, res) => {
+    try {
+        const { selectedModel } = req.body;
+        
+        if (!['claude-3.5-sonnet', 'gpt-4o-mini', 'llama-3.1-70b'].includes(selectedModel)) {
+            return res.status(400).json({ error: 'Invalid model selection' });
+        }
+        
+        const user = await User.findOneAndUpdate(
+            { uid: req.user.userId },
+            { 
+                selectedModel,
+                lastUsed: new Date()
+            },
+            { new: true }
+        );
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        res.json({ 
+            message: 'Model updated successfully',
+            selectedModel: user.selectedModel 
+        });
+    } catch (error) {
+        console.error('Error updating Clerk user model:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get credit balance (Clerk-compatible)
+router.get('/clerk/credits', clerkAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user.id;
+        let user = await User.findOne({ uid: userId });
+        
+        // In development mode, if we can't find by UID, try by email or create user
+        if (!user && process.env.NODE_ENV === 'development') {
+            user = await User.findOne({ email: req.user.email });
+            
+            // If still no user found, create one for development
+            if (!user) {
+                user = new User({
+                    uid: userId || 'dev-user-id',
+                    email: req.user.email || 'adamtpangelinan@gmail.com',
+                    displayName: req.user.displayName || 'Development User',
+                    credits: 999999
+                });
+                await user.save();
+                console.log('Created development user:', user.uid);
+            }
+        }
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Give admin unlimited credits
+        if (user.email === 'adamtpangelinan@gmail.com') {
+            user.credits = 999999;
+            await user.save();
+        }
+        
+        res.json({ credits: user.credits });
+    } catch (error) {
+        console.error('Error fetching Clerk user credits:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Add credits route for admin
+router.post('/clerk/add-credits', clerkAuth, async (req, res) => {
+    try {
+        const { amount } = req.body;
+        const user = await User.findOne({ uid: req.user.userId });
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Only allow admin to add credits
+        if (user.email !== 'adamtpangelinan@gmail.com') {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        
+        user.credits = (user.credits || 0) + (amount || 999999);
+        await user.save();
+        
+        res.json({ 
+            message: 'Credits added successfully',
+            credits: user.credits 
+        });
+    } catch (error) {
+        console.error('Error adding credits:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

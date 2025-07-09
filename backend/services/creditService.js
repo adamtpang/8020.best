@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const User = require('../src/models/User');
 
 /**
  * Check if a user has sufficient credits for an operation

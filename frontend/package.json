@@ -10,22 +10,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.32.4",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.1.4",
     "@mui/material": "^6.1.4",
-    "@react-oauth/google": "^0.12.1",
     "@stripe/react-stripe-js": "^2.6.0",
     "@stripe/stripe-js": "^3.0.10",
     "async-lock": "^1.4.1",
-    "axios": "^1.7.7",
+    "axios": "^1.10.0",
     "firebase": "^10.14.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.28.0"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
