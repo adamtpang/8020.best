@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
-import { ClerkProvider } from '@clerk/clerk-react';
 import LandingPage from './components/LandingPage';
 import MainApp from './components/MainApp';
-import { CLERK_PUBLISHABLE_KEY, clerkConfig } from './config/clerk';
 
 const darkTheme = createTheme({
   palette: {
@@ -32,27 +30,15 @@ function App() {
     setShowLanding(false);
   };
 
-  // If no Clerk key is provided, show a simplified version
-  if (!CLERK_PUBLISHABLE_KEY) {
-    return (
-      <ThemeProvider theme={darkTheme}>
-        <CssBaseline />
-        {showLanding ? (
-          <LandingPage onGetStarted={handleGetStarted} />
-        ) : (
-          <MainApp />
-        )}
-      </ThemeProvider>
-    );
-  }
-
   return (
-    <ClerkProvider {...clerkConfig}>
-      <ThemeProvider theme={darkTheme}>
-        <CssBaseline />
+    <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
+      {showLanding ? (
         <LandingPage onGetStarted={handleGetStarted} />
-      </ThemeProvider>
-    </ClerkProvider>
+      ) : (
+        <MainApp />
+      )}
+    </ThemeProvider>
   );
 }
 

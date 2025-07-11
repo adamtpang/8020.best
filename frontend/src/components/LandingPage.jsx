@@ -26,39 +26,9 @@ import {
     Settings,
     Logout
 } from '@mui/icons-material';
-import { useClerk, useUser, useAuth } from '@clerk/clerk-react';
 import { streamRankedTasks } from '../services/aiPrioritization';
 
-// Hook to safely use Clerk
-const useSafeClerk = () => {
-    try {
-        const clerk = useClerk();
-        const userHook = useUser();
-        const auth = useAuth();
-        return {
-            openSignUp: clerk.openSignUp,
-            openSignIn: clerk.openSignIn,
-            signOut: auth.signOut,
-            user: userHook.user,
-            isSignedIn: userHook.isSignedIn,
-            getToken: auth.getToken,
-            isAvailable: true
-        };
-    } catch (error) {
-        return {
-            openSignUp: () => console.warn('Clerk not available'),
-            openSignIn: () => console.warn('Clerk not available'),
-            signOut: () => console.warn('Clerk not available'),
-            user: null,
-            isSignedIn: false,
-            getToken: () => Promise.resolve(null),
-            isAvailable: false
-        };
-    }
-};
-
 const LandingPage = ({ onGetStarted }) => {
-    const { openSignUp, openSignIn, signOut, user, isSignedIn, isAvailable, getToken } = useSafeClerk();
     const [priorities, setPriorities] = useState(['', '', '']);
     const [tasks, setTasks] = useState('');
     const [showResults, setShowResults] = useState(false);
@@ -67,91 +37,10 @@ const LandingPage = ({ onGetStarted }) => {
     const [vitalFew, setVitalFew] = useState([]);
     const [trivialMany, setTrivialMany] = useState([]);
     const [hasError, setHasError] = useState(false);
-    const [userCredits, setUserCredits] = useState(null);
     const [progress, setProgress] = useState(0);
     const [progressText, setProgressText] = useState('');
     const [totalTasks, setTotalTasks] = useState(0);
-    const [userProfile, setUserProfile] = useState(null);
-    const [anchorEl, setAnchorEl] = useState(null);
 
-    const loadUserData = async () => {
-        try {
-            const token = await getToken();
-            if (!token) {
-                console.log('No token available');
-                return;
-            }
-            
-            // Load user profile and credits
-            const [creditsResponse, profileResponse] = await Promise.all([
-                fetch('/api/users/clerk/credits', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }),
-                fetch('/api/users/clerk/profile', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
-            ]);
-            
-            if (creditsResponse.ok) {
-                const creditsData = await creditsResponse.json();
-                setUserCredits(creditsData.credits);
-            }
-            
-            if (profileResponse.ok) {
-                const profileData = await profileResponse.json();
-                setUserProfile(profileData);
-                // Load saved priorities
-                if (profileData.lifePriorities) {
-                    setPriorities([
-                        profileData.lifePriorities.priority1 || '',
-                        profileData.lifePriorities.priority2 || '',
-                        profileData.lifePriorities.priority3 || ''
-                    ]);
-                }
-            }
-        } catch (error) {
-            console.error('Error loading user data:', error);
-        }
-    };
-
-    // Load user data when signed in
-    React.useEffect(() => {
-        if (isAvailable && isSignedIn && user) {
-            loadUserData();
-        }
-    }, [isAvailable, isSignedIn, user]);
-
-    const loadUserCredits = async () => {
-        try {
-            const token = await getToken();
-            if (!token) {
-                console.log('No token available');
-                return;
-            }
-            
-            const response = await fetch('/api/users/clerk/credits', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                setUserCredits(data.credits);
-            } else {
-                console.log('Credits API response:', response.status);
-            }
-        } catch (error) {
-            console.error('Error loading credits:', error);
-        }
-    };
 
     const handlePriorityChange = (index, value) => {
         const newPriorities = [...priorities];
@@ -159,30 +48,6 @@ const LandingPage = ({ onGetStarted }) => {
         setPriorities(newPriorities);
     };
 
-    const handleProfileMenuOpen = (event) => {
-        setAnchorEl(event.currentTarget);
-    };
-
-    const handleProfileMenuClose = () => {
-        setAnchorEl(null);
-    };
-
-    const handleSignOut = async () => {
-        try {
-            await signOut();
-            setUserCredits(null);
-            setUserProfile(null);
-            setPriorities(['', '', '']);
-            setTasks('');
-            setShowResults(false);
-            setRankedTasks([]);
-            setVitalFew([]);
-            setTrivialMany([]);
-            handleProfileMenuClose();
-        } catch (error) {
-            console.error('Error signing out:', error);
-        }
-    };
 
     const copyTaskSection = async (tasks, sectionTitle) => {
         const taskList = tasks.map(task => `${task.impact_score} ${task.task}`).join('\n');
@@ -214,7 +79,7 @@ const LandingPage = ({ onGetStarted }) => {
         }
     };
 
-    const processTasksInChunks = async (taskArray, userPriorities, authToken, chunkSize, totalTaskCount) => {
+    const processTasksInChunks = async (taskArray, userPriorities, chunkSize, totalTaskCount) => {
         let processedTasks = [];
         const chunks = [];
         
@@ -254,7 +119,7 @@ const LandingPage = ({ onGetStarted }) => {
                             console.log(`Chunk ${chunkIndex + 1} completed`);
                             resolve();
                         }
-                    }, authToken);
+                    });
                 });
                 
                 // Small delay between chunks to avoid overwhelming the API
@@ -316,23 +181,7 @@ const LandingPage = ({ onGetStarted }) => {
             return;
         }
 
-        // If Clerk is not available, show message
-        if (!isAvailable) {
-            alert('Authentication not available. Please check your Clerk configuration.');
-            return;
-        }
 
-        // If user is not signed in, prompt them to sign up first
-        if (!isSignedIn) {
-            const shouldSignUp = confirm('Sign up to analyze your tasks with AI and save your priorities!');
-            if (shouldSignUp) {
-                // Store data in localStorage temporarily
-                localStorage.setItem('tempPriorities', JSON.stringify(priorities));
-                localStorage.setItem('tempTasks', tasks);
-                openSignUp();
-            }
-            return;
-        }
         
         setIsAnalyzing(true);
         setShowResults(true);
@@ -345,28 +194,12 @@ const LandingPage = ({ onGetStarted }) => {
         setProgressText(`Initializing analysis for ${taskCount} tasks...`);
         
         try {
-            // Get auth token using Clerk's getToken
-            const authToken = await getToken();
-            if (!authToken) {
-                throw new Error('Authentication token not available');
-            }
+            // No authentication required for now
 
             setProgress(10);
             setProgressText('Saving your priorities...');
 
-            // Save priorities to user profile first
-            await fetch('/api/users/clerk/priorities', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
-                body: JSON.stringify({
-                    priority1: priorities[0],
-                    priority2: priorities[1],
-                    priority3: priorities[2]
-                })
-            });
+            // Skip saving priorities for now (no authentication)
 
             setProgress(20);
             setProgressText('Starting AI analysis...');
@@ -375,10 +208,9 @@ const LandingPage = ({ onGetStarted }) => {
             const userPriorities = priorities.filter(p => p.trim()).map((p, i) => `${i + 1}. ${p}`).join('\n');
             
             // Process tasks in chunks
-            await processTasksInChunks(taskArray, userPriorities, authToken, CHUNK_SIZE, taskCount);
+            await processTasksInChunks(taskArray, userPriorities, CHUNK_SIZE, taskCount);
             
-            // Refresh credits after analysis
-            loadUserData();
+            // Analysis complete
         } catch (error) {
             console.error('Error saving priorities:', error);
             setHasError(true);
@@ -398,53 +230,6 @@ const LandingPage = ({ onGetStarted }) => {
             fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
         }}>
             <Container maxWidth="md" sx={{ py: 6 }}>
-                {/* Header with profile */}
-                {isSignedIn && (
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 4 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            {userCredits !== null && (
-                                <Chip 
-                                    label={`${userCredits} credits`} 
-                                    variant="outlined"
-                                    sx={{ 
-                                        color: '#8B5CF6', 
-                                        borderColor: '#8B5CF6',
-                                        fontSize: '0.75rem'
-                                    }}
-                                />
-                            )}
-                            <IconButton onClick={handleProfileMenuOpen} sx={{ p: 0 }}>
-                                <Avatar 
-                                    src={user?.profileImageUrl || user?.imageUrl} 
-                                    alt={user?.fullName || user?.firstName || 'User'}
-                                    sx={{ width: 40, height: 40 }}
-                                >
-                                    {user?.firstName?.[0] || user?.fullName?.[0] || <AccountCircle />}
-                                </Avatar>
-                            </IconButton>
-                            <Menu
-                                anchorEl={anchorEl}
-                                open={Boolean(anchorEl)}
-                                onClose={handleProfileMenuClose}
-                                PaperProps={{
-                                    sx: {
-                                        backgroundColor: '#1a1a1a',
-                                        border: '1px solid #333'
-                                    }
-                                }}
-                            >
-                                <MenuItem onClick={handleProfileMenuClose} sx={{ color: 'white' }}>
-                                    <Settings sx={{ mr: 2 }} />
-                                    Settings
-                                </MenuItem>
-                                <MenuItem onClick={handleSignOut} sx={{ color: 'white' }}>
-                                    <Logout sx={{ mr: 2 }} />
-                                    Sign Out
-                                </MenuItem>
-                            </Menu>
-                        </Box>
-                    </Box>
-                )}
                 
                 {/* Hero */}
                 <Box sx={{ textAlign: 'center', mb: 8 }}>
@@ -468,14 +253,6 @@ const LandingPage = ({ onGetStarted }) => {
                         AI finds your high-impact tasks
                     </Typography>
                     
-                    {isSignedIn && user && (
-                        <Typography
-                            variant="body2"
-                            sx={{ color: '#8B5CF6', fontSize: '0.85rem', mb: 2 }}
-                        >
-                            Welcome back, {user.firstName || user.fullName?.split(' ')[0] || 'User'}!
-                        </Typography>
-                    )}
                 </Box>
 
                 {/* Product Section */}
@@ -605,7 +382,7 @@ Review budget"
                             <Button
                                 variant="contained"
                                 onClick={handleAnalyze}
-                                endIcon={isSignedIn ? <ArrowRight /> : <Login />}
+                                endIcon={<ArrowRight />}
                                 disabled={isAnalyzing}
                                 sx={{
                                     backgroundColor: '#8B5CF6',
@@ -625,29 +402,9 @@ Review budget"
                                     boxShadow: '0 4px 20px rgba(139, 92, 246, 0.3)'
                                 }}
                             >
-                                {isAnalyzing ? '⚡ Analyzing...' : 
-                                 isSignedIn ? '🚀 Analyze with AI' : 
-                                 (isAvailable ? '✨ Sign up & Analyze' : '🎯 Try Demo')}
+                                {isAnalyzing ? '⚡ Analyzing...' : '🚀 Analyze with AI'}
                             </Button>
                             
-                            {!isSignedIn && isAvailable && (
-                                <Box sx={{ mt: 2 }}>
-                                    <Typography sx={{ fontSize: '0.75rem', color: '#666', mb: 1 }}>
-                                        Free • $5 credits • No card required
-                                    </Typography>
-                                    <Button
-                                        variant="text"
-                                        onClick={openSignIn}
-                                        sx={{
-                                            color: '#8B5CF6',
-                                            fontSize: '0.8rem',
-                                            textTransform: 'none'
-                                        }}
-                                    >
-                                        Already have an account? Sign in
-                                    </Button>
-                                </Box>
-                            )}
                         </Box>
 
                         {/* Results */}
