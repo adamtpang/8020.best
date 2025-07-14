@@ -1,18 +1,34 @@
 {
-    "rewrites": [
+    "version": 2,
+    "builds": [
         {
-            "source": "/(.*)",
-            "destination": "/index.html"
+            "src": "backend/server.js",
+            "use": "@vercel/node"
+        },
+        {
+            "src": "frontend/dist/**",
+            "use": "@vercel/static"
         }
     ],
     "routes": [
         {
+            "src": "/api/(.*)",
+            "dest": "backend/server.js"
+        },
+        {
             "src": "/app",
-            "dest": "/index.html"
+            "dest": "frontend/dist/index.html"
         },
         {
             "src": "/app/(.*)",
-            "dest": "/index.html"
+            "dest": "frontend/dist/index.html"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "frontend/dist/$1"
         }
-    ]
+    ],
+    "env": {
+        "NODE_ENV": "production"
+    }
 }
