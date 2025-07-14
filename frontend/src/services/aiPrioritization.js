@@ -28,8 +28,11 @@ export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onCl
         headers['Authorization'] = `Bearer ${authToken}`;
     }
     
+    // Use Railway backend URL directly
+    const API_BASE_URL = 'https://8020best-production.up.railway.app';
+    
     // Create a fetch request for the streaming endpoint
-    fetch('/api/ai/rank-tasks', {
+    fetch(`${API_BASE_URL}/api/ai/rank-tasks`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ tasks, userPriorities }),
@@ -160,7 +163,8 @@ export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onCl
 // This is a temporary solution until the EventSource is fully implemented.
 export const getRankedTasks = async (tasks, userContext = {}) => {
     try {
-        const response = await fetch('/api/ai/rank-tasks', {
+        const API_BASE_URL = 'https://8020best-production.up.railway.app';
+        const response = await fetch(`${API_BASE_URL}/api/ai/rank-tasks`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
