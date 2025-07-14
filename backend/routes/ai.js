@@ -6,6 +6,43 @@ const User = require('../src/models/User');
 const { requireAuth } = require('../middleware/auth');
 
 /**
+ * Public demo endpoint for task analysis (no auth required)
+ */
+router.post('/rank-tasks-demo', async (req, res) => {
+    try {
+        const { tasks, userPriorities } = req.body;
+
+        if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
+            return res.status(400).json({ error: 'No tasks provided or invalid format' });
+        }
+
+        // Limit tasks for demo (max 20 tasks)
+        const limitedTasks = tasks.slice(0, 20);
+
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders();
+
+        const stream = await streamAnalysis(limitedTasks, userPriorities);
+
+        for await (const event of stream) {
+            if (event.event === 'output') {
+                res.write(`data: ${JSON.stringify({ type: 'chunk', content: event.data })}\n\n`);
+            }
+        }
+
+        res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
+        res.end();
+
+    } catch (error) {
+        console.error('Error in rank-tasks-demo:', error);
+        res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+        res.end();
+    }
+});
+
+/**
  * Analyzes and ranks tasks, streaming the results back to the client.
  * Requires authentication and deducts credits.
  */

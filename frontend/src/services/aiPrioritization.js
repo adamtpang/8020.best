@@ -28,8 +28,8 @@ export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onCl
         headers['Authorization'] = `Bearer ${authToken}`;
     }
     
-    // Create a fetch request for the streaming endpoint
-    fetch('/api/ai/rank-tasks', {
+    // Create a fetch request for the demo streaming endpoint
+    fetch('/api/ai/rank-tasks-demo', {
         method: 'POST',
         headers,
         body: JSON.stringify({ tasks, userPriorities }),
@@ -160,7 +160,7 @@ export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onCl
 // This is a temporary solution until the EventSource is fully implemented.
 export const getRankedTasks = async (tasks, userContext = {}) => {
     try {
-        const response = await fetch('/api/ai/rank-tasks', {
+        const response = await fetch('/api/ai/rank-tasks-demo', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
