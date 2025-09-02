@@ -141,6 +141,13 @@ const LandingPage = ({ onGetStarted }) => {
         
         // Perform the final 80/20 split
         const allTasks = [...processedTasks];
+        console.log(`Total processed tasks: ${allTasks.length} out of ${totalTaskCount} submitted`);
+        
+        if (allTasks.length < totalTaskCount) {
+            console.error(`WARNING: Only processed ${allTasks.length} tasks out of ${totalTaskCount} submitted!`);
+            console.log('Missing tasks:', taskArray.filter(t => !allTasks.some(pt => pt.task === t)));
+        }
+        
         const sortedTasks = allTasks.sort((a, b) => (b.impact_score || 0) - (a.impact_score || 0));
         
         const splitPoint = Math.ceil(sortedTasks.length * 0.2);
@@ -151,7 +158,7 @@ const LandingPage = ({ onGetStarted }) => {
         setTrivialMany(trivialManyTasks);
         
         setProgress(100);
-        setProgressText(`Analysis complete! ${vitalFewTasks.length} vital few, ${trivialManyTasks.length} trivial many`);
+        setProgressText(`Analysis complete! ${vitalFewTasks.length} vital few, ${trivialManyTasks.length} trivial many (${allTasks.length} total)`);
         setIsAnalyzing(false);
     };
 
@@ -167,9 +174,9 @@ const LandingPage = ({ onGetStarted }) => {
         const totalChars = tasks.length;
         
         // Set limits
-        const MAX_TASKS = 200;
-        const MAX_CHARS = 8000;
-        const CHUNK_SIZE = 50; // Process 50 tasks at a time
+        const MAX_TASKS = 100;
+        const MAX_CHARS = 100000;
+        const CHUNK_SIZE = 25; // Process 25 tasks at a time for better reliability
         
         if (taskCount > MAX_TASKS) {
             alert(`Too many tasks! Please limit to ${MAX_TASKS} tasks or less. You have ${taskCount} tasks.`);
@@ -367,12 +374,12 @@ Review budget"
                                     sx={{ 
                                         mt: 1, 
                                         display: 'block', 
-                                        color: tasks.length > 8000 || tasks.split('\n').filter(t => t.trim()).length > 200 ? '#f44336' : '#666',
+                                        color: tasks.length > 100000 || tasks.split('\n').filter(t => t.trim()).length > 100 ? '#f44336' : '#666',
                                         fontSize: '0.75rem'
                                     }}
                                 >
                                     {tasks.split('\n').filter(t => t.trim()).length} tasks • {tasks.length} characters 
-                                    (limit: 200 tasks, 8000 characters)
+                                    (limit: 100 tasks, 100,000 characters)
                                 </Typography>
                             </CardContent>
                         </Card>

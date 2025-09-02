@@ -60,12 +60,19 @@ export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onCl
                 }
 
                 const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n').filter(line => line.trim());
+                console.log('Raw chunk received (first 200 chars):', chunk.substring(0, 200));
                 
-                console.log('Raw chunk received:', chunk);
-
-                for (const line of lines) {
-                    console.log('Processing line:', line);
+                // Add chunk to buffer immediately
+                buffer += chunk;
+                
+                // Process all lines in the buffer
+                const lines = buffer.split('\n');
+                buffer = ''; // Clear buffer, we'll add back incomplete lines
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    if (!line) continue;
                     
                     // Handle Server-Sent Events format
                     if (line.startsWith('data: ')) {
@@ -74,15 +81,27 @@ export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onCl
                             console.log('Parsed SSE data:', data);
                             
                             if (data.type === 'chunk') {
-                                // Add chunk content to buffer
-                                buffer += data.content;
-                                console.log('Buffer now:', buffer);
+                                // SSE chunk contains content to be parsed
+                                const content = data.content;
+                                const contentLines = content.split('\n');
                                 
-                                // Try to extract complete JSON objects from buffer
-                                processBuffer();
+                                for (const contentLine of contentLines) {
+                                    const trimmed = contentLine.trim();
+                                    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                                        try {
+                                            const taskData = JSON.parse(trimmed);
+                                            console.log('Parsed task from SSE chunk:', taskData);
+                                            onData?.(taskData);
+                                        } catch (e) {
+                                            console.error('Error parsing JSON from SSE:', e, trimmed);
+                                        }
+                                    }
+                                }
                             } else if (data.type === 'end') {
-                                // Process any remaining complete JSON objects in buffer
-                                processBuffer();
+                                // Process any remaining buffer content
+                                if (buffer.trim()) {
+                                    processBuffer();
+                                }
                                 onClose?.();
                                 return;
                             } else if (data.type === 'error') {
@@ -90,17 +109,29 @@ export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onCl
                                 return;
                             }
                         } catch (e) {
-                            console.error('Error parsing SSE chunk:', e);
+                            console.error('Error parsing SSE line:', e, line);
                         }
-                    } 
-                    // Handle raw JSON lines (direct from AI)
-                    else if (line.trim().startsWith('{') && line.trim().endsWith('}')) {
+                    }
+                    // Handle raw JSON lines
+                    else if (line.startsWith('{')) {
+                        // Check if this is a complete JSON object
                         try {
-                            const taskData = JSON.parse(line.trim());
-                            console.log('Parsed raw JSON task data:', taskData);
+                            const taskData = JSON.parse(line);
+                            console.log('Parsed raw JSON task:', taskData);
                             onData?.(taskData);
                         } catch (e) {
-                            console.error('Error parsing raw JSON line:', e, line);
+                            // Incomplete JSON, add to buffer for next iteration
+                            if (i === lines.length - 1) {
+                                // Last line might be incomplete
+                                buffer = line;
+                            } else {
+                                console.error('Error parsing JSON line:', e, line);
+                            }
+                        }
+                    } else {
+                        // Unknown format, might be part of multi-line JSON
+                        if (i === lines.length - 1) {
+                            buffer = line;
                         }
                     }
                 }
@@ -110,40 +141,35 @@ export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onCl
         }
         
         function processBuffer() {
-            // Look for complete JSON objects in the buffer
-            let braceCount = 0;
-            let start = -1;
+            // Try to extract multiple JSON objects from buffer
+            const lines = buffer.split('\n');
+            let remainingBuffer = '';
             
-            for (let i = 0; i < buffer.length; i++) {
-                if (buffer[i] === '{') {
-                    if (braceCount === 0) {
-                        start = i;
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                
+                // Skip empty lines
+                if (!trimmedLine) continue;
+                
+                // Try to parse as complete JSON object
+                if (trimmedLine.startsWith('{')) {
+                    try {
+                        const taskData = JSON.parse(trimmedLine);
+                        console.log('Parsed task from buffer:', taskData);
+                        onData?.(taskData);
+                    } catch (e) {
+                        // If parsing fails, it might be incomplete
+                        // Add to remaining buffer to process later
+                        remainingBuffer += trimmedLine;
                     }
-                    braceCount++;
-                } else if (buffer[i] === '}') {
-                    braceCount--;
-                    if (braceCount === 0 && start >= 0) {
-                        // Found a complete JSON object
-                        const jsonStr = buffer.substring(start, i + 1);
-                        try {
-                            const taskData = JSON.parse(jsonStr);
-                            console.log('Parsed complete task data:', taskData);
-                            onData?.(taskData);
-                        } catch (e) {
-                            console.error('Error parsing complete JSON:', e, jsonStr);
-                        }
-                        
-                        // Remove processed part from buffer
-                        buffer = buffer.substring(i + 1);
-                        
-                        // Restart processing from the beginning of the remaining buffer
-                        if (buffer.includes('{')) {
-                            processBuffer();
-                        }
-                        return;
-                    }
+                } else {
+                    // Non-JSON line, add to remaining buffer
+                    remainingBuffer += line + '\n';
                 }
             }
+            
+            // Update buffer with unparsed content
+            buffer = remainingBuffer;
         }
 
         return readChunk();
