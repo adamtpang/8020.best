@@ -5,7 +5,7 @@ const app = express();
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const purchaseRoutes = require('./routes/purchases');
-const aiRoutes = require('./routes/ai');
+const aiRoutes = require('../routes/ai');
 const { verifyToken } = require('./middleware/auth');
 
 // Middleware

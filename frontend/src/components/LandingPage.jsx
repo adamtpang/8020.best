@@ -79,87 +79,72 @@ const LandingPage = ({ onGetStarted }) => {
         }
     };
 
-    const processTasksInChunks = async (taskArray, userPriorities, chunkSize, totalTaskCount) => {
+    const processTasksOneByOne = async (taskArray, userPriorities, totalTaskCount) => {
         let processedTasks = [];
-        const chunks = [];
         
-        // Split tasks into chunks
-        for (let i = 0; i < taskArray.length; i += chunkSize) {
-            chunks.push(taskArray.slice(i, i + chunkSize));
-        }
+        console.log(`Processing ${taskArray.length} tasks one by one`);
         
-        console.log(`Processing ${taskArray.length} tasks in ${chunks.length} chunks of ${chunkSize}`);
-        
-        for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-            const chunk = chunks[chunkIndex];
-            const chunkProgress = 20 + (chunkIndex / chunks.length) * 60;
-            
-            setProgress(chunkProgress);
-            setProgressText(`Processing chunk ${chunkIndex + 1} of ${chunks.length} (${chunk.length} tasks)...`);
-            
-            try {
-                await new Promise((resolve, reject) => {
-                    streamRankedTasks(chunk, userPriorities, {
-                        onData: (newRankedTask) => {
-                            console.log('Received task data:', newRankedTask);
-                            processedTasks.push(newRankedTask);
-                            setRankedTasks(prevTasks => {
-                                const updated = [...prevTasks, newRankedTask];
-                                const overallProgress = 20 + (updated.length / totalTaskCount) * 60;
-                                setProgress(overallProgress);
-                                setProgressText(`Analyzed ${updated.length} of ${totalTaskCount} tasks: "${newRankedTask.task}"`);
-                                return updated;
-                            });
-                        },
-                        onError: (error) => {
-                            console.error('Chunk analysis error:', error);
-                            reject(error);
-                        },
-                        onClose: () => {
-                            console.log(`Chunk ${chunkIndex + 1} completed`);
-                            resolve();
-                        }
-                    });
+        try {
+            await new Promise((resolve, reject) => {
+                streamRankedTasks(taskArray, userPriorities, {
+                    onData: (newRankedTask) => {
+                        console.log('Received task data:', newRankedTask);
+                        processedTasks.push(newRankedTask);
+                        setRankedTasks(prevTasks => {
+                            const updated = [...prevTasks, newRankedTask];
+                            const overallProgress = 20 + (updated.length / totalTaskCount) * 60;
+                            setProgress(overallProgress);
+                            
+                            // Show which specific task is being analyzed with more detail
+                            const taskPreview = newRankedTask.task.length > 50 
+                                ? newRankedTask.task.substring(0, 50) + '...'
+                                : newRankedTask.task;
+                            setProgressText(`✓ Rated "${taskPreview}" → Impact Score: ${newRankedTask.impact_score} (${updated.length}/${totalTaskCount})`);
+                            return updated;
+                        });
+                    },
+                    onError: (error) => {
+                        console.error('Analysis error:', error);
+                        reject(error);
+                    },
+                    onClose: () => {
+                        console.log('Analysis completed');
+                        resolve();
+                    }
                 });
-                
-                // Small delay between chunks to avoid overwhelming the API
-                if (chunkIndex < chunks.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-                
-            } catch (error) {
-                console.error(`Error processing chunk ${chunkIndex + 1}:`, error);
-                setIsAnalyzing(false);
-                setHasError(true);
-                return;
+            });
+            
+            // All tasks processed successfully
+            setProgress(80);
+            setProgressText('Categorizing your tasks by impact...');
+            
+            // Perform the final 80/20 split
+            const allTasks = [...processedTasks];
+            console.log(`Total processed tasks: ${allTasks.length} out of ${totalTaskCount} submitted`);
+            
+            if (allTasks.length < totalTaskCount) {
+                console.error(`WARNING: Only processed ${allTasks.length} tasks out of ${totalTaskCount} submitted!`);
+                console.log('Missing tasks:', taskArray.filter(t => !allTasks.some(pt => pt.task === t)));
             }
+            
+            const sortedTasks = allTasks.sort((a, b) => (b.impact_score || 0) - (a.impact_score || 0));
+            
+            const splitPoint = Math.ceil(sortedTasks.length * 0.2);
+            const vitalFewTasks = sortedTasks.slice(0, splitPoint);
+            const trivialManyTasks = sortedTasks.slice(splitPoint);
+            
+            setVitalFew(vitalFewTasks);
+            setTrivialMany(trivialManyTasks);
+            
+            setProgress(100);
+            setProgressText(`🎯 Analysis complete! ${vitalFewTasks.length} vital few, ${trivialManyTasks.length} trivial many (${allTasks.length} total)`);
+            setIsAnalyzing(false);
+            
+        } catch (error) {
+            console.error('Error processing tasks:', error);
+            setIsAnalyzing(false);
+            setHasError(true);
         }
-        
-        // All chunks processed successfully
-        setProgress(80);
-        setProgressText('Categorizing your tasks...');
-        
-        // Perform the final 80/20 split
-        const allTasks = [...processedTasks];
-        console.log(`Total processed tasks: ${allTasks.length} out of ${totalTaskCount} submitted`);
-        
-        if (allTasks.length < totalTaskCount) {
-            console.error(`WARNING: Only processed ${allTasks.length} tasks out of ${totalTaskCount} submitted!`);
-            console.log('Missing tasks:', taskArray.filter(t => !allTasks.some(pt => pt.task === t)));
-        }
-        
-        const sortedTasks = allTasks.sort((a, b) => (b.impact_score || 0) - (a.impact_score || 0));
-        
-        const splitPoint = Math.ceil(sortedTasks.length * 0.2);
-        const vitalFewTasks = sortedTasks.slice(0, splitPoint);
-        const trivialManyTasks = sortedTasks.slice(splitPoint);
-        
-        setVitalFew(vitalFewTasks);
-        setTrivialMany(trivialManyTasks);
-        
-        setProgress(100);
-        setProgressText(`Analysis complete! ${vitalFewTasks.length} vital few, ${trivialManyTasks.length} trivial many (${allTasks.length} total)`);
-        setIsAnalyzing(false);
     };
 
     const handleAnalyze = async () => {
@@ -176,7 +161,7 @@ const LandingPage = ({ onGetStarted }) => {
         // Set limits
         const MAX_TASKS = 100;
         const MAX_CHARS = 100000;
-        const CHUNK_SIZE = 25; // Process 25 tasks at a time for better reliability
+        // Process all tasks in one stream for better user experience
         
         if (taskCount > MAX_TASKS) {
             alert(`Too many tasks! Please limit to ${MAX_TASKS} tasks or less. You have ${taskCount} tasks.`);
@@ -214,8 +199,8 @@ const LandingPage = ({ onGetStarted }) => {
             // Convert tasks string to array
             const userPriorities = priorities.filter(p => p.trim()).map((p, i) => `${i + 1}. ${p}`).join('\n');
             
-            // Process tasks in chunks
-            await processTasksInChunks(taskArray, userPriorities, CHUNK_SIZE, taskCount);
+            // Process all tasks in one stream
+            await processTasksOneByOne(taskArray, userPriorities, taskCount);
             
             // Analysis complete
         } catch (error) {
