@@ -720,7 +720,9 @@ function intelligentImpactAnalysis(task, userContext = {}) {
     };
 }
 
-async function streamAnalysis(tasks, userPriorities = null) {
+async function* streamAnalysis(tasks, userPriorities = null) {
+    const BATCH_SIZE = 10; // Process tasks in smaller batches to avoid token limits
+    
     // Create context-aware prompt based on user's life priorities
     let priorityContext = '';
     if (userPriorities && userPriorities.trim()) {
@@ -730,35 +732,65 @@ ${userPriorities}
 When analyzing tasks, consider how each task aligns with these personal priorities. Tasks that directly support these priorities should be considered higher impact.`;
     }
 
-    const prompt = `You are an expert in the 80/20 principle. Your goal is to analyze a list of tasks and determine their impact.${priorityContext}
+    console.log(`Processing ${tasks.length} tasks in batches of ${BATCH_SIZE}...`);
 
-Here is the list of tasks:
-${tasks.map(t => `- ${t}`).join('\n')}
+    // Process tasks in batches to avoid token limits and ensure all tasks are processed
+    for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+        const batch = tasks.slice(i, i + BATCH_SIZE);
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(tasks.length / BATCH_SIZE);
+        
+        console.log(`Processing batch ${batchNumber}/${totalBatches} with ${batch.length} tasks`);
+
+        const prompt = `You are an expert in the 80/20 principle. Your goal is to analyze a batch of tasks and determine their impact.${priorityContext}
+
+Here is the batch of tasks to analyze:
+${batch.map((t, idx) => `${i + idx + 1}. ${t}`).join('\n')}
 
 For each task, assign an "impact_score" from 0 to 100 based on its potential for high impact${userPriorities ? ' and alignment with the user\'s life priorities' : ''} and provide brief "reasoning".
 
-Return the output as a stream of individual, newline-separated JSON objects. Each object must have three keys: "task", "impact_score", and "reasoning". Do not include them in a list, and do not add any other text, explanations, or markdown.
+Return the output as individual, newline-separated JSON objects. Each object must have three keys: "task", "impact_score", and "reasoning". Do not include them in a list, and do not add any other text, explanations, or markdown.
 
-Start streaming the JSON objects immediately.
-
-Example of a chunk in the stream:
+Example of expected output:
 {"task": "Write a book", "impact_score": 95, "reasoning": "High long-term value and personal fulfillment."}
+{"task": "Check email", "impact_score": 20, "reasoning": "Low impact routine task."}
 `;
 
-    try {
-        const tokenLimit = Math.max(8192, tasks.length * 50);
-        console.log(`Starting stream from Replicate with model ${MODEL_ID}...`);
-        console.log(`Processing ${tasks.length} tasks with ${tokenLimit} token limit`);
-        const stream = await replicate.stream(MODEL_ID, {
-            input: {
-                prompt: prompt,
-                max_tokens: tokenLimit,
+        try {
+            const tokenLimit = Math.max(2048, batch.length * 100);
+            const stream = await replicate.stream(MODEL_ID, {
+                input: {
+                    prompt: prompt,
+                    max_tokens: tokenLimit,
+                }
+            });
+
+            // Yield each event from this batch
+            for await (const event of stream) {
+                yield event;
             }
-        });
-        return stream;
-    } catch (error) {
-        console.error('Error starting Replicate stream:', error);
-        throw new Error('Failed to start analysis stream with Replicate AI.');
+
+            // Add a small delay between batches to avoid rate limiting
+            if (i + BATCH_SIZE < tasks.length) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        } catch (error) {
+            console.error(`Error processing batch ${batchNumber}:`, error);
+            
+            // Fallback to intelligent analysis for failed batch
+            for (const task of batch) {
+                const fallbackResult = intelligentImpactAnalysis(task, { goals: userPriorities ? [userPriorities] : [] });
+                const fallbackEvent = {
+                    event: 'output',
+                    data: JSON.stringify({
+                        task: task,
+                        impact_score: fallbackResult.impact_score,
+                        reasoning: `${fallbackResult.reasoning} (fallback analysis)`
+                    })
+                };
+                yield fallbackEvent;
+            }
+        }
     }
 }
 
