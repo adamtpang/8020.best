@@ -576,7 +576,7 @@ Review budget"
                                         </>
                                     )}
                                     
-                                    {!isAnalyzing && !hasError && vitalFew.length === 0 && rankedTasks.length === 0 && (
+                                    {!isAnalyzing && !hasError && vitalFew.length === 0 && trivialMany.length === 0 && progress === 0 && (
                                         <Box sx={{ p: 3 }}>
                                             <Typography sx={{ fontSize: '0.8rem', color: '#666', textAlign: 'center' }}>
                                                 Click analyze to see your 80/20 breakdown
