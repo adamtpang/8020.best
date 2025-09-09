@@ -6,19 +6,29 @@
 
 ## Key Features
 
-- **AI-Powered Prioritization**: Automatically sorts your tasks into the four quadrants of the Eisenhower Matrix:
-    - Important & Urgent (Do)
-    - Important & Not Urgent (Schedule)
-    - Not Important & Urgent (Delegate)
-    - Not Important & Not Urgent (Delete)
-- **Enhanced AI Analysis**: Our new AI system provides:
-    - **Confidence Scoring**: See how confident the AI is about each classification.
-    - **Detailed Reasoning**: Understand *why* a task was categorized a certain way.
-    - **Ensemble Methods**: Combines multiple AI models, rule-based logic, and keyword analysis for higher accuracy.
-- **User Context Awareness**: The AI considers your personal goals and the time of day for more relevant suggestions.
-- **Modern UI**: A clean, responsive interface for managing your tasks.
-- **Secure Authentication**: User accounts are secured with Firebase Authentication.
-- **Credit System**: Get started with free credits, with the option to purchase more.
+### 🎯 AI-Powered Task Analysis
+- **80/20 Principle**: Automatically identifies the vital 20% of tasks that drive 80% of your results
+- **Impact Scoring**: Each task gets a precise impact score (1-100) based on its potential value
+- **Detailed Reasoning**: Understand exactly why the AI prioritized each task
+- **Real-time Streaming**: Watch your tasks get analyzed in real-time
+
+### 👤 User Accounts & Personalization
+- **OAuth Authentication**: Sign in securely with Google or GitHub
+- **Persistent Life Priorities**: Set your personal goals once - they're saved forever
+- **Personalized Analysis**: AI considers your specific priorities when ranking tasks
+- **Credit System**: 1000 free credits for new users, with master accounts getting unlimited usage
+
+### 💎 Freemium Model
+- **Free Tier**: 1000 credits for new users (100 analyses)
+- **Master Accounts**: Unlimited credits for designated admin users
+- **Usage Tracking**: Monitor your credit balance and analysis history
+- **Secure Payments**: Stripe integration for credit purchases (coming soon)
+
+### 🔒 Security & Privacy
+- **Firebase Authentication**: Enterprise-grade security
+- **JWT Tokens**: Secure API authentication
+- **Data Privacy**: Your priorities and usage data are kept private
+- **CORS Protection**: Secure cross-origin resource sharing
 
 ## Tech Stack
 
@@ -132,33 +142,49 @@ The enhanced AI analysis is handled by the following endpoints:
 - Firebase project (for authentication)
 - Replicate API account (for AI analysis)
 
-### Environment Variables Setup
+### 🔧 Environment Variables Setup
 
-For security reasons, environment variables containing API keys and credentials are not committed to version control. Follow these steps to set up your environment:
+The app now includes a comprehensive freemium authentication system. Set up your environment variables:
 
-1. **Backend Setup**
-   - Copy `.env.example` to create new `.env.development` and `.env.production` files:
+1. **Backend Setup (`backend/.env.development`)**
    ```bash
    cp backend/.env.example backend/.env.development
-   cp backend/.env.example backend/.env.production
    ```
-   - Edit these files to add your actual credentials:
-     - `MONGO_URI` - Your MongoDB connection string
-     - `STRIPE_SECRET_KEY` - Your Stripe secret key (for payments)
-     - `STRIPE_WEBHOOK_SECRET` - Your Stripe webhook secret
-     - `REPLICATE_API_TOKEN` - Get from https://replicate.com/account/api-tokens
-     - `JWT_SECRET` - A secure random string for JWT authentication
+   Add your credentials:
+   ```env
+   MONGO_URI="mongodb://localhost:27017/8020best"
+   REPLICATE_API_TOKEN="your_replicate_api_token"
+   JWT_SECRET="your_secure_jwt_secret_here"
+   FIREBASE_PROJECT_ID="your_firebase_project_id"
+   FIREBASE_CLIENT_EMAIL="firebase-adminsdk-xxx@your-project.iam.gserviceaccount.com"
+   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+   ```
 
-2. **Frontend Setup**
-   - Copy `.env.example` to create new `.env.development` and `.env.production` files:
+2. **Frontend Setup (`frontend/.env.development`)**
    ```bash
    cp frontend/.env.example frontend/.env.development
-   cp frontend/.env.example frontend/.env.production
    ```
-   - Edit these files to add your Firebase credentials:
-     - `VITE_FIREBASE_API_KEY` - Firebase API key
-     - `VITE_FIREBASE_AUTH_DOMAIN` - Firebase auth domain
-     - And other Firebase configuration values
+   Add your Firebase config:
+   ```env
+   VITE_FIREBASE_API_KEY="your_firebase_api_key"
+   VITE_FIREBASE_AUTH_DOMAIN="your_project_id.firebaseapp.com"
+   VITE_FIREBASE_PROJECT_ID="your_project_id"
+   VITE_FIREBASE_STORAGE_BUCKET="your_project_id.appspot.com"
+   VITE_FIREBASE_MESSAGING_SENDER_ID="your_messaging_sender_id"
+   VITE_FIREBASE_APP_ID="your_app_id"
+   VITE_FIREBASE_MEASUREMENT_ID="your_measurement_id"
+   ```
+
+### 🔥 Firebase Setup (Required for Authentication)
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Create a new project or use existing one
+3. Enable Authentication with Google and GitHub providers
+4. Generate a private key for Firebase Admin SDK:
+   - Go to Project Settings → Service Accounts
+   - Click "Generate new private key"
+   - Save the JSON file and extract the required fields
+5. Add your domain to authorized domains in Authentication settings
 
 ### Installation
 
@@ -180,11 +206,24 @@ For security reasons, environment variables containing API keys and credentials 
    ```
    This will start both frontend and backend in development mode.
 
-## Credit System
+## 💳 Freemium Credit System
 
-- New users start with 100 free credits
-- Each task analyzed consumes 1 credit
-- Additional credits can be purchased through the application
+### Credit Allocation
+- **New Users**: 1000 free credits (enough for 100 task analyses)
+- **Analysis Cost**: 10 credits per task analysis
+- **Master Accounts**: Unlimited credits (set via email in User model)
+
+### Master Account Setup
+To set up a master account with unlimited credits:
+1. Set your email address in the backend User model (`backend/src/models/User.js`)
+2. The system automatically grants master privileges to `adamtpangelinan@gmail.com`
+3. Master accounts bypass all credit checks and get unlimited usage
+
+### Usage Tracking
+- Real-time credit balance display in the UI
+- Monthly usage statistics
+- Analysis history and timestamps
+- Automatic monthly usage reset
 
 ## Security Best Practices
 

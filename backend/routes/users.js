@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../src/models/User');
+const { requireAuth } = require('../middleware/auth');
 
 /**
  * @route   POST /api/users/register
@@ -138,68 +139,93 @@ router.get('/me', async (req, res) => {
 });
 
 /**
- * @route   POST /api/users/firebase-auth
- * @desc    Register or login a user with Firebase credentials
- * @access  Private (requires Firebase token)
+ * @route   POST /api/users/oauth-auth
+ * @desc    Register or login a user with OAuth credentials (Firebase/Google/GitHub)
+ * @access  Private (requires valid token)
  */
-router.post('/firebase-auth', async (req, res) => {
+router.post('/oauth-auth', async (req, res) => {
     try {
-        console.log('Firebase auth request received:', {
-            user: req.user,
-            body: req.body
-        });
-
-        if (!req.user || !req.user.firebaseUid) {
-            return res.status(400).json({ msg: 'No Firebase UID provided' });
+        const { firebaseUser, provider } = req.body;
+        
+        if (!firebaseUser || !firebaseUser.uid) {
+            return res.status(400).json({ msg: 'No user information provided' });
         }
 
-        // Check if user already exists with this Firebase UID
-        let user = await User.findOne({ firebaseUid: req.user.firebaseUid });
+        // Check if user already exists with this UID
+        let user = await User.findOne({ uid: firebaseUser.uid });
 
         // If user doesn't exist but we have their email, try to find by email
-        if (!user && req.user.email) {
-            user = await User.findOne({ email: req.user.email });
+        if (!user && firebaseUser.email) {
+            user = await User.findOne({ email: firebaseUser.email });
 
-            // If user exists by email, update their Firebase UID
+            // If user exists by email, update their uid
             if (user) {
-                user.firebaseUid = req.user.firebaseUid;
-                if (req.user.displayName && !user.name) {
-                    user.name = req.user.displayName;
+                user.uid = firebaseUser.uid;
+                if (firebaseUser.displayName && !user.displayName) {
+                    user.displayName = firebaseUser.displayName;
                 }
+                if (firebaseUser.photoURL && !user.profilePicture) {
+                    user.profilePicture = firebaseUser.photoURL;
+                }
+                user.authProvider = provider || 'firebase';
+                user.lastLogin = new Date();
                 await user.save();
             }
         }
 
         // Create a new user if they don't exist
         if (!user) {
+            // Set master account for your email
+            const isMaster = firebaseUser.email === 'adamtpangelinan@gmail.com';
+            
             user = new User({
-                name: req.user.displayName || req.user.email.split('@')[0],
-                email: req.user.email,
-                firebaseUid: req.user.firebaseUid,
-                credits: 1000 // Give new users some initial credits
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                authProvider: provider || 'firebase',
+                profilePicture: firebaseUser.photoURL || null,
+                credits: 1000, // Give new users 1000 initial credits
+                accountType: isMaster ? 'master' : 'free',
+                isMasterAccount: isMaster,
+                lastLogin: new Date()
             });
+            await user.save();
+            console.log('Created new OAuth user:', firebaseUser.email, isMaster ? '(MASTER ACCOUNT)' : '');
+        } else {
+            // Update last login
+            user.lastLogin = new Date();
+            user.lastUsed = new Date();
             await user.save();
         }
 
         // Create JWT token
         const token = jwt.sign(
-            { id: user.id },
+            { id: user._id.toString() },
             process.env.JWT_SECRET || 'devjwtsecret',
-            { expiresIn: 86400 } // 24 hours
+            { expiresIn: '7d' } // 7 days
         );
 
         res.json({
+            success: true,
             token,
             user: {
-                id: user.id,
-                name: user.name,
+                id: user._id.toString(),
+                uid: user.uid,
                 email: user.email,
-                credits: user.credits || 0
+                displayName: user.displayName,
+                profilePicture: user.profilePicture,
+                credits: user.credits,
+                accountType: user.accountType,
+                isMasterAccount: user.isMasterAccount,
+                lifePriorities: user.lifePriorities,
+                selectedModel: user.selectedModel,
+                theme: user.theme,
+                createdAt: user.createdAt
             }
         });
     } catch (error) {
-        console.error('Error in Firebase auth:', error);
-        res.status(500).json({ error: 'Server error during Firebase authentication' });
+        console.error('Error in OAuth auth:', error);
+        res.status(500).json({ error: 'Server error during OAuth authentication' });
     }
 });
 
@@ -694,6 +720,199 @@ router.post('/clerk/add-credits', clerkAuth, async (req, res) => {
     } catch (error) {
         console.error('Error adding credits:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @route   POST /api/users/priorities
+ * @desc    Update user's life priorities
+ * @access  Private
+ */
+router.post('/priorities', requireAuth, async (req, res) => {
+    try {
+        const { priority1, priority2, priority3 } = req.body;
+        
+        // Get user ID from different possible sources
+        const userId = req.user?.id || req.user?.userId;
+        
+        if (!userId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        // Find user by MongoDB ID or UID
+        let user = await User.findById(userId);
+        if (!user) {
+            user = await User.findOne({ uid: userId });
+        }
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Update priorities
+        user.lifePriorities = {
+            priority1: (priority1 || '').trim(),
+            priority2: (priority2 || '').trim(),
+            priority3: (priority3 || '').trim(),
+            lastUpdated: new Date()
+        };
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Priorities updated successfully',
+            lifePriorities: user.lifePriorities
+        });
+    } catch (error) {
+        console.error('Error updating priorities:', error);
+        res.status(500).json({ error: 'Server error updating priorities' });
+    }
+});
+
+/**
+ * @route   GET /api/users/priorities
+ * @desc    Get user's life priorities
+ * @access  Private
+ */
+router.get('/priorities', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user?.id || req.user?.userId;
+        
+        if (!userId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        // Find user by MongoDB ID or UID
+        let user = await User.findById(userId);
+        if (!user) {
+            user = await User.findOne({ uid: userId });
+        }
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json({
+            success: true,
+            lifePriorities: user.lifePriorities || {
+                priority1: '',
+                priority2: '',
+                priority3: '',
+                lastUpdated: null
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching priorities:', error);
+        res.status(500).json({ error: 'Server error fetching priorities' });
+    }
+});
+
+/**
+ * @route   GET /api/users/profile
+ * @desc    Get current user's profile
+ * @access  Private
+ */
+router.get('/profile', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user?.id || req.user?.userId;
+        
+        if (!userId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        // Find user by MongoDB ID or UID
+        let user = await User.findById(userId);
+        if (!user) {
+            user = await User.findOne({ uid: userId });
+        }
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Reset monthly usage if needed
+        user.resetMonthlyUsage();
+        await user.save();
+
+        res.json({
+            success: true,
+            user: {
+                id: user._id.toString(),
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                profilePicture: user.profilePicture,
+                credits: user.credits,
+                accountType: user.accountType,
+                isMasterAccount: user.isMasterAccount,
+                lifePriorities: user.lifePriorities,
+                selectedModel: user.selectedModel,
+                theme: user.theme,
+                usage: user.usage,
+                createdAt: user.createdAt,
+                lastUsed: user.lastUsed
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching profile:', error);
+        res.status(500).json({ error: 'Server error fetching profile' });
+    }
+});
+
+/**
+ * @route   POST /api/users/deduct-credits
+ * @desc    Deduct credits for AI usage
+ * @access  Private
+ */
+router.post('/deduct-credits', requireAuth, async (req, res) => {
+    try {
+        const { amount = 10, operation = 'analysis' } = req.body;
+        const userId = req.user?.id || req.user?.userId;
+        
+        if (!userId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        // Find user by MongoDB ID or UID
+        let user = await User.findById(userId);
+        if (!user) {
+            user = await User.findOne({ uid: userId });
+        }
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Check if user can perform operation
+        if (!user.canPerformAnalysis(amount)) {
+            return res.status(403).json({ 
+                error: 'Insufficient credits',
+                credits: user.credits,
+                required: amount
+            });
+        }
+
+        // Deduct credits (unless master account)
+        const deducted = user.deductCredits(amount);
+        
+        // Update usage stats
+        user.usage.totalAnalyses += 1;
+        user.usage.monthlyAnalyses += 1;
+        user.usage.lastAnalysisDate = new Date();
+        user.lastUsed = new Date();
+
+        await user.save();
+
+        res.json({
+            success: true,
+            credits: user.credits,
+            deducted: deducted && !user.hasUnlimitedCredits() ? amount : 0,
+            hasUnlimitedCredits: user.hasUnlimitedCredits()
+        });
+    } catch (error) {
+        console.error('Error deducting credits:', error);
+        res.status(500).json({ error: 'Server error deducting credits' });
     }
 });
 

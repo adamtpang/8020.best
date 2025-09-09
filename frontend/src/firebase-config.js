@@ -1,48 +1,120 @@
-// Mock Firebase configuration for development
-// This file provides mock implementations of Firebase services
-// to prevent errors when Firebase credentials are not available
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getAnalytics } from 'firebase/analytics';
 
-// Create mock implementations
-const app = {
-  name: 'mock-firebase-app',
-  options: {}
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-const auth = {
-  currentUser: null,
-  onAuthStateChanged: (callback) => {
-    console.log('Mock Firebase: onAuthStateChanged called');
-    // Return an unsubscribe function
-    return () => { };
-  },
-  signInWithEmailAndPassword: (email, password) => {
-    console.log('Mock Firebase: signInWithEmailAndPassword called with', email);
-    return Promise.resolve({ user: { email, uid: 'mock-uid' } });
-  },
-  signInWithPopup: () => {
-    console.log('Mock Firebase: signInWithPopup called');
-    return Promise.resolve({
-      user: { email: 'mock-google@example.com', uid: 'mock-google-uid' }
-    });
-  },
-  signOut: () => {
-    console.log('Mock Firebase: signOut called');
-    return Promise.resolve();
+// Initialize Firebase
+let app;
+let auth;
+let analytics;
+let googleProvider;
+let githubProvider;
+
+try {
+  // Check if we have the required config
+  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    analytics = getAnalytics(app);
+
+    // Configure providers
+    googleProvider = new GoogleAuthProvider();
+    googleProvider.addScope('profile');
+    googleProvider.addScope('email');
+
+    githubProvider = new GithubAuthProvider();
+    githubProvider.addScope('user:email');
+  } else {
+    console.log('Firebase config not available, using mock implementations');
+    throw new Error('Firebase config missing');
+  }
+} catch (error) {
+  console.log('Firebase initialization failed, using mock implementations:', error.message);
+  
+  // Mock implementations for development
+  app = { name: 'mock-firebase-app', options: {} };
+  
+  auth = {
+    currentUser: null,
+    onAuthStateChanged: (callback) => {
+      console.log('Mock Firebase: onAuthStateChanged called');
+      return () => {};
+    },
+    signInWithPopup: (provider) => {
+      console.log('Mock Firebase: signInWithPopup called');
+      const mockUser = {
+        uid: 'mock-uid-' + Date.now(),
+        email: provider.providerId === 'google.com' ? 'mock-google@example.com' : 'mock-github@example.com',
+        displayName: 'Mock User',
+        photoURL: 'https://via.placeholder.com/150',
+        providerId: provider.providerId
+      };
+      return Promise.resolve({ user: mockUser });
+    },
+    signOut: () => {
+      console.log('Mock Firebase: signOut called');
+      return Promise.resolve();
+    }
+  };
+
+  googleProvider = {
+    addScope: () => {},
+    setCustomParameters: () => {},
+    providerId: 'google.com'
+  };
+
+  githubProvider = {
+    addScope: () => {},
+    setCustomParameters: () => {},
+    providerId: 'github.com'
+  };
+
+  analytics = {
+    logEvent: (eventName, params) => {
+      console.log('Mock Firebase Analytics: logEvent', eventName, params);
+    }
+  };
+}
+
+// Authentication helper functions
+export const signInWithGoogle = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+  } catch (error) {
+    console.error('Google sign-in error:', error);
+    throw error;
   }
 };
 
-const provider = {
-  addScope: () => { },
-  setCustomParameters: () => { },
-  providerId: 'google.com'
-};
-
-const analytics = {
-  logEvent: (eventName, params) => {
-    console.log('Mock Firebase Analytics: logEvent', eventName, params);
+export const signInWithGithub = async () => {
+  try {
+    const result = await signInWithPopup(auth, githubProvider);
+    return result.user;
+  } catch (error) {
+    console.error('GitHub sign-in error:', error);
+    throw error;
   }
 };
 
-// Export mock objects
-export { auth, provider, analytics };
+export const signOutUser = async () => {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error('Sign-out error:', error);
+    throw error;
+  }
+};
+
+export { auth, analytics, googleProvider, githubProvider, onAuthStateChanged };
 export default app;

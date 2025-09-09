@@ -6,10 +6,15 @@ import {
 import {
     Bolt as BoltIcon,
     Unarchive as UnarchiveIcon,
-    Info as InfoIcon
+    Info as InfoIcon,
+    Login as LoginIcon,
+    Settings as SettingsIcon
 } from '@mui/icons-material';
 import { keyframes } from '@emotion/react';
 import { streamRankedTasks } from '../services/aiPrioritization';
+import { useAuth } from '../contexts/AuthContext';
+import LoginDialog from './auth/LoginDialog';
+import UserMenu from './auth/UserMenu';
 
 // --- New Design System & Aesthetics ---
 
@@ -87,7 +92,7 @@ const TaskItem = ({ task, score, reasoning, index }) => (
 
 // --- Main Application Component ---
 
-const MainApp = ({ userProfile }) => {
+const MainApp = () => {
     const [tasksInput, setTasksInput] = useState('');
     const [taskCount, setTaskCount] = useState({ total: 0, vitalFew: 0 });
     const [rankedTasks, setRankedTasks] = useState([]);
@@ -97,6 +102,10 @@ const MainApp = ({ userProfile }) => {
     const [hasAnalyzed, setHasAnalyzed] = useState(false);
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
     const [streamConnection, setStreamConnection] = useState(null);
+    const [priorities, setPriorities] = useState({ priority1: '', priority2: '', priority3: '' });
+    const [showLoginDialog, setShowLoginDialog] = useState(false);
+    
+    const { user, isAuthenticated, getPriorities, deductCredits, canPerformAnalysis } = useAuth();
 
     useEffect(() => {
         injectGlobalStyles();
@@ -107,6 +116,24 @@ const MainApp = ({ userProfile }) => {
             }
         };
     }, [streamConnection]);
+
+    // Load user priorities when authenticated
+    useEffect(() => {
+        const loadPriorities = async () => {
+            if (isAuthenticated) {
+                try {
+                    const userPriorities = await getPriorities();
+                    setPriorities(userPriorities || { priority1: '', priority2: '', priority3: '' });
+                } catch (error) {
+                    console.error('Failed to load priorities:', error);
+                }
+            } else {
+                setPriorities({ priority1: '', priority2: '', priority3: '' });
+            }
+        };
+
+        loadPriorities();
+    }, [isAuthenticated, getPriorities]);
 
     useEffect(() => {
         const tasks = tasksInput.split('\n').map(t => t.trim()).filter(Boolean);
@@ -122,6 +149,17 @@ const MainApp = ({ userProfile }) => {
             return;
         }
 
+        // Check credits before analysis
+        const creditCost = 10;
+        if (isAuthenticated && !canPerformAnalysis(creditCost)) {
+            setNotification({ 
+                open: true, 
+                message: `Insufficient credits. You need ${creditCost} credits to perform analysis.`, 
+                severity: 'error' 
+            });
+            return;
+        }
+
         setIsAnalyzing(true);
         setHasAnalyzed(false);
         setRankedTasks([]);
@@ -129,13 +167,29 @@ const MainApp = ({ userProfile }) => {
         setTrivialMany([]);
 
         // Get user priorities for AI analysis
-        const userPriorities = userProfile?.getFormattedPriorities?.() ||
-                              (userProfile?.lifePriorities ?
-                                [userProfile.lifePriorities.priority1, userProfile.lifePriorities.priority2, userProfile.lifePriorities.priority3]
-                                  .filter(Boolean)
-                                  .map((p, i) => `${i + 1}. ${p}`)
-                                  .join('\n') :
-                                null);
+        let userPriorities = null;
+        if (priorities.priority1 || priorities.priority2 || priorities.priority3) {
+            const priorityList = [];
+            if (priorities.priority1) priorityList.push(`1. ${priorities.priority1}`);
+            if (priorities.priority2) priorityList.push(`2. ${priorities.priority2}`);
+            if (priorities.priority3) priorityList.push(`3. ${priorities.priority3}`);
+            userPriorities = priorityList.join('\n');
+        }
+
+        // Deduct credits if user is authenticated
+        if (isAuthenticated) {
+            try {
+                await deductCredits(creditCost, 'analysis');
+            } catch (error) {
+                setNotification({ 
+                    open: true, 
+                    message: 'Failed to process credits. Please try again.', 
+                    severity: 'error' 
+                });
+                setIsAnalyzing(false);
+                return;
+            }
+        }
 
         const eventSource = streamRankedTasks(tasks, userPriorities, {
             onData: (newRankedTask) => {
@@ -148,7 +202,13 @@ const MainApp = ({ userProfile }) => {
             onClose: () => {
                 setIsAnalyzing(false);
                 setHasAnalyzed(true);
-                setNotification({ open: true, message: 'Analysis complete.', severity: 'success' });
+                setNotification({ 
+                    open: true, 
+                    message: isAuthenticated ? 
+                        'Analysis complete! Credits deducted successfully.' : 
+                        'Analysis complete!', 
+                    severity: 'success' 
+                });
 
                 // Perform the final 80/20 split
                 setRankedTasks(prevTasks => {
@@ -183,16 +243,55 @@ const MainApp = ({ userProfile }) => {
         }}>
             <CssBaseline />
 
-            {/* Header with Logo */}
-            <Box sx={{ textAlign: 'center', mb: 3 }}>
-                <img
-                    src="/images/8020-logo.png"
-                    alt="8020.best Logo"
-                    style={{
-                        height: '50px',
-                        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
-                    }}
-                />
+            {/* Header with Logo and Auth */}
+            <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                mb: 3,
+                flexWrap: 'wrap',
+                gap: 2
+            }}>
+                <Box sx={{ flexGrow: 1, textAlign: 'center' }}>
+                    <img
+                        src="/images/8020-logo.png"
+                        alt="8020.best Logo"
+                        style={{
+                            height: '50px',
+                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+                        }}
+                    />
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {isAuthenticated ? (
+                        <>
+                            {user && (
+                                <Chip
+                                    label={`${user.credits?.toLocaleString() || '0'} credits`}
+                                    size="small"
+                                    color={user.isMasterAccount ? 'warning' : 'primary'}
+                                    variant="outlined"
+                                    sx={{ mr: 1 }}
+                                />
+                            )}
+                            <UserMenu />
+                        </>
+                    ) : (
+                        <Button
+                            variant="outlined"
+                            startIcon={<LoginIcon />}
+                            onClick={() => setShowLoginDialog(true)}
+                            size="small"
+                            sx={{
+                                borderRadius: '20px',
+                                textTransform: 'none'
+                            }}
+                        >
+                            Sign In
+                        </Button>
+                    )}
+                </Box>
             </Box>
             <Snackbar
                 open={notification.open}
@@ -228,9 +327,30 @@ const MainApp = ({ userProfile }) => {
                                 },
                             }}
                         />
-                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                            Total Tasks: {taskCount.total} | Vital Few (20%): {taskCount.vitalFew}
-                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                                Total Tasks: {taskCount.total} | Vital Few (20%): {taskCount.vitalFew}
+                            </Typography>
+                            
+                            {isAuthenticated && (priorities.priority1 || priorities.priority2 || priorities.priority3) && (
+                                <Tooltip title={
+                                    <Box>
+                                        <Typography variant="caption" fontWeight="bold">Your Priorities:</Typography>
+                                        {priorities.priority1 && <Typography variant="caption" display="block">1. {priorities.priority1}</Typography>}
+                                        {priorities.priority2 && <Typography variant="caption" display="block">2. {priorities.priority2}</Typography>}
+                                        {priorities.priority3 && <Typography variant="caption" display="block">3. {priorities.priority3}</Typography>}
+                                    </Box>
+                                } placement="left">
+                                    <Chip 
+                                        label="Using your priorities" 
+                                        size="small" 
+                                        color="secondary" 
+                                        variant="outlined"
+                                        icon={<SettingsIcon />}
+                                    />
+                                </Tooltip>
+                            )}
+                        </Box>
                     </Grid>
                 </Grid>
                 <Button
@@ -376,6 +496,12 @@ const MainApp = ({ userProfile }) => {
                     </Grid>
                 </Box>
             )}
+
+            {/* Login Dialog */}
+            <LoginDialog 
+                open={showLoginDialog} 
+                onClose={() => setShowLoginDialog(false)} 
+            />
         </Box>
     );
 };
