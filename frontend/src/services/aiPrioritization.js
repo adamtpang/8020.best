@@ -47,6 +47,7 @@ export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onCl
         const reader = body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let jsonBuffer = ''; // Buffer to accumulate JSON content from SSE chunks
 
         function readChunk() {
             return reader.read().then(({ done, value }) => {
@@ -81,26 +82,104 @@ export const streamRankedTasks = (tasks, userPriorities, { onData, onError, onCl
                             console.log('Parsed SSE data:', data);
                             
                             if (data.type === 'chunk') {
-                                // SSE chunk contains content to be parsed
-                                const content = data.content;
-                                const contentLines = content.split('\n');
+                                // SSE chunk contains partial JSON content - accumulate it
+                                jsonBuffer += data.content;
                                 
-                                for (const contentLine of contentLines) {
-                                    const trimmed = contentLine.trim();
-                                    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-                                        try {
-                                            const taskData = JSON.parse(trimmed);
-                                            console.log('Parsed task from SSE chunk:', taskData);
-                                            onData?.(taskData);
-                                        } catch (e) {
-                                            console.error('Error parsing JSON from SSE:', e, trimmed);
+                                // Try to parse complete JSON objects from the buffer
+                                let startIndex = 0;
+                                let braceCount = 0;
+                                let inString = false;
+                                let escapeNext = false;
+                                
+                                for (let i = 0; i < jsonBuffer.length; i++) {
+                                    const char = jsonBuffer[i];
+                                    
+                                    if (escapeNext) {
+                                        escapeNext = false;
+                                        continue;
+                                    }
+                                    
+                                    if (char === '\\' && inString) {
+                                        escapeNext = true;
+                                        continue;
+                                    }
+                                    
+                                    if (char === '"' && !escapeNext) {
+                                        inString = !inString;
+                                        continue;
+                                    }
+                                    
+                                    if (!inString) {
+                                        if (char === '{') {
+                                            if (braceCount === 0) startIndex = i;
+                                            braceCount++;
+                                        } else if (char === '}') {
+                                            braceCount--;
+                                            if (braceCount === 0) {
+                                                // Found complete JSON object
+                                                const jsonStr = jsonBuffer.substring(startIndex, i + 1);
+                                                try {
+                                                    const taskData = JSON.parse(jsonStr);
+                                                    console.log('Parsed task from accumulated SSE chunks:', taskData);
+                                                    onData?.(taskData);
+                                                } catch (e) {
+                                                    console.error('Error parsing accumulated JSON:', e, jsonStr);
+                                                }
+                                                // Remove processed JSON from buffer
+                                                jsonBuffer = jsonBuffer.substring(i + 1);
+                                                i = -1; // Reset loop
+                                                startIndex = 0;
+                                            }
                                         }
                                     }
                                 }
                             } else if (data.type === 'end') {
-                                // Process any remaining buffer content
-                                if (buffer.trim()) {
-                                    processBuffer();
+                                // Process any remaining JSON buffer content
+                                if (jsonBuffer.trim()) {
+                                    // Try to parse any remaining complete JSON
+                                    let startIndex = 0;
+                                    let braceCount = 0;
+                                    let inString = false;
+                                    let escapeNext = false;
+                                    
+                                    for (let i = 0; i < jsonBuffer.length; i++) {
+                                        const char = jsonBuffer[i];
+                                        
+                                        if (escapeNext) {
+                                            escapeNext = false;
+                                            continue;
+                                        }
+                                        
+                                        if (char === '\\' && inString) {
+                                            escapeNext = true;
+                                            continue;
+                                        }
+                                        
+                                        if (char === '"' && !escapeNext) {
+                                            inString = !inString;
+                                            continue;
+                                        }
+                                        
+                                        if (!inString) {
+                                            if (char === '{') {
+                                                if (braceCount === 0) startIndex = i;
+                                                braceCount++;
+                                            } else if (char === '}') {
+                                                braceCount--;
+                                                if (braceCount === 0) {
+                                                    // Found complete JSON object
+                                                    const jsonStr = jsonBuffer.substring(startIndex, i + 1);
+                                                    try {
+                                                        const taskData = JSON.parse(jsonStr);
+                                                        console.log('Parsed final task from SSE buffer:', taskData);
+                                                        onData?.(taskData);
+                                                    } catch (e) {
+                                                        console.error('Error parsing final JSON:', e, jsonStr);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 onClose?.();
                                 return;
