@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getAnalytics } from 'firebase/analytics';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -16,7 +15,6 @@ const firebaseConfig = {
 // Initialize Firebase
 let app;
 let auth;
-let analytics;
 let googleProvider;
 let githubProvider;
 
@@ -25,7 +23,6 @@ try {
   if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
-    analytics = getAnalytics(app);
 
     // Configure providers
     googleProvider = new GoogleAuthProvider();
@@ -34,6 +31,8 @@ try {
 
     githubProvider = new GithubAuthProvider();
     githubProvider.addScope('user:email');
+    
+    console.log('Firebase initialized successfully');
   } else {
     console.log('Firebase config not available, using mock implementations');
     throw new Error('Firebase config missing');
@@ -79,11 +78,6 @@ try {
     providerId: 'github.com'
   };
 
-  analytics = {
-    logEvent: (eventName, params) => {
-      console.log('Mock Firebase Analytics: logEvent', eventName, params);
-    }
-  };
 }
 
 // Authentication helper functions
@@ -116,5 +110,5 @@ export const signOutUser = async () => {
   }
 };
 
-export { auth, analytics, googleProvider, githubProvider, onAuthStateChanged };
+export { auth, googleProvider, githubProvider, onAuthStateChanged };
 export default app;
