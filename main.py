@@ -249,16 +249,14 @@ async def process_eisenhower(text: str, output_dir: str = "eisenhower_matrix"):
                     filepath = os.path.join(output_dir, filename)
                     print(f"Adding to {filename}")
                     with open(filepath, 'a', encoding='utf-8') as f:
-                        f.write(f"{line}\n\n")
+                        # Preserve original text and append the rating/category
+                        f.write(f"[{category.upper()}] {line}\n\n")
 
-                # Remove the processed line from remaining_lines
+                # Remove the processed line from remaining_lines for progress tracking
                 if line in remaining_lines:
                     remaining_lines.remove(line)
 
-                # Update input.txt with remaining tasks
-                with open("input.txt", 'w', encoding='utf-8') as f:
-                    for remaining_line in remaining_lines:
-                        f.write(f"{remaining_line}\n")
+                # Don't modify input.txt - preserve original input text
 
                 print(f"Tasks remaining: {len(remaining_lines)}")
                 print("-" * 50)
@@ -279,9 +277,8 @@ async def process_eisenhower(text: str, output_dir: str = "eisenhower_matrix"):
     for filename in categories.keys():
         print(f"- {filename}")
 
-    if remaining_lines:
-        print(f"\nRemaining unprocessed tasks: {len(remaining_lines)}")
-        print("These tasks remain in input.txt")
+    print(f"\nTotal tasks processed: {total_tasks}")
+    print("Original input.txt preserved with all original tasks intact.")
 
 async def main():
     print("Eisenhower Matrix Task Analyzer")
