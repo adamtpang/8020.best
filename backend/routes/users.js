@@ -167,7 +167,9 @@ router.post('/oauth-auth', async (req, res) => {
                 if (firebaseUser.photoURL && !user.profilePicture) {
                     user.profilePicture = firebaseUser.photoURL;
                 }
-                user.authProvider = provider || 'firebase';
+                user.authProvider = (provider === 'google.com' ? 'google' :
+                                    provider === 'github.com' ? 'github' :
+                                    provider || 'firebase');
                 user.lastLogin = new Date();
                 await user.save();
             }
@@ -182,7 +184,9 @@ router.post('/oauth-auth', async (req, res) => {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
                 displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-                authProvider: provider || 'firebase',
+                authProvider: (provider === 'google.com' ? 'google' :
+                              provider === 'github.com' ? 'github' :
+                              provider || 'firebase'),
                 profilePicture: firebaseUser.photoURL || null,
                 credits: 1000, // Give new users 1000 initial credits
                 accountType: isMaster ? 'master' : 'free',

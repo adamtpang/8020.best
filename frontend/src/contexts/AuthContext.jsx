@@ -42,7 +42,9 @@ export const AuthProvider = ({ children }) => {
                             displayName: firebaseUser.displayName,
                             photoURL: firebaseUser.photoURL
                         },
-                        provider: firebaseUser.providerData?.[0]?.providerId || 'firebase'
+                        provider: (firebaseUser.providerData?.[0]?.providerId === 'google.com' ? 'google' :
+                                  firebaseUser.providerData?.[0]?.providerId === 'github.com' ? 'github' :
+                                  'firebase')
                     });
 
                     if (response.data.success) {

@@ -27,6 +27,9 @@ import {
     Logout
 } from '@mui/icons-material';
 import { streamRankedTasks } from '../services/aiPrioritization';
+import { useAuth } from '../contexts/AuthContext';
+import CleanLoginDialog from './auth/CleanLoginDialog';
+import UserMenu from './auth/UserMenu';
 
 const LandingPage = ({ onGetStarted }) => {
     const [priorities, setPriorities] = useState(['', '', '']);
@@ -40,6 +43,9 @@ const LandingPage = ({ onGetStarted }) => {
     const [progress, setProgress] = useState(0);
     const [progressText, setProgressText] = useState('');
     const [totalTasks, setTotalTasks] = useState(0);
+    const [showLoginDialog, setShowLoginDialog] = useState(false);
+
+    const { user, isAuthenticated } = useAuth();
 
 
     const handlePriorityChange = (index, value) => {
@@ -137,7 +143,7 @@ const LandingPage = ({ onGetStarted }) => {
             setTrivialMany(trivialManyTasks);
             
             setProgress(100);
-            setProgressText(`🎯 Analysis complete! ${vitalFewTasks.length} vital few, ${trivialManyTasks.length} trivial many (${allTasks.length} total)`);
+            setProgressText(`Analysis complete! ${vitalFewTasks.length} vital few, ${trivialManyTasks.length} trivial many (${allTasks.length} total)`);
             setIsAnalyzing(false);
             
         } catch (error) {
@@ -159,8 +165,8 @@ const LandingPage = ({ onGetStarted }) => {
         const totalChars = tasks.length;
         
         // Set limits
-        const MAX_TASKS = 100;
-        const MAX_CHARS = 100000;
+        const MAX_TASKS = 1000;
+        const MAX_CHARS = 1000000;
         // Process all tasks in one stream for better user experience
         
         if (taskCount > MAX_TASKS) {
@@ -222,29 +228,102 @@ const LandingPage = ({ onGetStarted }) => {
             fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
         }}>
             <Container maxWidth="md" sx={{ py: 6 }}>
-                
+
+                {/* Header with Auth */}
+                <Box sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 4,
+                    pb: 2,
+                    borderBottom: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'white' }}>
+                        8020.best
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        {isAuthenticated ? (
+                            <>
+                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                                    Welcome, {user?.displayName || user?.email}
+                                </Typography>
+                                <UserMenu />
+                            </>
+                        ) : (
+                            <Button
+                                variant="outlined"
+                                startIcon={<Login />}
+                                onClick={() => setShowLoginDialog(true)}
+                                size="small"
+                                sx={{
+                                    borderRadius: '20px',
+                                    textTransform: 'none',
+                                    borderColor: 'rgba(255,255,255,0.3)',
+                                    color: 'white',
+                                    '&:hover': {
+                                        borderColor: 'rgba(255,255,255,0.5)',
+                                        backgroundColor: 'rgba(255,255,255,0.1)'
+                                    }
+                                }}
+                            >
+                                Sign In
+                            </Button>
+                        )}
+                    </Box>
+                </Box>
+
+                {/* About Section */}
+                <Container maxWidth="lg">
+                    <Box sx={{
+                        textAlign: 'center',
+                        py: 3,
+                        mb: 4,
+                        backgroundColor: 'rgba(255,255,255,0.02)',
+                        borderRadius: 2,
+                        border: '1px solid rgba(255,255,255,0.05)'
+                    }}>
+                        <Typography variant="body1" sx={{
+                            color: 'rgba(255,255,255,0.9)',
+                            fontWeight: 300,
+                            lineHeight: 1.6,
+                            maxWidth: '700px',
+                            margin: '0 auto',
+                            fontSize: '1rem'
+                        }}>
+                            Apply the 80/20 principle to your tasks. Focus on the vital few that drive 80% of your results
+                            while identifying the trivial many that consume your time with minimal impact.
+                        </Typography>
+                    </Box>
+                </Container>
+
                 {/* Hero */}
                 <Box sx={{ textAlign: 'center', mb: 8 }}>
                     <Typography
                         variant="h3"
                         sx={{
-                            fontWeight: 800,
+                            fontWeight: 300,
                             mb: 2,
-                            background: 'linear-gradient(45deg, #FFF 30%, #8B5CF6 90%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            fontSize: { xs: '2rem', md: '3rem' }
+                            color: 'white',
+                            fontSize: { xs: '2rem', md: '3rem' },
+                            letterSpacing: '0.02em'
                         }}
                     >
                         Focus on what matters
                     </Typography>
                     <Typography
                         variant="body1"
-                        sx={{ opacity: 0.7, fontSize: '0.9rem', mb: 4 }}
+                        sx={{
+                            opacity: 0.6,
+                            fontSize: '1rem',
+                            mb: 4,
+                            fontWeight: 300,
+                            color: '#ffffff'
+                        }}
                     >
-                        AI finds your high-impact tasks
+                        AI-powered task prioritization
                     </Typography>
-                    
+
                 </Box>
 
                 {/* Product Section */}
@@ -259,7 +338,7 @@ const LandingPage = ({ onGetStarted }) => {
                         }}>
                             <Box sx={{ p: 2, borderBottom: '1px solid #333', backgroundColor: '#111' }}>
                                 <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 700, color: '#8B5CF6' }}>
-                                    🎯 Your Top 3 Life Priorities
+                                    Your Top 3 Life Priorities
                                 </Typography>
                                 <Typography sx={{ fontSize: '0.75rem', color: '#999', mt: 0.5 }}>
                                     What matters most to you right now?
@@ -359,12 +438,12 @@ Review budget"
                                     sx={{ 
                                         mt: 1, 
                                         display: 'block', 
-                                        color: tasks.length > 100000 || tasks.split('\n').filter(t => t.trim()).length > 100 ? '#f44336' : '#666',
+                                        color: tasks.length > 1000000 || tasks.split('\n').filter(t => t.trim()).length > 1000 ? '#f44336' : '#666',
                                         fontSize: '0.75rem'
                                     }}
                                 >
                                     {tasks.split('\n').filter(t => t.trim()).length} tasks • {tasks.length} characters 
-                                    (limit: 100 tasks, 100,000 characters)
+                                    (limit: 1,000 tasks, 1,000,000 characters)
                                 </Typography>
                             </CardContent>
                         </Card>
@@ -394,7 +473,7 @@ Review budget"
                                     boxShadow: '0 4px 20px rgba(139, 92, 246, 0.3)'
                                 }}
                             >
-                                {isAnalyzing ? '⚡ Analyzing...' : '🚀 Analyze with AI'}
+                                {isAnalyzing ? 'Analyzing...' : 'Analyze'}
                             </Button>
                             
                         </Box>
@@ -411,7 +490,7 @@ Review budget"
                                     {/* Header */}
                                     <Box sx={{ p: 3, borderBottom: '1px solid #333' }}>
                                         <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 700, color: '#8B5CF6', mb: 1 }}>
-                                            🎯 80/20 Analysis Results
+                                            80/20 Analysis Results
                                         </Typography>
                                         {!isAnalyzing && !hasError && vitalFew.length > 0 && (
                                             <Typography sx={{ fontSize: '0.8rem', color: '#999' }}>
@@ -589,6 +668,12 @@ Review budget"
                     </Stack>
                 </Box>
             </Container>
+
+            {/* Login Dialog */}
+            <CleanLoginDialog
+                open={showLoginDialog}
+                onClose={() => setShowLoginDialog(false)}
+            />
         </Box>
     );
 };
