@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { auth, onAuthStateChanged, signInWithGoogle, signInWithGithub, signOutUser } from '../firebase-config';
+import { auth, onAuthStateChanged, signInWithGoogle, signInWithGithub, signOutUser, getRedirectResult } from '../firebase-config';
 import axiosInstance from '../services/axiosInstance';
 
 const AuthContext = createContext();
@@ -19,6 +19,21 @@ export const AuthProvider = ({ children }) => {
 
     // Initialize authentication state
     useEffect(() => {
+        // Check for redirect result first
+        const checkRedirectResult = async () => {
+            try {
+                const result = await getRedirectResult(auth);
+                if (result?.user) {
+                    console.log('Redirect sign-in successful:', result.user.email);
+                    // The onAuthStateChanged listener will handle the rest
+                }
+            } catch (error) {
+                console.error('Redirect result error:', error);
+            }
+        };
+
+        checkRedirectResult();
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             console.log('Firebase auth state changed:', firebaseUser?.email);
             setFirebaseUser(firebaseUser);
@@ -50,10 +65,11 @@ export const AuthProvider = ({ children }) => {
                     if (response.data.success) {
                         console.log('User authenticated successfully:', response.data.user.email);
                         setUser(response.data.user);
-                        
+
                         // Store user data in localStorage
                         localStorage.setItem('user_data', JSON.stringify(response.data.user));
-                        
+                        localStorage.setItem('hasVisited', 'true'); // Ensure user sees MainApp
+
                         // Update axios header with the JWT token from our backend
                         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
                         localStorage.setItem('jwt_token', response.data.token);

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -83,9 +83,15 @@ try {
 // Authentication helper functions
 export const signInWithGoogle = async () => {
   try {
+    // Try popup first, fallback to redirect if blocked
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error) {
+    if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+      console.log('Popup blocked, using redirect method');
+      await signInWithRedirect(auth, googleProvider);
+      return null; // User will be redirected
+    }
     console.error('Google sign-in error:', error);
     throw error;
   }
@@ -93,9 +99,15 @@ export const signInWithGoogle = async () => {
 
 export const signInWithGithub = async () => {
   try {
+    // Try popup first, fallback to redirect if blocked
     const result = await signInWithPopup(auth, githubProvider);
     return result.user;
   } catch (error) {
+    if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+      console.log('Popup blocked, using redirect method');
+      await signInWithRedirect(auth, githubProvider);
+      return null; // User will be redirected
+    }
     console.error('GitHub sign-in error:', error);
     throw error;
   }
@@ -110,5 +122,5 @@ export const signOutUser = async () => {
   }
 };
 
-export { auth, googleProvider, githubProvider, onAuthStateChanged };
+export { auth, googleProvider, githubProvider, onAuthStateChanged, getRedirectResult };
 export default app;
