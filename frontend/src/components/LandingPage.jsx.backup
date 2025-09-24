@@ -30,8 +30,8 @@ const LandingPage = () => {
         const isHighValue = sectionTitle.includes('DO THESE');
 
         if (isHighValue) {
-            const taskList = tasks.map((task, index) => `${index + 1}. ${task.task}`).join('\n');
-            const fullText = `${sectionTitle}\n${'='.repeat(sectionTitle.length)}\n\n${taskList}\n\n✅ Focus on these first - they drive 80% of your results!`;
+            const taskList = tasks.map((task, index) => `${index + 1}. ${task.task}`).join('\\n');
+            const fullText = `${sectionTitle}\\n${'='.repeat(sectionTitle.length)}\\n\\n${taskList}\\n\\n✅ Focus on these first - they drive 80% of your results!`;
 
             try {
                 await navigator.clipboard.writeText(fullText);
@@ -41,8 +41,8 @@ const LandingPage = () => {
                 console.error('Failed to copy:', err);
             }
         } else {
-            const taskList = tasks.map(task => `• ${task.task}`).join('\n');
-            const fullText = `${sectionTitle}\n${'='.repeat(sectionTitle.length)}\n\n${taskList}\n\n📁 Archive these in your "someday/maybe" list for later review.`;
+            const taskList = tasks.map(task => `• ${task.task}`).join('\\n');
+            const fullText = `${sectionTitle}\\n${'='.repeat(sectionTitle.length)}\\n\\n${taskList}\\n\\n📁 Archive these in your "someday/maybe" list for later review.`;
 
             try {
                 await navigator.clipboard.writeText(fullText);
@@ -55,10 +55,10 @@ const LandingPage = () => {
     };
 
     const copyAllTasks = async () => {
-        const vitalList = vitalFew.map((task, index) => `${index + 1}. ${task.task}`).join('\n');
-        const trivialList = trivialMany.map(task => `• ${task.task}`).join('\n');
+        const vitalList = vitalFew.map((task, index) => `${index + 1}. ${task.task}`).join('\\n');
+        const trivialList = trivialMany.map(task => `• ${task.task}`).join('\\n');
 
-        const fullText = `80/20 TASK ANALYSIS RESULTS\n${'='.repeat(30)}\n\n🔥 DO THESE FIRST (${vitalFew.length} tasks)\n${'-'.repeat(40)}\n${vitalList}\n\n✅ Focus on these - they drive 80% of your results!\n\n\n🗂️ ARCHIVE THESE (${trivialMany.length} tasks)\n${'-'.repeat(40)}\n${trivialList}\n\n📁 Move these to your "someday/maybe" list.`;
+        const fullText = `80/20 TASK ANALYSIS RESULTS\\n${'='.repeat(30)}\\n\\n🔥 DO THESE FIRST (${vitalFew.length} tasks)\\n${'-'.repeat(40)}\\n${vitalList}\\n\\n✅ Focus on these - they drive 80% of your results!\\n\\n\\n🗂️ ARCHIVE THESE (${trivialMany.length} tasks)\\n${'-'.repeat(40)}\\n${trivialList}\\n\\n📁 Move these to your "someday/maybe" list.`;
 
         try {
             await navigator.clipboard.writeText(fullText);
@@ -133,7 +133,7 @@ const LandingPage = () => {
             return;
         }
 
-        const taskArray = tasks.split('\n').filter(task => task.trim());
+        const taskArray = tasks.split('\\n').filter(task => task.trim());
         const taskCount = taskArray.length;
         const totalChars = tasks.length;
 
@@ -166,7 +166,7 @@ const LandingPage = () => {
             setProgress(20);
             setProgressText('Starting AI analysis...');
 
-            const userPriorities = priorities.filter(p => p.trim()).map((p, i) => `${i + 1}. ${p}`).join('\n');
+            const userPriorities = priorities.filter(p => p.trim()).map((p, i) => `${i + 1}. ${p}`).join('\\n');
 
             await processTasksOneByOne(taskArray, userPriorities, taskCount);
 
@@ -321,6 +321,14 @@ Review budget"
                             onChange={(e) => setTasks(e.target.value)}
                             className="w-full bg-input text-foreground border border-border rounded-md px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring resize-none"
                         />
+                        <div className={`mt-2 text-xs ${
+                            tasks.length > 1000000 || tasks.split('\\n').filter(t => t.trim()).length > 1000
+                                ? 'text-red-400'
+                                : 'text-muted-foreground'
+                        }`}>
+                            {tasks.split('\\n').filter(t => t.trim()).length} tasks • {tasks.length} characters
+                            (limit: 1,000 tasks, 1,000,000 characters)
+                        </div>
                     </div>
 
                     {/* Analyze Button */}
@@ -340,6 +348,11 @@ Review budget"
                             {/* Header */}
                             <div className="p-6 border-b border-border">
                                 <h2 className="text-xl font-bold text-purple-400 mb-2">80/20 Analysis Results</h2>
+                                {!isAnalyzing && !hasError && vitalFew.length > 0 && (
+                                    <p className="text-muted-foreground text-sm">
+                                        {vitalFew.length} vital tasks • {trivialMany.length} trivial tasks • Click any section to copy
+                                    </p>
+                                )}
                             </div>
 
                             {/* Progress */}
@@ -399,6 +412,9 @@ Review budget"
                                             <h3 className="text-lg font-bold text-purple-400 mb-2">
                                                 🔥 DO THESE FIRST ({vitalFew.length} tasks)
                                             </h3>
+                                            <p className="text-purple-400 font-medium text-sm">
+                                                These drive 80% of your results → Copy & focus on these
+                                            </p>
                                         </div>
                                         <div className="p-6 space-y-3">
                                             {vitalFew.map((task, index) => (
@@ -424,6 +440,9 @@ Review budget"
                                                 <h3 className="text-lg font-bold text-muted-foreground mb-2">
                                                     🗂️ ARCHIVE THESE ({trivialMany.length} tasks)
                                                 </h3>
+                                                <p className="text-muted-foreground font-medium text-sm">
+                                                    Low impact tasks → Copy to your archive/someday list
+                                                </p>
                                             </div>
                                             <div className="p-6 max-h-80 overflow-y-auto space-y-2">
                                                 {trivialMany.map((task, index) => (

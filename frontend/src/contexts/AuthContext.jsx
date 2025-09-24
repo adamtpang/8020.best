@@ -87,11 +87,12 @@ export const AuthProvider = ({ children }) => {
                 // User is signed out
                 console.log('User signed out');
                 setUser(null);
-                
+
                 // Clear stored authentication data
                 localStorage.removeItem('auth_token');
                 localStorage.removeItem('jwt_token');
                 localStorage.removeItem('user_data');
+                localStorage.removeItem('hasVisited'); // Reset to landing page on signout
                 delete axiosInstance.defaults.headers.common['Authorization'];
             }
             

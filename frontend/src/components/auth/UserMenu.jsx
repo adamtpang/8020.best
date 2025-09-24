@@ -80,10 +80,10 @@ const PrioritiesDialog = ({ open, onClose, user, onSave }) => {
         >
             <DialogTitle>
                 <Box display="flex" alignItems="center" gap={1}>
-                    <EditIcon color="primary" />
-                    <Typography variant="h6">Edit Life Priorities</Typography>
+                    <EditIcon sx={{ color: '#a855f7' }} />
+                    <Typography variant="h6" sx={{ color: '#ffffff' }}>Edit Life Priorities</Typography>
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                <Typography variant="body2" sx={{ mt: 1, color: 'rgba(255,255,255,0.7)' }}>
                     These priorities help the AI give you better task recommendations
                 </Typography>
             </DialogTitle>
@@ -105,6 +105,16 @@ const PrioritiesDialog = ({ open, onClose, user, onSave }) => {
                         onChange={(e) => setPriorities(prev => ({ ...prev, priority1: e.target.value }))}
                         placeholder="e.g., Advance my career in software engineering"
                         disabled={saving}
+                        sx={{
+                            '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.7)' },
+                            '& .MuiOutlinedInput-root': {
+                                color: '#ffffff',
+                                '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
+                                '&.Mui-focused fieldset': { borderColor: '#a855f7' }
+                            },
+                            '& .MuiInputBase-input::placeholder': { color: 'rgba(255,255,255,0.5)' }
+                        }}
                     />
                     <TextField
                         label="Priority #2"
@@ -115,6 +125,16 @@ const PrioritiesDialog = ({ open, onClose, user, onSave }) => {
                         onChange={(e) => setPriorities(prev => ({ ...prev, priority2: e.target.value }))}
                         placeholder="e.g., Improve my health and fitness"
                         disabled={saving}
+                        sx={{
+                            '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.7)' },
+                            '& .MuiOutlinedInput-root': {
+                                color: '#ffffff',
+                                '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
+                                '&.Mui-focused fieldset': { borderColor: '#a855f7' }
+                            },
+                            '& .MuiInputBase-input::placeholder': { color: 'rgba(255,255,255,0.5)' }
+                        }}
                     />
                     <TextField
                         label="Priority #3"
@@ -125,23 +145,39 @@ const PrioritiesDialog = ({ open, onClose, user, onSave }) => {
                         onChange={(e) => setPriorities(prev => ({ ...prev, priority3: e.target.value }))}
                         placeholder="e.g., Spend quality time with family"
                         disabled={saving}
+                        sx={{
+                            '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.7)' },
+                            '& .MuiOutlinedInput-root': {
+                                color: '#ffffff',
+                                '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
+                                '&.Mui-focused fieldset': { borderColor: '#a855f7' }
+                            },
+                            '& .MuiInputBase-input::placeholder': { color: 'rgba(255,255,255,0.5)' }
+                        }}
                     />
                 </Stack>
             </DialogContent>
             
             <DialogActions sx={{ p: 3 }}>
-                <Button 
-                    onClick={handleClose} 
+                <Button
+                    onClick={handleClose}
                     startIcon={<CloseIcon />}
                     disabled={saving}
+                    sx={{ color: 'rgba(255,255,255,0.7)' }}
                 >
                     Cancel
                 </Button>
-                <Button 
-                    onClick={handleSave} 
+                <Button
+                    onClick={handleSave}
                     variant="contained"
                     startIcon={<SaveIcon />}
                     disabled={saving}
+                    sx={{
+                        backgroundColor: '#a855f7',
+                        color: '#ffffff',
+                        '&:hover': { backgroundColor: '#9333ea' }
+                    }}
                 >
                     {saving ? 'Saving...' : 'Save Priorities'}
                 </Button>
@@ -238,10 +274,10 @@ const UserMenu = () => {
                             {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
                         </Avatar>
                         <Box>
-                            <Typography variant="body1" fontWeight="bold">
+                            <Typography variant="body1" fontWeight="bold" sx={{ color: '#ffffff' }}>
                                 {user.displayName}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
                                 {user.email}
                             </Typography>
                         </Box>
@@ -253,12 +289,21 @@ const UserMenu = () => {
                             size="small"
                             color={getAccountTypeColor(user.accountType)}
                             icon={user.isMasterAccount ? <Star /> : undefined}
+                            sx={{
+                                '& .MuiChip-label': { color: '#ffffff' },
+                                '& .MuiChip-icon': { color: '#ffffff' }
+                            }}
                         />
                         <Chip
                             label={`${formatCredits(user.credits)} credits`}
                             size="small"
                             icon={<CreditCard />}
                             variant="outlined"
+                            sx={{
+                                '& .MuiChip-label': { color: '#ffffff' },
+                                '& .MuiChip-icon': { color: '#ffffff' },
+                                borderColor: 'rgba(255,255,255,0.3)'
+                            }}
                         />
                     </Box>
                 </Box>
@@ -267,19 +312,28 @@ const UserMenu = () => {
 
                 <MenuItem onClick={() => { setPrioritiesOpen(true); handleClose(); }}>
                     <ListItemIcon>
-                        <EditIcon fontSize="small" />
+                        <EditIcon fontSize="small" sx={{ color: '#ffffff' }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                         primary="Edit Priorities"
                         secondary="Set your life goals for better AI recommendations"
+                        sx={{
+                            '& .MuiListItemText-primary': { color: '#ffffff' },
+                            '& .MuiListItemText-secondary': { color: 'rgba(255,255,255,0.7)' }
+                        }}
                     />
                 </MenuItem>
 
                 <MenuItem onClick={handleSignOut}>
                     <ListItemIcon>
-                        <ExitToApp fontSize="small" />
+                        <ExitToApp fontSize="small" sx={{ color: '#ffffff' }} />
                     </ListItemIcon>
-                    <ListItemText primary="Sign Out" />
+                    <ListItemText
+                        primary="Sign Out"
+                        sx={{
+                            '& .MuiListItemText-primary': { color: '#ffffff' }
+                        }}
+                    />
                 </MenuItem>
             </Menu>
 

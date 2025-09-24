@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LandingPage from './components/LandingPage';
 import MainApp from './components/MainApp';
 
@@ -17,30 +17,9 @@ const LoadingScreen = () => (
 );
 
 function AppContent() {
-  const [showLanding, setShowLanding] = useState(true);
-
-  // Check if user has previously visited
-  useEffect(() => {
-    const hasVisited = localStorage.getItem('hasVisited');
-    if (hasVisited) {
-      setShowLanding(false);
-    }
-  }, []);
-
-  const handleGetStarted = () => {
-    localStorage.setItem('hasVisited', 'true');
-    setShowLanding(false);
-  };
-
-  return (
-    <>
-      {showLanding ? (
-        <LandingPage onGetStarted={handleGetStarted} />
-      ) : (
-        <MainApp />
-      )}
-    </>
-  );
+  // Always show the LandingPage - no more switching to MainApp
+  // The only difference will be the header (sign in vs profile + credits)
+  return <LandingPage />;
 }
 
 function App() {
