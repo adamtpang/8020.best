@@ -92,12 +92,20 @@ const TaskItem = ({ task, score, reasoning, index }) => (
 
 // --- Main Application Component ---
 
+// Link extraction utility function
+const extractLinks = (text) => {
+    const urlRegex = /(https?:\/\/(?:[-\w.])+(?:[:\d]+)?(?:\/(?:[\w\._~!$&'()*+,;=:@]|%[\dA-F]{2})*)*(?:\?(?:[\w\._~!$&'()*+,;=:@\/?]|%[\dA-F]{2})*)?(?:#(?:[\w\._~!$&'()*+,;=:@\/?]|%[\dA-F]{2})*)?)/gi;
+    const matches = text.match(urlRegex);
+    return matches ? [...new Set(matches)] : []; // Remove duplicates
+};
+
 const MainApp = () => {
     const [tasksInput, setTasksInput] = useState('');
     const [taskCount, setTaskCount] = useState({ total: 0, vitalFew: 0 });
     const [rankedTasks, setRankedTasks] = useState([]);
     const [vitalFew, setVitalFew] = useState([]);
     const [trivialMany, setTrivialMany] = useState([]);
+    const [extractedLinks, setExtractedLinks] = useState([]);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [hasAnalyzed, setHasAnalyzed] = useState(false);
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
@@ -140,6 +148,10 @@ const MainApp = () => {
         const total = tasks.length;
         const vitalFewCount = total > 0 ? Math.max(1, Math.ceil(total * 0.2)) : 0;
         setTaskCount({ total, vitalFew: vitalFewCount });
+
+        // Extract links from the input text
+        const links = extractLinks(tasksInput);
+        setExtractedLinks(links);
     }, [tasksInput]);
 
     const handleAnalyze = async () => {
@@ -331,7 +343,7 @@ const MainApp = () => {
                             <Typography variant="caption" color="text.secondary">
                                 Total Tasks: {taskCount.total} | Vital Few (20%): {taskCount.vitalFew}
                             </Typography>
-                            
+
                             {isAuthenticated && (priorities.priority1 || priorities.priority2 || priorities.priority3) && (
                                 <Tooltip title={
                                     <Box>
@@ -341,10 +353,10 @@ const MainApp = () => {
                                         {priorities.priority3 && <Typography variant="caption" display="block">3. {priorities.priority3}</Typography>}
                                     </Box>
                                 } placement="left">
-                                    <Chip 
-                                        label="Using your priorities" 
-                                        size="small" 
-                                        color="secondary" 
+                                    <Chip
+                                        label="Using your priorities"
+                                        size="small"
+                                        color="secondary"
                                         variant="outlined"
                                         icon={<SettingsIcon />}
                                     />
@@ -352,7 +364,42 @@ const MainApp = () => {
                             )}
                         </Box>
                     </Grid>
+
+                    {extractedLinks.length > 0 && (
+                        <Grid item xs={12}>
+                            <Typography variant="h6" sx={{ mb: 1 }}>
+                                Extracted Links ({extractedLinks.length})
+                            </Typography>
+                            <TextField
+                                fullWidth
+                                multiline
+                                rows={Math.min(extractedLinks.length, 4)}
+                                variant="outlined"
+                                value={extractedLinks.join('\n')}
+                                InputProps={{
+                                    readOnly: true,
+                                }}
+                                sx={{
+                                    background: theme.palette.background,
+                                    textarea: { color: theme.palette.text.primary },
+                                    '& .MuiOutlinedInput-root': {
+                                        '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                    },
+                                }}
+                            />
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                                Links found in your task list - click to select all and copy
+                            </Typography>
+                        </Grid>
+                    )}
                 </Grid>
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                    {extractedLinks.length > 0 && (
+                        <Typography variant="caption" color={theme.palette.secondary} sx={{ mb: 1, display: 'block' }}>
+                            📎 {extractedLinks.length} link{extractedLinks.length !== 1 ? 's' : ''} extracted and ready to copy
+                        </Typography>
+                    )}
+                </Box>
                 <Button
                     fullWidth
                     variant="contained"
@@ -395,7 +442,8 @@ const MainApp = () => {
                     </Box>
                     
                     <Grid container spacing={3}>
-                        <Grid item xs={12} md={6}>
+                        {/* Top 20% - Vital Few */}
+                        <Grid item xs={12} md={4}>
                             <Paper elevation={4} sx={{ p: 3, background: theme.palette.surface, height: '500px', display: 'flex', flexDirection: 'column' }}>
                                 <Typography variant="h6" component="h3" sx={{ mb: 2, color: theme.palette.primary }}>
                                     The Vital Few (20%)
@@ -403,8 +451,8 @@ const MainApp = () => {
                                 <Typography variant="body2" color={theme.palette.text.secondary} sx={{ mb: 2 }}>
                                     Focus on these {vitalFew.length} high-impact tasks
                                 </Typography>
-                                <Box sx={{ 
-                                    flexGrow: 1, 
+                                <Box sx={{
+                                    flexGrow: 1,
                                     overflowY: 'auto',
                                     pr: 1,
                                     '&::-webkit-scrollbar': {
@@ -428,8 +476,101 @@ const MainApp = () => {
                                 </Box>
                             </Paper>
                         </Grid>
-                        
-                        <Grid item xs={12} md={6}>
+
+                        {/* Links Column */}
+                        <Grid item xs={12} md={4}>
+                            <Paper elevation={4} sx={{ p: 3, background: theme.palette.surface, height: '500px', display: 'flex', flexDirection: 'column' }}>
+                                <Typography variant="h6" component="h3" sx={{ mb: 2, color: theme.palette.secondary }}>
+                                    Extracted Links
+                                </Typography>
+                                <Typography variant="body2" color={theme.palette.text.secondary} sx={{ mb: 2 }}>
+                                    {extractedLinks.length} links found in your tasks
+                                </Typography>
+                                {extractedLinks.length > 0 ? (
+                                    <Box sx={{
+                                        flexGrow: 1,
+                                        overflowY: 'auto',
+                                        pr: 1,
+                                        '&::-webkit-scrollbar': {
+                                            width: '8px',
+                                        },
+                                        '&::-webkit-scrollbar-track': {
+                                            background: 'rgba(255, 255, 255, 0.1)',
+                                            borderRadius: '4px',
+                                        },
+                                        '&::-webkit-scrollbar-thumb': {
+                                            background: theme.palette.secondary,
+                                            borderRadius: '4px',
+                                        },
+                                        '&::-webkit-scrollbar-thumb:hover': {
+                                            background: theme.palette.primary,
+                                        }
+                                    }}>
+                                        {extractedLinks.map((link, index) => (
+                                            <Box key={index} sx={{
+                                                mb: 1,
+                                                p: 2,
+                                                background: 'rgba(3, 218, 198, 0.1)',
+                                                borderRadius: '4px',
+                                                border: `1px solid ${theme.palette.secondary}`,
+                                                wordBreak: 'break-all'
+                                            }}>
+                                                <Typography
+                                                    variant="body2"
+                                                    sx={{
+                                                        color: theme.palette.secondary,
+                                                        cursor: 'pointer',
+                                                        '&:hover': {
+                                                            textDecoration: 'underline'
+                                                        }
+                                                    }}
+                                                    onClick={() => window.open(link, '_blank', 'noopener,noreferrer')}
+                                                >
+                                                    {link}
+                                                </Typography>
+                                            </Box>
+                                        ))}
+                                        <Box sx={{ mt: 2 }}>
+                                            <TextField
+                                                fullWidth
+                                                multiline
+                                                rows={3}
+                                                variant="outlined"
+                                                size="small"
+                                                value={extractedLinks.join('\n')}
+                                                InputProps={{
+                                                    readOnly: true,
+                                                }}
+                                                sx={{
+                                                    '& .MuiOutlinedInput-root': {
+                                                        fontSize: '0.75rem',
+                                                        '& fieldset': { borderColor: theme.palette.secondary },
+                                                    },
+                                                }}
+                                                onClick={(e) => e.target.select()}
+                                            />
+                                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                                                ↑ Click to select all links for copying
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                ) : (
+                                    <Box sx={{
+                                        flexGrow: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: theme.palette.text.secondary,
+                                        fontStyle: 'italic'
+                                    }}>
+                                        No links found in your task list
+                                    </Box>
+                                )}
+                            </Paper>
+                        </Grid>
+
+                        {/* Bottom 80% - Trivial Many */}
+                        <Grid item xs={12} md={4}>
                             <Paper elevation={4} sx={{ p: 3, background: theme.palette.surface, height: '500px', display: 'flex', flexDirection: 'column' }}>
                                 <Typography variant="h6" component="h3" sx={{ mb: 2, color: theme.palette.text.secondary }}>
                                     The Deferred 80%
@@ -437,8 +578,8 @@ const MainApp = () => {
                                 <Typography variant="body2" color={theme.palette.text.secondary} sx={{ mb: 2 }}>
                                     {trivialMany.length} lower-impact tasks to defer
                                 </Typography>
-                                <Box sx={{ 
-                                    flexGrow: 1, 
+                                <Box sx={{
+                                    flexGrow: 1,
                                     overflowY: 'auto',
                                     pr: 1,
                                     '&::-webkit-scrollbar': {
@@ -457,10 +598,10 @@ const MainApp = () => {
                                     }
                                 }}>
                                     {trivialMany.map((item, index) => (
-                                        <Box key={item.task} sx={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            mb: 1, 
+                                        <Box key={item.task} sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            mb: 1,
                                             p: 2,
                                             background: 'rgba(255, 255, 255, 0.02)',
                                             borderRadius: '4px',
@@ -475,14 +616,14 @@ const MainApp = () => {
                                                 </Typography>
                                             </Box>
                                             <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
-                                                <Chip 
-                                                    label={`${item.impact_score}`} 
+                                                <Chip
+                                                    label={`${item.impact_score}`}
                                                     size="small"
-                                                    sx={{ 
-                                                        bgcolor: 'rgba(255, 255, 255, 0.1)', 
+                                                    sx={{
+                                                        bgcolor: 'rgba(255, 255, 255, 0.1)',
                                                         color: theme.palette.text.secondary,
                                                         mr: 1
-                                                    }} 
+                                                    }}
                                                 />
                                                 <IconButton size="small" onClick={() => handleUnarchive(item)}>
                                                     <UnarchiveIcon fontSize="small" />
