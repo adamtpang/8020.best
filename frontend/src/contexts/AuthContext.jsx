@@ -75,7 +75,12 @@ export const AuthProvider = ({ children }) => {
                         localStorage.setItem('jwt_token', response.data.token);
                     }
                 } catch (error) {
-                    console.error('Error during OAuth authentication:', error);
+                    // Only log network errors in development for debugging
+                    if (error.code === 'ERR_NETWORK') {
+                        console.warn('Backend service not available - running in frontend-only mode');
+                    } else {
+                        console.error('Error during OAuth authentication:', error);
+                    }
                     // Clear any stale data
                     localStorage.removeItem('auth_token');
                     localStorage.removeItem('jwt_token');

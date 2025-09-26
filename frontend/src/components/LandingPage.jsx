@@ -3,6 +3,7 @@ import { streamRankedTasks } from '../services/aiPrioritization';
 import { useAuth } from '../contexts/AuthContext';
 import CleanLoginDialog from './auth/CleanLoginDialog';
 import UserMenu from './auth/UserMenu';
+import { Sparkles, Target, Clock, TrendingUp, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 const LandingPage = () => {
     const [priorities, setPriorities] = useState(['', '', '']);
@@ -182,29 +183,43 @@ const LandingPage = () => {
     return (
         <div className="min-h-screen bg-background">
             {/* Header */}
-            <header className="border-b border-border">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 items-center justify-between">
-                        <h1 className="text-2xl font-bold text-foreground">8020.best</h1>
-
-                        <div className="flex items-center space-x-4">
+            <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
+                <div className="container mx-auto px-4 py-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20">
+                                <Target className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-semibold text-foreground">8020.best</h1>
+                                <p className="text-sm text-muted-foreground">AI-Powered Task Prioritization</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
                             {isAuthenticated ? (
                                 <div className="flex items-center space-x-3">
                                     <button
                                         onClick={() => window.open('https://buy.stripe.com/bIYeXH6aL8EG18c5ko', '_blank')}
-                                        className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full text-sm font-medium hover:bg-purple-500/30 transition-colors"
+                                        className="bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-sm font-medium hover:bg-primary/20 transition-colors"
                                     >
-                                        {user?.credits || 0} credits +
+                                        <Sparkles className="w-3 h-3 mr-1" />
+                                        {user?.credits || 0} credits
                                     </button>
                                     <UserMenu />
                                 </div>
                             ) : (
-                                <button
-                                    onClick={() => setShowLoginDialog(true)}
-                                    className="border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors"
-                                >
-                                    Sign In
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
+                                        <TrendingUp className="w-4 h-4" />
+                                        Beta
+                                    </div>
+                                    <button
+                                        onClick={() => setShowLoginDialog(true)}
+                                        className="border border-border/50 bg-transparent text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors"
+                                    >
+                                        Sign In
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -213,238 +228,152 @@ const LandingPage = () => {
 
             <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {/* Hero Section */}
-                <section className="text-center mb-16">
-                    <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-foreground mb-6 text-balance">
-                        Stop drowning in tasks.
-                        <br />
-                        <span className="text-purple-400">Start living.</span>
-                    </h1>
-                    <p className="mx-auto max-w-2xl text-lg leading-8 text-muted-foreground mb-8 text-pretty">
-                        AI instantly identifies the <strong>vital 20%</strong> of tasks that drive <strong>80%</strong> of your results.
-                        Archive the rest. Reclaim your time.
+                <div className="text-center mb-12">
+                    <h2 className="text-4xl md:text-6xl font-bold text-balance mb-4 text-foreground">
+                        Find your <span className="text-white">vital few</span> tasks
+                    </h2>
+                    <p className="text-lg text-muted-foreground text-balance max-w-xl mx-auto mb-8">
+                        AI identifies the 20% of tasks that create 80% of your results
                     </p>
+                </div>
 
-                    {/* Value Props */}
-                    <div className="flex justify-center gap-8 mb-12 flex-wrap">
-                        <div className="text-center max-w-48">
-                            <div className="text-4xl mb-2">⚡</div>
-                            <h3 className="font-semibold text-purple-400 text-sm mb-1">INSTANT CLARITY</h3>
-                            <p className="text-muted-foreground text-sm">Know exactly what matters in 60 seconds</p>
-                        </div>
-                        <div className="text-center max-w-48">
-                            <div className="text-4xl mb-2">🗂️</div>
-                            <h3 className="font-semibold text-purple-400 text-sm mb-1">ARCHIVE EVERYTHING</h3>
-                            <p className="text-muted-foreground text-sm">Copy & paste your priorities, archive the rest</p>
-                        </div>
-                        <div className="text-center max-w-48">
-                            <div className="text-4xl mb-2">🧠</div>
-                            <h3 className="font-semibold text-purple-400 text-sm mb-1">MENTAL FREEDOM</h3>
-                            <p className="text-muted-foreground text-sm">Stop carrying mental load of endless tasks</p>
-                        </div>
-                    </div>
-
-                    {/* Buy Credits CTA - only show if not authenticated */}
-                    {!isAuthenticated && (
-                        <div className="mb-12">
-                            <p className="text-muted-foreground text-sm mb-4">Need more analyses? Get AI credits:</p>
-                            <a
-                                href="https://buy.stripe.com/bIYeXH6aL8EG18c5ko"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center px-6 py-3 border border-purple-500 text-purple-400 rounded-lg font-medium hover:bg-purple-500/10 transition-colors"
-                            >
-                                💳 Buy AI Credits
-                            </a>
-                        </div>
-                    )}
-                </section>
-
-                {/* How It Works */}
-                <section className="mb-12 p-8 bg-card rounded-lg border border-border">
-                    <h2 className="text-3xl font-bold text-center text-foreground mb-8">How It Works (60 seconds to clarity)</h2>
-                    <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-                        <div>
-                            <div className="text-2xl mb-3">1️⃣</div>
-                            <h3 className="font-bold text-foreground mb-2">Tell AI your priorities</h3>
-                            <p className="text-muted-foreground text-sm">"Financial freedom", "Health", "Family time" - whatever matters most to you right now.</p>
-                        </div>
-                        <div>
-                            <div className="text-2xl mb-3">2️⃣</div>
-                            <h3 className="font-bold text-foreground mb-2">Dump all your tasks</h3>
-                            <p className="text-muted-foreground text-sm">Brain dump everything - emails, errands, projects, calls. One per line.</p>
-                        </div>
-                        <div>
-                            <div className="text-2xl mb-3">3️⃣</div>
-                            <h3 className="font-bold text-foreground mb-2">Get instant clarity</h3>
-                            <p className="text-muted-foreground text-sm">AI sorts tasks by impact. Copy the vital few to your planner. Archive the rest.</p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Input Section */}
-                <div className="max-w-2xl mx-auto space-y-6">
-                    {/* Priorities */}
-                    <div className="bg-card rounded-lg border border-border p-6">
-                        <div className="mb-4">
-                            <h2 className="text-lg font-bold text-purple-400 mb-1">Your Top 3 Life Priorities</h2>
-                            <p className="text-muted-foreground text-sm">What matters most to you right now?</p>
-                        </div>
-                        <div className="space-y-3">
-                            {priorities.map((priority, index) => (
-                                <input
-                                    key={index}
-                                    type="text"
-                                    placeholder={`Priority ${index + 1} (e.g., "Financial freedom", "Health", "Family")`}
-                                    value={priority}
-                                    onChange={(e) => handlePriorityChange(index, e.target.value)}
-                                    className="w-full bg-input text-foreground border border-border rounded-md px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Tasks */}
-                    <div className="bg-card rounded-lg border border-border p-6">
-                        <div className="mb-4">
-                            <h2 className="text-lg font-bold text-purple-400 mb-1">📝 Your Tasks</h2>
-                            <p className="text-muted-foreground text-sm">List everything on your mind, one per line</p>
-                        </div>
-                        <textarea
-                            placeholder="Write your tasks here...
-Clean inbox
-Call mom
-Book flight
-Plan project kickoff
-Review budget"
-                            rows={6}
-                            value={tasks}
-                            onChange={(e) => setTasks(e.target.value)}
-                            className="w-full bg-input text-foreground border border-border rounded-md px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring resize-none"
-                        />
-                    </div>
-
-                    {/* Analyze Button */}
-                    <div className="text-center">
-                        <button
-                            onClick={handleAnalyze}
-                            disabled={isAnalyzing}
-                            className="bg-primary text-primary-foreground px-8 py-3 rounded-lg font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isAnalyzing ? 'Analyzing...' : 'Analyze'} →
-                        </button>
-                    </div>
-
-                    {/* Results */}
-                    {showResults && (
-                        <div className="bg-card rounded-lg border border-purple-500/50 p-0 overflow-hidden">
-                            {/* Header */}
-                            <div className="p-6 border-b border-border">
-                                <h2 className="text-xl font-bold text-purple-400 mb-2">80/20 Analysis Results</h2>
+                {/* Main Interface */}
+                <div className="max-w-4xl mx-auto">
+                    {showResults && vitalFew.length > 0 ? (
+                        /* Results Display */
+                        <div className="p-8 bg-card border border-border/50 rounded-lg">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
+                                        <Sparkles className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-semibold text-white">Your Vital Few Tasks</h3>
+                                        <p className="text-sm text-muted-foreground">The 20% that will create 80% of your results</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => {setShowResults(false); setVitalFew([]); setTrivialMany([]);}}
+                                    className="border border-border/50 bg-transparent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors text-white"
+                                >
+                                    Start Over
+                                </button>
                             </div>
 
-                            {/* Progress */}
-                            {isAnalyzing && (
-                                <div className="p-6">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <p className="text-sm font-medium text-purple-400">{progressText}</p>
-                                        <span className="text-xs text-muted-foreground">{Math.round(progress)}%</span>
-                                    </div>
-                                    <div className="w-full bg-secondary rounded-full h-2">
-                                        <div
-                                            className="bg-purple-500 h-2 rounded-full transition-all duration-300"
-                                            style={{ width: `${progress}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Error State */}
-                            {hasError && (
-                                <div className="p-6">
-                                    <p className="text-red-400 text-sm">Analysis failed. Please try again.</p>
-                                </div>
-                            )}
-
-                            {/* Results */}
-                            {!isAnalyzing && !hasError && vitalFew.length > 0 && (
-                                <>
-                                    {/* Action Buttons */}
-                                    <div className="p-6 border-b border-border bg-secondary/20 flex gap-3 flex-wrap">
-                                        <button
-                                            onClick={() => copyTaskSection(vitalFew, '🔥 DO THESE FIRST (80% of your results)')}
-                                            className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium text-sm hover:opacity-90 transition-opacity"
-                                        >
-                                            📋 Copy DO THESE tasks
-                                        </button>
-                                        <button
-                                            onClick={() => copyTaskSection(trivialMany, '🗂️ ARCHIVE THESE (Low impact)')}
-                                            className="border border-border text-muted-foreground px-4 py-2 rounded-md font-medium text-sm hover:bg-accent transition-colors"
-                                        >
-                                            🗂️ Copy ARCHIVE tasks
-                                        </button>
-                                        <button
-                                            onClick={() => copyAllTasks()}
-                                            className="text-muted-foreground px-4 py-2 rounded-md text-sm hover:text-foreground transition-colors"
-                                        >
-                                            📄 Copy all (sorted)
-                                        </button>
-                                    </div>
-
-                                    {/* Vital Few - DO THESE */}
+                            <div className="space-y-4">
+                                {vitalFew.map((task, index) => (
                                     <div
-                                        onClick={() => copyTaskSection(vitalFew, '🔥 DO THESE (80% of your results)')}
-                                        className="cursor-pointer hover:bg-accent/50 transition-colors border-b border-border"
+                                        key={index}
+                                        className="flex items-start gap-4 p-4 rounded-lg bg-white border border-gray-300"
                                     >
-                                        <div className="p-6 bg-purple-500/10">
-                                            <h3 className="text-lg font-bold text-purple-400 mb-2">
-                                                🔥 DO THESE FIRST ({vitalFew.length} tasks)
-                                            </h3>
+                                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm mt-0.5">
+                                            {index + 1}
                                         </div>
-                                        <div className="p-6 space-y-3">
-                                            {vitalFew.map((task, index) => (
-                                                <div key={index} className="flex items-start gap-3 p-3 bg-purple-500/5 rounded-md border border-purple-500/20">
-                                                    <span className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full text-xs font-bold min-w-8 text-center">
-                                                        {task.impact_score}
-                                                    </span>
-                                                    <p className="text-foreground text-sm font-medium leading-relaxed">
-                                                        {task.task}
-                                                    </p>
-                                                </div>
-                                            ))}
+                                        <div className="flex-1">
+                                            <p className="text-black font-medium">{task.task}</p>
                                         </div>
+                                        <CheckCircle2 className="w-5 h-5 text-muted-foreground hover:text-primary cursor-pointer transition-colors" />
                                     </div>
+                                ))}
+                            </div>
 
-                                    {/* Trivial Many - ARCHIVE THESE */}
-                                    {trivialMany.length > 0 && (
-                                        <div
-                                            onClick={() => copyTaskSection(trivialMany, '🗂️ ARCHIVE THESE (Low impact)')}
-                                            className="cursor-pointer hover:bg-accent/30 transition-colors"
-                                        >
-                                            <div className="p-6 bg-secondary/30">
-                                                <h3 className="text-lg font-bold text-muted-foreground mb-2">
-                                                    🗂️ ARCHIVE THESE ({trivialMany.length} tasks)
-                                                </h3>
-                                            </div>
-                                            <div className="p-6 max-h-80 overflow-y-auto space-y-2">
-                                                {trivialMany.map((task, index) => (
-                                                    <div key={index} className="flex items-start gap-3 opacity-70">
-                                                        <span className="bg-secondary text-muted-foreground px-2 py-0.5 rounded text-xs min-w-7 text-center">
-                                                            {task.impact_score}
-                                                        </span>
-                                                        <p className="text-muted-foreground text-xs leading-relaxed">
-                                                            {task.task}
-                                                        </p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            )}
+                            <div className="mt-8 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                                <p className="text-sm text-muted-foreground">
+                                    <strong className="text-primary">Pro tip:</strong> Focus on completing these {vitalFew.length} tasks before moving to
+                                    anything else. This focused approach will maximize your impact and momentum.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="grid md:grid-cols-2 gap-8">
+                            {/* Life Priorities Input */}
+                            <div className="p-6 bg-card border border-border/50 rounded-lg">
+                                <h3 className="text-lg font-semibold mb-3 text-white">What matters most to you?</h3>
+                                <div className="space-y-3">
+                                    {priorities.map((priority, index) => (
+                                        <input
+                                            key={index}
+                                            type="text"
+                                            placeholder={index === 0 ? `Priority 1: e.g., "Financial freedom"` : index === 1 ? `Priority 2: e.g., "Health & fitness"` : `Priority 3: e.g., "Family relationships"`}
+                                            value={priority}
+                                            onChange={(e) => handlePriorityChange(index, e.target.value)}
+                                            className="w-full bg-white text-black border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none"
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Todo List Input */}
+                            <div className="p-6 bg-card border border-border/50 rounded-lg">
+                                <h3 className="text-lg font-semibold mb-3 text-white">Your tasks (one per line)</h3>
+                                <textarea
+                                    placeholder="Finish quarterly report&#10;Call mom&#10;Update website&#10;Plan team meeting&#10;Buy groceries&#10;Review budget&#10;Schedule appointment&#10;Prepare presentation"
+                                    rows={8}
+                                    value={tasks}
+                                    onChange={(e) => setTasks(e.target.value)}
+                                    className="w-full bg-white text-black border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none resize-none"
+                                />
+                            </div>
                         </div>
                     )}
+
+                    {/* Action Button */}
+                    {(!showResults || vitalFew.length === 0) && (
+                        <div className="text-center mt-8">
+                            <button
+                                onClick={handleAnalyze}
+                                disabled={!priorities.some(p => p.trim()) || !tasks.trim() || isAnalyzing}
+                                className="px-8 py-3 text-base font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {isAnalyzing ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2 inline-block" />
+                                        Analyzing your priorities...
+                                    </>
+                                ) : (
+                                    <>
+                                        Find My Vital Few
+                                        <ArrowRight className="w-4 h-4 ml-2 inline" />
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
+
                 </div>
+
+                {/* Progress Display for Analysis */}
+                {isAnalyzing && showResults && (
+                    <div className="bg-card rounded-lg border border-primary/50 p-6 mt-8">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-sm font-medium text-primary">{progressText}</p>
+                            <span className="text-xs text-muted-foreground">{Math.round(progress)}%</span>
+                        </div>
+                        <div className="w-full bg-secondary rounded-full h-2">
+                            <div
+                                className="bg-primary h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${progress}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Error State */}
+                {hasError && (
+                    <div className="p-6 bg-destructive/10 border border-destructive/20 rounded-lg mt-8">
+                        <p className="text-destructive text-sm">Analysis failed. Please try again.</p>
+                    </div>
+                )}
             </main>
+
+            {/* Footer */}
+            <footer className="border-t border-border/50 mt-24">
+                <div className="container mx-auto px-4 py-8">
+                    <div className="text-center text-sm text-muted-foreground">
+                        <p>Built with AI to help you focus on what matters most.</p>
+                    </div>
+                </div>
+            </footer>
 
             {/* Login Dialog */}
             <CleanLoginDialog
