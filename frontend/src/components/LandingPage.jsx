@@ -248,11 +248,11 @@ const LandingPage = () => {
                                         <Sparkles className="w-5 h-5 text-primary" />
                                     </div>
                                     <div>
-                                        <h3 className="text-xl font-semibold text-white">Your Vital Few Tasks</h3>
-                                        <p className="text-sm text-muted-foreground">The 20% that will create 80% of your results</p>
+                                        <h3 className="text-xl font-semibold text-white">80/20 Analysis Results</h3>
+                                        <p className="text-sm text-muted-foreground">Your prioritized task breakdown</p>
                                     </div>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => {setShowResults(false); setVitalFew([]); setTrivialMany([]);}}
                                     className="border border-border/50 bg-transparent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors text-white"
                                 >
@@ -260,27 +260,56 @@ const LandingPage = () => {
                                 </button>
                             </div>
 
-                            <div className="space-y-4">
-                                {vitalFew.map((task, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex items-start gap-4 p-4 rounded-lg bg-white border border-gray-300"
-                                    >
-                                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm mt-0.5">
-                                            {index + 1}
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-black font-medium">{task.task}</p>
-                                        </div>
-                                        <CheckCircle2 className="w-5 h-5 text-muted-foreground hover:text-primary cursor-pointer transition-colors" />
+                            <div className="space-y-6">
+                                {/* Top 20% Section */}
+                                <div className="bg-primary/5 border border-primary/20 rounded-lg p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h4 className="text-lg font-semibold text-primary">🔥 Top 20% - DO THESE FIRST ({vitalFew.length} tasks)</h4>
+                                        <button
+                                            onClick={() => copyTaskSection(vitalFew, '🔥 DO THESE FIRST (Top 20%)')}
+                                            className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+                                        >
+                                            Copy
+                                        </button>
                                     </div>
-                                ))}
+                                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                        <div className="space-y-2 font-mono text-sm text-black">
+                                            {vitalFew.map((task, index) => (
+                                                <div key={index}>
+                                                    {index + 1}. {task.task}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Bottom 80% Section */}
+                                <div className="bg-muted/20 border border-border/50 rounded-lg p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h4 className="text-lg font-semibold text-muted-foreground">📁 Bottom 80% - ARCHIVE THESE ({trivialMany.length} tasks)</h4>
+                                        <button
+                                            onClick={() => copyTaskSection(trivialMany, '📁 ARCHIVE THESE (Bottom 80%)')}
+                                            className="px-3 py-1 bg-muted text-muted-foreground rounded-md text-sm font-medium hover:bg-muted/80 transition-colors"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                        <div className="space-y-2 font-mono text-sm text-black">
+                                            {trivialMany.map((task, index) => (
+                                                <div key={index}>
+                                                    • {task.task}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="mt-8 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                            <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
                                 <p className="text-sm text-muted-foreground">
-                                    <strong className="text-primary">Pro tip:</strong> Focus on completing these {vitalFew.length} tasks before moving to
-                                    anything else. This focused approach will maximize your impact and momentum.
+                                    <strong className="text-primary">Pro tip:</strong> Focus on completing the top 20% tasks first.
+                                    Archive the bottom 80% to your "someday/maybe" list to clear mental clutter.
                                 </p>
                             </div>
                         </div>
