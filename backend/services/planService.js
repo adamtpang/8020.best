@@ -9,29 +9,19 @@ const PLANS = {
     free: {
         name: 'Free',
         price: 0,
-        dailyLimit: parseInt(process.env.FREE_RUNS_PER_DAY || '5', 10),
-        monthlyLimit: null,
-        features: ['5 runs per day', 'Basic 80/20 analysis']
+        monthlyLimit: parseInt(process.env.FREE_RUNS_PER_MONTH || '10', 10),
+        features: ['10 runs per month', 'Basic 80/20 analysis']
     },
-    light: {
-        name: 'Light',
-        price: 5,
-        dailyLimit: null,
-        monthlyLimit: parseInt(process.env.LIGHT_MONTHLY_SOFT_LIMIT || '300', 10),
-        features: ['300 runs per month', 'Priority support', 'Advanced analysis']
-    },
-    pro: {
+    paid: {
         name: 'Pro',
         price: 10,
-        dailyLimit: null,
-        monthlyLimit: parseInt(process.env.PRO_MONTHLY_SOFT_LIMIT || '1000', 10),
-        features: ['1000 runs per month', 'Priority support', 'Advanced analysis', 'Export to Notion/Calendar']
+        monthlyLimit: parseInt(process.env.PAID_MONTHLY_SOFT_LIMIT || '1000', 10),
+        features: ['1000 runs per month', 'Priority support', 'Advanced analysis']
     }
 };
 
 const STRIPE_LINKS = {
-    light: process.env.STRIPE_LINK_LIGHT || 'https://buy.stripe.com/REPLACE_LIGHT',
-    pro: process.env.STRIPE_LINK_PRO || 'https://buy.stripe.com/REPLACE_PRO'
+    paid: process.env.STRIPE_LINK_PAID || 'https://buy.stripe.com/REPLACE_PAID'
 };
 
 /**
@@ -132,13 +122,9 @@ function getAllPlans() {
             ...PLANS.free,
             stripeLink: null
         },
-        light: {
-            ...PLANS.light,
-            stripeLink: STRIPE_LINKS.light
-        },
-        pro: {
-            ...PLANS.pro,
-            stripeLink: STRIPE_LINKS.pro
+        paid: {
+            ...PLANS.paid,
+            stripeLink: STRIPE_LINKS.paid
         }
     };
 }

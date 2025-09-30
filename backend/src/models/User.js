@@ -47,10 +47,10 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    // Pricing plan: 'free', 'light' ($5/mo), 'pro' ($10/mo)
+    // Pricing plan: 'free' (5/month), 'paid' ($5/mo unlimited)
     plan: {
         type: String,
-        enum: ['free', 'light', 'pro'],
+        enum: ['free', 'paid'],
         default: 'free'
     },
     planStartedAt: {

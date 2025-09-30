@@ -16,10 +16,10 @@ const MonthlyUsage = require('../src/models/MonthlyUsage');
 const crypto = require('crypto');
 
 // Get config from env with defaults
-const FREE_RUNS_PER_DAY = parseInt(process.env.FREE_RUNS_PER_DAY || '5', 10);
-const LIGHT_MONTHLY_SOFT_LIMIT = parseInt(process.env.LIGHT_MONTHLY_SOFT_LIMIT || '300', 10);
-const PRO_MONTHLY_SOFT_LIMIT = parseInt(process.env.PRO_MONTHLY_SOFT_LIMIT || '1000', 10);
-const OVERAGE_GRACE_PERCENT = parseInt(process.env.OVERAGE_GRACE_PERCENT || '20', 10);
+const FREE_RUNS_PER_MONTH = parseInt(process.env.FREE_RUNS_PER_MONTH || '10', 10);
+const PAID_MONTHLY_SOFT_LIMIT = parseInt(process.env.PAID_MONTHLY_SOFT_LIMIT || '1000', 10);
+const PAID_MONTHLY_HARD_LIMIT = parseInt(process.env.PAID_MONTHLY_HARD_LIMIT || '1200', 10);
+const SHOW_WARNING_AT = parseInt(process.env.SHOW_WARNING_AT || '900', 10);
 
 /**
  * Get today's date as YYYY-MM-DD string
@@ -124,7 +124,7 @@ async function incrementRun(userId, anonymousId = null, plan = 'free') {
 
 /**
  * Check if user/visitor can perform a run based on their quota
- * Returns { allowed: boolean, reason?: string, dailyRemaining?: number, monthlyRemaining?: number }
+ * Returns { allowed: boolean, reason?: string, monthlyRemaining?: number }
  */
 async function checkQuota(user, req) {
     // Master accounts bypass all limits
@@ -132,7 +132,6 @@ async function checkQuota(user, req) {
         return {
             allowed: true,
             reason: 'unlimited',
-            dailyRemaining: Infinity,
             monthlyRemaining: Infinity
         };
     }
@@ -141,66 +140,57 @@ async function checkQuota(user, req) {
     const userId = user ? user._id : null;
     const plan = user ? user.plan : 'free';
 
-    // Get current usage
-    const dailyRuns = await getDailyRuns(userId, anonymousId);
-    const monthlyRuns = user ? await getMonthlyRuns(userId) : 0;
+    // Get monthly usage
+    const monthlyRuns = await getMonthlyRuns(userId);
 
-    // Check daily quota for free users (auth or anon)
+    // Check monthly quota for free users
     if (plan === 'free') {
-        const dailyRemaining = FREE_RUNS_PER_DAY - dailyRuns;
+        const monthlyRemaining = FREE_RUNS_PER_MONTH - monthlyRuns;
 
-        if (dailyRuns >= FREE_RUNS_PER_DAY) {
+        if (monthlyRuns >= FREE_RUNS_PER_MONTH) {
             return {
                 allowed: false,
-                reason: 'daily_quota_exceeded',
-                dailyRemaining: 0,
-                quota: FREE_RUNS_PER_DAY
+                reason: 'monthly_quota_exceeded',
+                monthlyRemaining: 0,
+                quota: FREE_RUNS_PER_MONTH,
+                plan: 'free'
             };
         }
 
         return {
             allowed: true,
             reason: 'free_tier',
-            dailyRemaining,
-            quota: FREE_RUNS_PER_DAY
+            monthlyRemaining,
+            quota: FREE_RUNS_PER_MONTH
         };
     }
 
-    // Check monthly soft-limits for paid users
-    let monthlyLimit;
-    if (plan === 'light') {
-        monthlyLimit = LIGHT_MONTHLY_SOFT_LIMIT;
-    } else if (plan === 'pro') {
-        monthlyLimit = PRO_MONTHLY_SOFT_LIMIT;
-    } else {
-        monthlyLimit = FREE_RUNS_PER_DAY * 30; // Fallback
-    }
+    // Paid users: 1000 runs/month with grace
+    const monthlyRemaining = PAID_MONTHLY_SOFT_LIMIT - monthlyRuns;
 
-    const graceLimit = Math.floor(monthlyLimit * (1 + OVERAGE_GRACE_PERCENT / 100));
-    const monthlyRemaining = monthlyLimit - monthlyRuns;
-
-    // Hard block if over grace limit
-    if (monthlyRuns >= graceLimit) {
+    // Hard block at PAID_MONTHLY_HARD_LIMIT (20% grace over limit)
+    if (monthlyRuns >= PAID_MONTHLY_HARD_LIMIT) {
         return {
             allowed: false,
             reason: 'monthly_quota_exceeded',
             monthlyRemaining: 0,
-            monthlyLimit,
+            monthlyLimit: PAID_MONTHLY_SOFT_LIMIT,
             monthlyUsed: monthlyRuns,
-            showUpsell: true
+            showUpsell: true,
+            message: `You've exceeded your 1000 run limit this month. It resets on the 1st.`
         };
     }
 
-    // Soft warning if over limit but within grace
-    if (monthlyRuns >= monthlyLimit) {
+    // Show soft warning at SHOW_WARNING_AT (900 runs)
+    if (monthlyRuns >= SHOW_WARNING_AT) {
         return {
             allowed: true,
-            reason: 'monthly_quota_warning',
+            reason: 'approaching_limit',
             monthlyRemaining,
-            monthlyLimit,
+            monthlyLimit: PAID_MONTHLY_SOFT_LIMIT,
             monthlyUsed: monthlyRuns,
             showWarning: true,
-            warningMessage: `You've used ${monthlyRuns} of ${monthlyLimit} runs this month. Consider upgrading for more capacity.`
+            warningMessage: `You've used ${monthlyRuns} of ${PAID_MONTHLY_SOFT_LIMIT} runs this month.`
         };
     }
 
@@ -209,7 +199,7 @@ async function checkQuota(user, req) {
         allowed: true,
         reason: 'paid_tier',
         monthlyRemaining,
-        monthlyLimit,
+        monthlyLimit: PAID_MONTHLY_SOFT_LIMIT,
         monthlyUsed: monthlyRuns
     };
 }
@@ -232,39 +222,25 @@ async function recordRun(user, req) {
  * Get usage summary for display
  */
 async function getUsageSummary(user, req) {
-    if (!user) {
-        // Anonymous user
-        const anonymousId = generateAnonymousId(req);
-        const dailyRuns = await getDailyRuns(null, anonymousId);
-        return {
-            plan: 'free',
-            dailyRuns,
-            dailyQuota: FREE_RUNS_PER_DAY,
-            dailyRemaining: Math.max(0, FREE_RUNS_PER_DAY - dailyRuns)
-        };
-    }
-
-    const plan = user.plan || 'free';
-    const dailyRuns = await getDailyRuns(user._id);
-    const monthlyRuns = await getMonthlyRuns(user._id);
+    const monthlyRuns = user ? await getMonthlyRuns(user._id) : 0;
+    const plan = user ? user.plan : 'free';
 
     if (plan === 'free') {
         return {
-            plan,
-            dailyRuns,
-            dailyQuota: FREE_RUNS_PER_DAY,
-            dailyRemaining: Math.max(0, FREE_RUNS_PER_DAY - dailyRuns)
+            plan: 'free',
+            monthlyRuns,
+            monthlyQuota: FREE_RUNS_PER_MONTH,
+            monthlyRemaining: Math.max(0, FREE_RUNS_PER_MONTH - monthlyRuns)
         };
     }
 
-    const monthlyLimit = plan === 'light' ? LIGHT_MONTHLY_SOFT_LIMIT : PRO_MONTHLY_SOFT_LIMIT;
-
+    // Paid: show limit and remaining
     return {
         plan,
         monthlyRuns,
-        monthlyLimit,
-        monthlyRemaining: Math.max(0, monthlyLimit - monthlyRuns),
-        percentUsed: Math.min(100, Math.round((monthlyRuns / monthlyLimit) * 100))
+        monthlyLimit: PAID_MONTHLY_SOFT_LIMIT,
+        monthlyRemaining: Math.max(0, PAID_MONTHLY_SOFT_LIMIT - monthlyRuns),
+        showWarning: monthlyRuns >= SHOW_WARNING_AT
     };
 }
 
@@ -276,7 +252,7 @@ module.exports = {
     recordRun,
     getUsageSummary,
     generateAnonymousId,
-    FREE_RUNS_PER_DAY,
-    LIGHT_MONTHLY_SOFT_LIMIT,
-    PRO_MONTHLY_SOFT_LIMIT
+    FREE_RUNS_PER_MONTH,
+    PAID_MONTHLY_SOFT_LIMIT,
+    PAID_MONTHLY_HARD_LIMIT
 };

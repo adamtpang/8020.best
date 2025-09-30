@@ -8,7 +8,7 @@ import axiosInstance from '../services/axiosInstance';
 import { Sparkles, Target, Clock, TrendingUp, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 const LandingPage = () => {
-    const [priorities, setPriorities] = useState(''); // Single textarea for priorities
+    const [tasks, setTasks] = useState(''); // Single textarea for tasks/todos
     const [showResults, setShowResults] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [rankedTasks, setRankedTasks] = useState([]);
@@ -142,14 +142,14 @@ const LandingPage = () => {
     };
 
     const handleAnalyze = async () => {
-        if (!priorities.trim()) {
-            alert('Please enter your priorities');
+        if (!tasks.trim()) {
+            alert('Please enter your tasks');
             return;
         }
 
-        const taskArray = priorities.split('\n').filter(task => task.trim());
+        const taskArray = tasks.split('\n').filter(task => task.trim());
         const taskCount = taskArray.length;
-        const totalChars = priorities.length;
+        const totalChars = tasks.length;
 
         const MAX_TASKS = 1000;
         const MAX_CHARS = 1000000;
@@ -179,12 +179,10 @@ const LandingPage = () => {
             setProgress(10);
             setProgressText('Starting AI analysis...');
             setProgress(20);
-            setProgressText('Analyzing your priorities...');
+            setProgressText('Analyzing your tasks...');
 
-            // Use the entire priorities text as context
-            const userPriorities = priorities.trim();
-
-            await processTasksOneByOne(taskArray, userPriorities, taskCount);
+            // No user priorities context - just analyze the tasks themselves
+            await processTasksOneByOne(taskArray, null, taskCount);
 
         } catch (error) {
             console.error('Error during analysis:', error);
@@ -253,10 +251,10 @@ const LandingPage = () => {
                 {/* Hero Section */}
                 <div className="text-center mb-12">
                     <h2 className="text-4xl md:text-6xl font-bold text-balance mb-4 text-foreground">
-                        Find your <span className="text-white">vital few</span> tasks
+                        Find your <span className="text-white">vital few</span>
                     </h2>
                     <p className="text-lg text-muted-foreground text-balance max-w-xl mx-auto mb-8">
-                        AI identifies the 20% of tasks that create 80% of your results
+                        Paste your tasks. AI shows you the 20% that create 80% of your results.
                     </p>
                 </div>
 
@@ -339,20 +337,20 @@ const LandingPage = () => {
                     ) : (
                         <div className="p-6 bg-card border border-border/50 rounded-lg">
                             <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-lg font-semibold text-white">Your priorities (one per line)</h3>
+                                <h3 className="text-lg font-semibold text-white">Your tasks (one per line)</h3>
                                 <span className="text-xs text-muted-foreground">
-                                    {priorities.split('\n').filter(l => l.trim()).length} items
+                                    {tasks.split('\n').filter(l => l.trim()).length} items
                                 </span>
                             </div>
                             <textarea
                                 placeholder="Launch new product&#10;Exercise 3x per week&#10;Spend quality time with family&#10;Learn Python&#10;Pay off credit card debt&#10;Write 1000 words daily&#10;Call grandma&#10;Organize garage&#10;Read 2 books this month&#10;Plan vacation"
                                 rows={12}
-                                value={priorities}
-                                onChange={(e) => setPriorities(e.target.value)}
+                                value={tasks}
+                                onChange={(e) => setTasks(e.target.value)}
                                 className="w-full bg-white text-black border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-4 py-3 text-sm placeholder:text-gray-500 focus:outline-none resize-none font-mono"
                             />
                             <p className="text-xs text-muted-foreground mt-2">
-                                Enter your tasks, todos, goals, or any priorities. AI will identify the 20% that create 80% of your results.
+                                Enter your tasks, todos, or priorities. AI will identify the 20% that create 80% of your results.
                             </p>
                         </div>
                     )}
@@ -362,7 +360,7 @@ const LandingPage = () => {
                         <div className="text-center mt-8">
                             <button
                                 onClick={handleAnalyze}
-                                disabled={!priorities.trim() || isAnalyzing}
+                                disabled={!tasks.trim() || isAnalyzing}
                                 className="px-8 py-3 text-base font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {isAnalyzing ? (
@@ -380,7 +378,7 @@ const LandingPage = () => {
                             {usageInfo && (
                                 <p className="text-xs text-muted-foreground mt-3">
                                     {usageInfo.plan === 'free'
-                                        ? `${usageInfo.dailyRemaining} of ${usageInfo.dailyQuota} free runs remaining today`
+                                        ? `${usageInfo.monthlyRemaining} of ${usageInfo.monthlyQuota} free runs remaining this month`
                                         : `${usageInfo.monthlyRemaining} of ${usageInfo.monthlyLimit} runs remaining this month`}
                                 </p>
                             )}

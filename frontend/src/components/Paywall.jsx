@@ -24,19 +24,12 @@ const Paywall = ({ user, onClose }) => {
             console.error('Error fetching plans:', error);
             // Fallback to placeholder links
             setPlans({
-                light: {
-                    name: 'Light',
-                    price: 5,
-                    monthlyLimit: 300,
-                    features: ['300 runs per month', 'Priority support', 'Advanced analysis'],
-                    stripeLink: 'https://buy.stripe.com/REPLACE_LIGHT'
-                },
-                pro: {
+                paid: {
                     name: 'Pro',
                     price: 10,
                     monthlyLimit: 1000,
-                    features: ['1000 runs per month', 'Priority support', 'Advanced analysis', 'Export to Notion/Calendar'],
-                    stripeLink: 'https://buy.stripe.com/REPLACE_PRO'
+                    features: ['1000 runs per month', 'Priority support', 'Advanced analysis'],
+                    stripeLink: 'https://buy.stripe.com/fZu4gz0wygNffYQd8RaMU09'
                 }
             });
         } finally {
@@ -64,70 +57,39 @@ const Paywall = ({ user, onClose }) => {
     return (
         <div className="p-8 bg-card border border-border/50 rounded-lg">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-white mb-2">Unlock More Clarity Runs</h2>
+                <h2 className="text-2xl font-bold text-white mb-2">Upgrade to Pro</h2>
                 <p className="text-muted-foreground">
                     {user
-                        ? `You've reached your ${user.plan} plan limit`
-                        : "You've used all your free runs for today"}
+                        ? `You've used your 10 free runs this month`
+                        : "You've used all 10 free runs this month"}
                 </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-                {/* Light Plan */}
-                {plans?.light && (
-                    <div className="bg-background border border-border/50 rounded-lg p-6 hover:border-primary/50 transition-colors">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Zap className="w-5 h-5 text-primary" />
-                            <h3 className="text-lg font-semibold text-white">Light</h3>
+            <div className="max-w-md mx-auto">
+                {/* Paid Plan */}
+                {plans?.paid && (
+                    <div className="bg-primary/10 border-2 border-primary rounded-lg p-8">
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                            <Crown className="w-6 h-6 text-primary" />
+                            <h3 className="text-2xl font-semibold text-white">{plans.paid.name}</h3>
                         </div>
-                        <div className="mb-4">
-                            <span className="text-3xl font-bold text-white">${plans.light.price}</span>
-                            <span className="text-muted-foreground">/month</span>
+                        <div className="text-center mb-6">
+                            <span className="text-5xl font-bold text-white">${plans.paid.price}</span>
+                            <span className="text-muted-foreground text-lg">/month</span>
                         </div>
-                        <ul className="space-y-2 mb-6">
-                            {plans.light.features.map((feature, idx) => (
-                                <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                                    <span className="text-primary">✓</span>
+                        <ul className="space-y-3 mb-8">
+                            {plans.paid.features.map((feature, idx) => (
+                                <li key={idx} className="flex items-start gap-3 text-base text-foreground">
+                                    <span className="text-primary text-xl">✓</span>
                                     {feature}
                                 </li>
                             ))}
                         </ul>
                         <button
-                            onClick={() => handleUpgrade('light', plans.light.stripeLink)}
-                            className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                            onClick={() => handleUpgrade('paid', plans.paid.stripeLink)}
+                            className="w-full bg-primary text-primary-foreground px-6 py-3 rounded-lg text-lg font-medium hover:bg-primary/90 transition-colors"
                         >
-                            Upgrade to Light
-                        </button>
-                    </div>
-                )}
-
-                {/* Pro Plan */}
-                {plans?.pro && (
-                    <div className="bg-primary/10 border-2 border-primary rounded-lg p-6 relative">
-                        <div className="absolute -top-3 right-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-medium">
-                            Popular
-                        </div>
-                        <div className="flex items-center gap-2 mb-4">
-                            <Crown className="w-5 h-5 text-primary" />
-                            <h3 className="text-lg font-semibold text-white">Pro</h3>
-                        </div>
-                        <div className="mb-4">
-                            <span className="text-3xl font-bold text-white">${plans.pro.price}</span>
-                            <span className="text-muted-foreground">/month</span>
-                        </div>
-                        <ul className="space-y-2 mb-6">
-                            {plans.pro.features.map((feature, idx) => (
-                                <li key={idx} className="flex items-start gap-2 text-sm text-foreground">
-                                    <span className="text-primary">✓</span>
-                                    {feature}
-                                </li>
-                            ))}
-                        </ul>
-                        <button
-                            onClick={() => handleUpgrade('pro', plans.pro.stripeLink)}
-                            className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors"
-                        >
-                            Upgrade to Pro
+                            Upgrade Now - $10/month
                         </button>
                     </div>
                 )}
