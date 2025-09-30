@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { streamRankedTasks } from '../services/aiPrioritization';
 import { useAuth } from '../contexts/AuthContext';
 import CleanLoginDialog from './auth/CleanLoginDialog';
 import UserMenu from './auth/UserMenu';
+import Paywall from './Paywall';
+import axiosInstance from '../services/axiosInstance';
 import { Sparkles, Target, Clock, TrendingUp, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 const LandingPage = () => {
-    const [priorities, setPriorities] = useState(['', '', '']);
-    const [tasks, setTasks] = useState('');
+    const [priorities, setPriorities] = useState(''); // Single textarea for priorities
     const [showResults, setShowResults] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [rankedTasks, setRankedTasks] = useState([]);
@@ -18,13 +19,25 @@ const LandingPage = () => {
     const [progressText, setProgressText] = useState('');
     const [totalTasks, setTotalTasks] = useState(0);
     const [showLoginDialog, setShowLoginDialog] = useState(false);
+    const [showPaywall, setShowPaywall] = useState(false);
+    const [usageInfo, setUsageInfo] = useState(null);
 
     const { user, isAuthenticated } = useAuth();
 
-    const handlePriorityChange = (index, value) => {
-        const newPriorities = [...priorities];
-        newPriorities[index] = value;
-        setPriorities(newPriorities);
+    // Fetch usage info on mount
+    useEffect(() => {
+        fetchUsageInfo();
+    }, [user]);
+
+    const fetchUsageInfo = async () => {
+        try {
+            const response = await axiosInstance.get('/api/ai/usage');
+            if (response.data.success) {
+                setUsageInfo(response.data.usage);
+            }
+        } catch (error) {
+            console.error('Error fetching usage:', error);
+        }
     };
 
     const copyTaskSection = async (tasks, sectionTitle) => {
@@ -129,14 +142,14 @@ const LandingPage = () => {
     };
 
     const handleAnalyze = async () => {
-        if (!priorities.some(p => p.trim()) || !tasks.trim()) {
-            alert('Please enter both your priorities and tasks');
+        if (!priorities.trim()) {
+            alert('Please enter your priorities');
             return;
         }
 
-        const taskArray = tasks.split('\n').filter(task => task.trim());
+        const taskArray = priorities.split('\n').filter(task => task.trim());
         const taskCount = taskArray.length;
-        const totalChars = tasks.length;
+        const totalChars = priorities.length;
 
         const MAX_TASKS = 1000;
         const MAX_CHARS = 1000000;
@@ -160,23 +173,33 @@ const LandingPage = () => {
         setProgress(0);
         setTotalTasks(taskCount);
         setProgressText(`Initializing analysis for ${taskCount} tasks...`);
+        setShowPaywall(false);
 
         try {
             setProgress(10);
-            setProgressText('Saving your priorities...');
-            setProgress(20);
             setProgressText('Starting AI analysis...');
+            setProgress(20);
+            setProgressText('Analyzing your priorities...');
 
-            const userPriorities = priorities.filter(p => p.trim()).map((p, i) => `${i + 1}. ${p}`).join('\n');
+            // Use the entire priorities text as context
+            const userPriorities = priorities.trim();
 
             await processTasksOneByOne(taskArray, userPriorities, taskCount);
 
         } catch (error) {
             console.error('Error during analysis:', error);
-            setHasError(true);
+
+            // Check if quota exceeded
+            if (error.response?.status === 429) {
+                setShowPaywall(true);
+                setProgressText('');
+                setProgress(0);
+            } else {
+                setHasError(true);
+                setProgressText('Analysis failed. Please try again.');
+            }
+
             setIsAnalyzing(false);
-            setProgress(0);
-            setProgressText('');
         }
     };
 
@@ -314,44 +337,32 @@ const LandingPage = () => {
                             </div>
                         </div>
                     ) : (
-                        <div className="grid md:grid-cols-2 gap-8">
-                            {/* Life Priorities Input */}
-                            <div className="p-6 bg-card border border-border/50 rounded-lg">
-                                <h3 className="text-lg font-semibold mb-3 text-white">What matters most to you?</h3>
-                                <div className="space-y-3">
-                                    {priorities.map((priority, index) => (
-                                        <input
-                                            key={index}
-                                            type="text"
-                                            placeholder={index === 0 ? `Priority 1: e.g., "Financial freedom"` : index === 1 ? `Priority 2: e.g., "Health & fitness"` : `Priority 3: e.g., "Family relationships"`}
-                                            value={priority}
-                                            onChange={(e) => handlePriorityChange(index, e.target.value)}
-                                            className="w-full bg-white text-black border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none"
-                                        />
-                                    ))}
-                                </div>
+                        <div className="p-6 bg-card border border-border/50 rounded-lg">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-lg font-semibold text-white">Your priorities (one per line)</h3>
+                                <span className="text-xs text-muted-foreground">
+                                    {priorities.split('\n').filter(l => l.trim()).length} items
+                                </span>
                             </div>
-
-                            {/* Todo List Input */}
-                            <div className="p-6 bg-card border border-border/50 rounded-lg">
-                                <h3 className="text-lg font-semibold mb-3 text-white">Your tasks (one per line)</h3>
-                                <textarea
-                                    placeholder="Finish quarterly report&#10;Call mom&#10;Update website&#10;Plan team meeting&#10;Buy groceries&#10;Review budget&#10;Schedule appointment&#10;Prepare presentation"
-                                    rows={8}
-                                    value={tasks}
-                                    onChange={(e) => setTasks(e.target.value)}
-                                    className="w-full bg-white text-black border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none resize-none"
-                                />
-                            </div>
+                            <textarea
+                                placeholder="Launch new product&#10;Exercise 3x per week&#10;Spend quality time with family&#10;Learn Python&#10;Pay off credit card debt&#10;Write 1000 words daily&#10;Call grandma&#10;Organize garage&#10;Read 2 books this month&#10;Plan vacation"
+                                rows={12}
+                                value={priorities}
+                                onChange={(e) => setPriorities(e.target.value)}
+                                className="w-full bg-white text-black border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-4 py-3 text-sm placeholder:text-gray-500 focus:outline-none resize-none font-mono"
+                            />
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Enter your tasks, todos, goals, or any priorities. AI will identify the 20% that create 80% of your results.
+                            </p>
                         </div>
                     )}
 
                     {/* Action Button */}
-                    {(!showResults || vitalFew.length === 0) && (
+                    {(!showResults || vitalFew.length === 0) && !showPaywall && (
                         <div className="text-center mt-8">
                             <button
                                 onClick={handleAnalyze}
-                                disabled={!priorities.some(p => p.trim()) || !tasks.trim() || isAnalyzing}
+                                disabled={!priorities.trim() || isAnalyzing}
                                 className="px-8 py-3 text-base font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {isAnalyzing ? (
@@ -361,11 +372,18 @@ const LandingPage = () => {
                                     </>
                                 ) : (
                                     <>
-                                        Find My Vital Few
+                                        Run 80/20 Analysis
                                         <ArrowRight className="w-4 h-4 ml-2 inline" />
                                     </>
                                 )}
                             </button>
+                            {usageInfo && (
+                                <p className="text-xs text-muted-foreground mt-3">
+                                    {usageInfo.plan === 'free'
+                                        ? `${usageInfo.dailyRemaining} of ${usageInfo.dailyQuota} free runs remaining today`
+                                        : `${usageInfo.monthlyRemaining} of ${usageInfo.monthlyLimit} runs remaining this month`}
+                                </p>
+                            )}
                         </div>
                     )}
 
@@ -384,6 +402,13 @@ const LandingPage = () => {
                                 style={{ width: `${progress}%` }}
                             ></div>
                         </div>
+                    </div>
+                )}
+
+                {/* Paywall */}
+                {showPaywall && (
+                    <div className="mt-8">
+                        <Paywall user={user} onClose={() => setShowLoginDialog(true)} />
                     </div>
                 )}
 

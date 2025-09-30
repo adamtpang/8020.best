@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 1000 // Track initial credits
     },
-    // Account type
+    // Account type & Pricing Plan
     accountType: {
         type: String,
         enum: ['free', 'premium', 'master'],
@@ -46,6 +46,28 @@ const userSchema = new mongoose.Schema({
     isMasterAccount: {
         type: Boolean,
         default: false
+    },
+    // Pricing plan: 'free', 'light' ($5/mo), 'pro' ($10/mo)
+    plan: {
+        type: String,
+        enum: ['free', 'light', 'pro'],
+        default: 'free'
+    },
+    planStartedAt: {
+        type: Date,
+        default: null
+    },
+    planRenewsAt: {
+        type: Date,
+        default: null
+    },
+    stripeCustomerId: {
+        type: String,
+        default: null
+    },
+    stripeSubscriptionId: {
+        type: String,
+        default: null
     },
     // Life priorities - the key feature for persistent storage
     lifePriorities: {

@@ -1,6 +1,6 @@
 # 8020.best - AI-Powered Task Prioritization
 
-**8020.best** is a smart task management application that uses AI to automatically categorize your tasks using the Eisenhower Matrix. Stop guessing what to work on and let the AI tell you what's important and what's urgent.
+**8020.best** is a smart task management application that uses AI to identify the 20% of your tasks that drive 80% of your results. Simple pricing, instant value.
 
 ![8020.best Screenshot](frontend/public/images/8020best-screenshot.png)
 
@@ -18,11 +18,12 @@
 - **Personalized Analysis**: AI considers your specific priorities when ranking tasks
 - **Credit System**: 1000 free credits for new users, with master accounts getting unlimited usage
 
-### 💎 Freemium Model
-- **Free Tier**: 1000 credits for new users (100 analyses)
-- **Master Accounts**: Unlimited credits for designated admin users
-- **Usage Tracking**: Monitor your credit balance and analysis history
-- **Secure Payments**: Stripe integration for credit purchases (coming soon)
+### 💎 Simple Pricing
+- **Free Tier**: 5 runs per day (no credit card required)
+- **Light ($5/mo)**: 300 runs per month
+- **Pro ($10/mo)**: 1000 runs per month
+- **Usage Tracking**: Real-time quota monitoring
+- **Stripe Payment Links**: One-click upgrade, no complex checkout
 
 ### 🔒 Security & Privacy
 - **Firebase Authentication**: Enterprise-grade security
@@ -206,24 +207,54 @@ The app now includes a comprehensive freemium authentication system. Set up your
    ```
    This will start both frontend and backend in development mode.
 
-## 💳 Freemium Credit System
+## 💳 Pricing & Quotas
 
-### Credit Allocation
-- **New Users**: 1000 free credits (enough for 100 task analyses)
-- **Analysis Cost**: 10 credits per task analysis
-- **Master Accounts**: Unlimited credits (set via email in User model)
+### How It Works
+- **Free Users**: 5 runs/day (tracked by IP + browser)
+- **Light Plan ($5/mo)**: 300 runs/month soft-limit (20% grace)
+- **Pro Plan ($10/mo)**: 1000 runs/month soft-limit (20% grace)
+- **Master Accounts**: Unlimited (for admin testing)
 
-### Master Account Setup
-To set up a master account with unlimited credits:
-1. Set your email address in the backend User model (`backend/src/models/User.js`)
-2. The system automatically grants master privileges to `adamtpangelinan@gmail.com`
-3. Master accounts bypass all credit checks and get unlimited usage
+### Pricing Knobs (Environment Variables)
+
+You can adjust these in your `.env` file:
+
+```env
+FREE_RUNS_PER_DAY=5              # Daily limit for free users
+LIGHT_MONTHLY_SOFT_LIMIT=300     # Monthly soft-limit for Light plan
+PRO_MONTHLY_SOFT_LIMIT=1000      # Monthly soft-limit for Pro plan
+OVERAGE_GRACE_PERCENT=20         # Grace % before hard block
+```
+
+### Stripe Payment Links Setup
+
+1. Create Payment Links at https://dashboard.stripe.com/payment-links:
+   - **Light Plan**: $5/month recurring
+   - **Pro Plan**: $10/month recurring
+   - Enable "Collect customer email" for user matching
+
+2. Copy the Payment Link URLs to your `.env`:
+   ```env
+   STRIPE_LINK_LIGHT=https://buy.stripe.com/YOUR_LIGHT_LINK
+   STRIPE_LINK_PRO=https://buy.stripe.com/YOUR_PRO_LINK
+   ```
+
+3. Set up webhooks at https://dashboard.stripe.com/webhooks:
+   - **Webhook URL**: `https://yourdomain.com/api/stripe/webhook`
+   - **Events to subscribe**:
+     - `checkout.session.completed`
+     - `customer.subscription.deleted`
+     - `customer.subscription.updated`
+   - Copy webhook secret to `.env`:
+     ```env
+     STRIPE_WEBHOOK_SECRET=whsec_YOUR_SECRET
+     ```
 
 ### Usage Tracking
-- Real-time credit balance display in the UI
-- Monthly usage statistics
-- Analysis history and timestamps
-- Automatic monthly usage reset
+- Real-time quota display in UI
+- Daily usage (for free users via IP + browser fingerprint)
+- Monthly usage (for paid users via user ID)
+- Automatic monthly reset
 
 ## Security Best Practices
 
@@ -231,18 +262,79 @@ To set up a master account with unlimited credits:
 - **Development**: For local development, use the mock authentication option if Firebase auth fails
 - **API Security**: The backend implements rate limiting and proper authentication
 
-## Deployment
+## Deployment to Vercel
 
-Follow these steps to deploy the application:
+### Quick Deploy
 
-1. Build the frontend:
+1. **Build the frontend**:
    ```bash
    cd frontend && npm run build
    ```
 
-2. Set up your production environment variables using your hosting provider's environment management
+2. **Push to GitHub**:
+   ```bash
+   git add .
+   git commit -m "Ready for deployment"
+   git push origin main
+   ```
 
-3. Deploy the backend to your server or cloud provider
+3. **Deploy to Vercel**:
+   - Go to [vercel.com](https://vercel.com)
+   - Import your GitHub repository
+   - Set environment variables in Vercel dashboard:
+     - All variables from `.env.example`
+     - Point `MONGO_URI` to your MongoDB Atlas cluster
+     - Set `NODE_ENV=production`
+   - Deploy!
+
+4. **Update Stripe Webhook URL**:
+   - Once deployed, update your Stripe webhook URL to:
+     `https://your-vercel-domain.vercel.app/api/stripe/webhook`
+
+### Environment Variables for Production
+
+Required variables in Vercel:
+- `NODE_ENV=production`
+- `MONGO_URI` (MongoDB Atlas connection string)
+- `REPLICATE_API_TOKEN`
+- `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
+- `JWT_SECRET`
+- `STRIPE_LINK_LIGHT`, `STRIPE_LINK_PRO`, `STRIPE_WEBHOOK_SECRET`
+- `FREE_RUNS_PER_DAY`, `LIGHT_MONTHLY_SOFT_LIMIT`, `PRO_MONTHLY_SOFT_LIMIT`
+
+## Lightweight Pricing Philosophy
+
+Start with **$5 Light / $10 Pro** and `FREE_RUNS_PER_DAY=5`.
+
+### Weekly Monitoring
+
+Track these metrics:
+- **Conversion rate** (free→paid): Target 2%+
+- **Active paid users**
+- **ARPU** (Average Revenue Per User)
+- **Churn rate**
+
+### When to Adjust
+
+| Scenario | Action |
+|----------|--------|
+| Conversion < 2% | Increase perceived value (speed, reliability, features) before changing price |
+| Heavy abuse on $5 | Drop soft-limit to 200 runs or add small overage packs |
+| Strong demand | Test $7 Light via A/B with `PRICE_TEST_BUCKET` env flag |
+| Cost per run changes | Recalculate to maintain >70% gross margin |
+
+### Quick Experiments
+
+```env
+# A/B test pricing (show 20% of new users $7 Light)
+PRICE_TEST_BUCKET=B
+
+# Toggle free runs 3-7/day to find sweet spot
+FREE_RUNS_PER_DAY=3
+
+# Enable Pro-only features
+ENABLE_NOTION_EXPORT=true  # Pro only
+```
 
 ## License
 
