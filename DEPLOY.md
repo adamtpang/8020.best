@@ -59,7 +59,7 @@ REPLICATE_API_TOKEN=your_replicate_token_here
 REPLICATE_MODEL=anthropic/claude-3.5-sonnet
 
 # MongoDB Atlas (get from MongoDB dashboard)
-MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/8020best?retryWrites=true&w=majority
+MONGO_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/8020best?retryWrites=true&w=majority
 
 # Firebase Admin (from Firebase Console → Project Settings → Service Accounts)
 FIREBASE_PROJECT_ID=your-project-id

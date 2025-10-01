@@ -55,8 +55,8 @@ STRIPE_WEBHOOK_SECRET=whsec_REPLACE_AFTER_WEBHOOK_SETUP
 REPLICATE_API_TOKEN=your_replicate_token_here
 REPLICATE_MODEL=anthropic/claude-3.5-sonnet
 
-# MongoDB
-MONGO_URI=mongodb+srv://adamtpang:q3Z6yAHYfzcSI6y3@cluster0.r00bs.mongodb.net/8020best?retryWrites=true&w=majority&appName=Cluster0
+# MongoDB - REPLACE WITH YOUR CREDENTIALS
+MONGO_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/8020best?retryWrites=true&w=majority
 
 # Firebase Admin
 FIREBASE_PROJECT_ID=best-1bc4b
