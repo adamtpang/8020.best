@@ -9,11 +9,13 @@ import { Sparkles, Target, Clock, TrendingUp, ArrowRight, CheckCircle2 } from 'l
 
 const LandingPage = () => {
     const [tasks, setTasks] = useState(''); // Single textarea for tasks/todos
+    const [priorities, setPriorities] = useState('');
     const [showResults, setShowResults] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [rankedTasks, setRankedTasks] = useState([]);
     const [vitalFew, setVitalFew] = useState([]);
     const [trivialMany, setTrivialMany] = useState([]);
+    const [extractedLinks, setExtractedLinks] = useState([]);
     const [hasError, setHasError] = useState(false);
     const [progress, setProgress] = useState(0);
     const [progressText, setProgressText] = useState('');
@@ -22,12 +24,45 @@ const LandingPage = () => {
     const [showPaywall, setShowPaywall] = useState(false);
     const [usageInfo, setUsageInfo] = useState(null);
 
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, getPriorities } = useAuth();
+
+    // Extract links from tasks
+    useEffect(() => {
+        const urlRegex = /(https?:\/\/(?:[-\w.])+(?:[:\d]+)?(?:\/(?:[\w\._~!$&'()*+,;=:@]|%[\dA-F]{2})*)*(?:\?(?:[\w\._~!$&'()*+,;=:@\/?]|%[\dA-F]{2})*)?(?:#(?:[\w\._~!$&'()*+,;=:@\/?]|%[\dA-F]{2})*)?)/gi;
+        const matches = tasks.match(urlRegex);
+        setExtractedLinks(matches ? [...new Set(matches)] : []);
+    }, [tasks]);
 
     // Fetch usage info on mount
     useEffect(() => {
         fetchUsageInfo();
     }, [user]);
+
+    // Load user priorities when authenticated
+    useEffect(() => {
+        const loadPriorities = async () => {
+            if (isAuthenticated && getPriorities) {
+                try {
+                    const userPriorities = await getPriorities();
+                    // Convert object format to single string if needed
+                    if (userPriorities && typeof userPriorities === 'object') {
+                        const priorityList = [];
+                        if (userPriorities.priority1) priorityList.push(userPriorities.priority1);
+                        if (userPriorities.priority2) priorityList.push(userPriorities.priority2);
+                        if (userPriorities.priority3) priorityList.push(userPriorities.priority3);
+                        setPriorities(priorityList.join('\n'));
+                    } else {
+                        setPriorities(userPriorities || '');
+                    }
+                } catch (error) {
+                    console.error('Failed to load priorities:', error);
+                }
+            } else {
+                setPriorities('');
+            }
+        };
+        loadPriorities();
+    }, [isAuthenticated, getPriorities]);
 
     const fetchUsageInfo = async () => {
         try {
@@ -44,7 +79,7 @@ const LandingPage = () => {
         const isHighValue = sectionTitle.includes('DO THESE');
 
         if (isHighValue) {
-            const taskList = tasks.map((task, index) => `${index + 1}. ${task.task}`).join('\n');
+            const taskList = tasks.map(task => `[${task.impact_score}] ${task.task}`).join('\n');
             const fullText = `${sectionTitle}\n${'='.repeat(sectionTitle.length)}\n\n${taskList}\n\n✅ Focus on these first - they drive 80% of your results!`;
 
             try {
@@ -55,7 +90,7 @@ const LandingPage = () => {
                 console.error('Failed to copy:', err);
             }
         } else {
-            const taskList = tasks.map(task => `• ${task.task}`).join('\n');
+            const taskList = tasks.map(task => `[${task.impact_score}] ${task.task}`).join('\n');
             const fullText = `${sectionTitle}\n${'='.repeat(sectionTitle.length)}\n\n${taskList}\n\n📁 Archive these in your "someday/maybe" list for later review.`;
 
             try {
@@ -69,8 +104,8 @@ const LandingPage = () => {
     };
 
     const copyAllTasks = async () => {
-        const vitalList = vitalFew.map((task, index) => `${index + 1}. ${task.task}`).join('\n');
-        const trivialList = trivialMany.map(task => `• ${task.task}`).join('\n');
+        const vitalList = vitalFew.map(task => `[${task.impact_score}] ${task.task}`).join('\n');
+        const trivialList = trivialMany.map(task => `[${task.impact_score}] ${task.task}`).join('\n');
 
         const fullText = `80/20 TASK ANALYSIS RESULTS\n${'='.repeat(30)}\n\n🔥 DO THESE FIRST (${vitalFew.length} tasks)\n${'-'.repeat(40)}\n${vitalList}\n\n✅ Focus on these - they drive 80% of your results!\n\n\n🗂️ ARCHIVE THESE (${trivialMany.length} tasks)\n${'-'.repeat(40)}\n${trivialList}\n\n📁 Move these to your "someday/maybe" list.`;
 
@@ -181,8 +216,13 @@ const LandingPage = () => {
             setProgress(20);
             setProgressText('Analyzing your tasks...');
 
-            // No user priorities context - just analyze the tasks themselves
-            await processTasksOneByOne(taskArray, null, taskCount);
+            // Build user priorities context if provided
+            let userPriorities = null;
+            if (priorities.trim()) {
+                userPriorities = priorities.trim();
+            }
+
+            await processTasksOneByOne(taskArray, userPriorities, taskCount);
 
         } catch (error) {
             console.error('Error during analysis:', error);
@@ -217,7 +257,7 @@ const LandingPage = () => {
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
-                            {isAuthenticated ? (
+                            {isAuthenticated && (
                                 <div className="flex items-center space-x-3">
                                     <button
                                         onClick={() => window.open('https://buy.stripe.com/bIYeXH6aL8EG18c5ko', '_blank')}
@@ -227,19 +267,6 @@ const LandingPage = () => {
                                         {user?.credits || 0} credits
                                     </button>
                                     <UserMenu />
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-3">
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
-                                        <TrendingUp className="w-4 h-4" />
-                                        Beta
-                                    </div>
-                                    <button
-                                        onClick={() => setShowLoginDialog(true)}
-                                        className="border border-border/50 bg-transparent text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors"
-                                    >
-                                        Sign In
-                                    </button>
                                 </div>
                             )}
                         </div>
@@ -297,12 +324,44 @@ const LandingPage = () => {
                                         <div className="space-y-2 font-mono text-sm text-black">
                                             {vitalFew.map((task, index) => (
                                                 <div key={index}>
-                                                    {index + 1}. {task.task}
+                                                    [{task.impact_score}] {task.task}
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Extracted Links Section */}
+                                {extractedLinks.length > 0 && (
+                                    <div className="bg-secondary/10 border border-secondary/30 rounded-lg p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h4 className="text-lg font-semibold text-secondary">🔗 Extracted Links ({extractedLinks.length})</h4>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await navigator.clipboard.writeText(extractedLinks.join('\n'));
+                                                        setProgressText(`🔗 Copied ${extractedLinks.length} links!`);
+                                                        setTimeout(() => setProgressText(''), 3000);
+                                                    } catch (err) {
+                                                        console.error('Failed to copy:', err);
+                                                    }
+                                                }}
+                                                className="px-3 py-1 bg-secondary text-secondary-foreground rounded-md text-sm font-medium hover:bg-secondary/90 transition-colors"
+                                            >
+                                                Copy
+                                            </button>
+                                        </div>
+                                        <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                            <div className="space-y-2 font-mono text-sm text-black">
+                                                {extractedLinks.map((link, index) => (
+                                                    <div key={index} className="break-all">
+                                                        {link}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Bottom 80% Section */}
                                 <div className="bg-muted/20 border border-border/50 rounded-lg p-6">
@@ -319,7 +378,7 @@ const LandingPage = () => {
                                         <div className="space-y-2 font-mono text-sm text-black">
                                             {trivialMany.map((task, index) => (
                                                 <div key={index}>
-                                                    • {task.task}
+                                                    [{task.impact_score}] {task.task}
                                                 </div>
                                             ))}
                                         </div>
@@ -335,24 +394,47 @@ const LandingPage = () => {
                             </div>
                         </div>
                     ) : (
-                        <div className="p-6 bg-card border border-border/50 rounded-lg">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-lg font-semibold text-white">Your tasks (one per line)</h3>
-                                <span className="text-xs text-muted-foreground">
-                                    {tasks.split('\n').filter(l => l.trim()).length} items
-                                </span>
+                        <>
+                            {/* Priorities Box */}
+                            <div className="p-6 bg-card border border-border/50 rounded-lg mb-6">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-lg font-semibold text-white">Your Life Priorities</h3>
+                                    <span className="text-xs text-muted-foreground">
+                                        Optional - helps AI rank your tasks
+                                    </span>
+                                </div>
+                                <textarea
+                                    placeholder="Build a successful business&#10;Maintain good health and fitness&#10;Spend quality time with family&#10;Learn new skills&#10;Give back to community"
+                                    rows={5}
+                                    value={priorities}
+                                    onChange={(e) => setPriorities(e.target.value)}
+                                    className="w-full bg-white text-black border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-4 py-3 text-sm placeholder:text-gray-500 focus:outline-none resize-none"
+                                />
+                                <p className="text-xs text-muted-foreground mt-2">
+                                    List your life priorities (one per line). The AI will use these to better rank your tasks by alignment.
+                                </p>
                             </div>
-                            <textarea
-                                placeholder="Launch new product&#10;Exercise 3x per week&#10;Spend quality time with family&#10;Learn Python&#10;Pay off credit card debt&#10;Write 1000 words daily&#10;Call grandma&#10;Organize garage&#10;Read 2 books this month&#10;Plan vacation"
-                                rows={12}
-                                value={tasks}
-                                onChange={(e) => setTasks(e.target.value)}
-                                className="w-full bg-white text-black border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-4 py-3 text-sm placeholder:text-gray-500 focus:outline-none resize-none font-mono"
-                            />
-                            <p className="text-xs text-muted-foreground mt-2">
-                                Enter your tasks, todos, or priorities. AI will identify the 20% that create 80% of your results.
-                            </p>
-                        </div>
+
+                            {/* Tasks Input Box */}
+                            <div className="p-6 bg-card border border-border/50 rounded-lg">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-lg font-semibold text-white">Your tasks (one per line)</h3>
+                                    <span className="text-xs text-muted-foreground">
+                                        {tasks.split('\n').filter(l => l.trim()).length} items
+                                    </span>
+                                </div>
+                                <textarea
+                                    placeholder="Launch new product&#10;Exercise 3x per week&#10;Spend quality time with family&#10;Learn Python&#10;Pay off credit card debt&#10;Write 1000 words daily&#10;Call grandma&#10;Organize garage&#10;Read 2 books this month&#10;Plan vacation"
+                                    rows={12}
+                                    value={tasks}
+                                    onChange={(e) => setTasks(e.target.value)}
+                                    className="w-full bg-white text-black border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-4 py-3 text-sm placeholder:text-gray-500 focus:outline-none resize-none font-mono"
+                                />
+                                <p className="text-xs text-muted-foreground mt-2">
+                                    Enter your tasks, todos, or projects. AI will identify the 20% that create 80% of your results.
+                                </p>
+                            </div>
+                        </>
                     )}
 
                     {/* Action Button */}

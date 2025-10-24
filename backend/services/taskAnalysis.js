@@ -749,6 +749,8 @@ ${batch.map((t, idx) => `${i + idx + 1}. ${t}`).join('\n')}
 
 For each task, assign an "impact_score" from 0 to 100 based on its potential for high impact${userPriorities ? ' and alignment with the user\'s life priorities' : ''} and provide brief "reasoning".
 
+CRITICAL INSTRUCTION: In the "task" field, you MUST return the EXACT original task text character-for-character without any modifications, paraphrasing, summarizing, or changes. Copy it exactly as provided above. Only provide your analysis in the "impact_score" and "reasoning" fields.
+
 Return the output as individual, newline-separated JSON objects. Each object must have three keys: "task", "impact_score", and "reasoning". Do not include them in a list, and do not add any other text, explanations, or markdown.
 
 Example of expected output:
