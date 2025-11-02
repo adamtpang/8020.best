@@ -24,7 +24,7 @@ const LandingPage = () => {
     const [showPaywall, setShowPaywall] = useState(false);
     const [usageInfo, setUsageInfo] = useState(null);
 
-    const { user, isAuthenticated, getPriorities } = useAuth();
+    const { user, isAuthenticated, getPriorities, updatePriorities } = useAuth();
 
     // Extract links from tasks
     useEffect(() => {
@@ -257,17 +257,17 @@ const LandingPage = () => {
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
-                            {isAuthenticated && (
+                            {isAuthenticated ? (
                                 <div className="flex items-center space-x-3">
-                                    <button
-                                        onClick={() => window.open('https://buy.stripe.com/bIYeXH6aL8EG18c5ko', '_blank')}
-                                        className="bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-sm font-medium hover:bg-primary/20 transition-colors"
-                                    >
-                                        <Sparkles className="w-3 h-3 mr-1" />
-                                        {user?.credits || 0} credits
-                                    </button>
                                     <UserMenu />
                                 </div>
+                            ) : (
+                                <button
+                                    onClick={() => setShowLoginDialog(true)}
+                                    className="border border-border/50 bg-transparent text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors"
+                                >
+                                    Sign In
+                                </button>
                             )}
                         </div>
                     </div>
@@ -408,10 +408,25 @@ const LandingPage = () => {
                                     rows={5}
                                     value={priorities}
                                     onChange={(e) => setPriorities(e.target.value)}
+                                    onBlur={async () => {
+                                        if (isAuthenticated && priorities.trim()) {
+                                            try {
+                                                const priorityLines = priorities.split('\n').filter(p => p.trim());
+                                                const prioritiesObj = {
+                                                    priority1: priorityLines[0] || '',
+                                                    priority2: priorityLines[1] || '',
+                                                    priority3: priorityLines[2] || ''
+                                                };
+                                                await updatePriorities(prioritiesObj);
+                                            } catch (error) {
+                                                console.error('Failed to save priorities:', error);
+                                            }
+                                        }
+                                    }}
                                     className="w-full bg-white text-black border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-md px-4 py-3 text-sm placeholder:text-gray-500 focus:outline-none resize-none"
                                 />
                                 <p className="text-xs text-muted-foreground mt-2">
-                                    List your life priorities (one per line). The AI will use these to better rank your tasks by alignment.
+                                    List your life priorities (one per line). {isAuthenticated && '✓ Auto-saved when signed in.'}
                                 </p>
                             </div>
 
