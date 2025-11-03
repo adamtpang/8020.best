@@ -12,7 +12,7 @@ const path = require('path');
 // Initialize Express
 const app = express();
 
-// Enable CORS
+// Enable CORS with explicit configuration
 app.use(cors({
   origin: [
     'http://localhost:3000',
@@ -23,8 +23,14 @@ app.use(cors({
     'https://www.8020.best',
     'https://8020best-production.up.railway.app'
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 
 // Parse JSON requests
 app.use(express.json());
