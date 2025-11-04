@@ -1,17 +1,18 @@
 {
     "name": "8020-best",
     "version": "1.0.0",
-    "description": "8020.best full stack application",
+    "description": "8020.best - AI-Powered Task Prioritization (Vercel deployment)",
     "scripts": {
         "frontend": "cd frontend && npm run dev",
         "backend": "cd backend && npm run dev",
         "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
-        "postinstall": "cd frontend && npm install && cd ../backend && npm install",
-        "build": "cd frontend && npm run build",
-        "start": "cd backend && npm start"
+        "build": "cd frontend && npm install && npm run build"
     },
     "engines": {
         "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "replicate": "^0.34.1"
     },
     "devDependencies": {
         "concurrently": "^8.2.2"
