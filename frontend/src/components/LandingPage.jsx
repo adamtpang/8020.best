@@ -80,22 +80,22 @@ const LandingPage = () => {
 
         if (isHighValue) {
             const taskList = tasks.map(task => `[${task.impact_score}] ${task.task}`).join('\n');
-            const fullText = `${sectionTitle}\n${'='.repeat(sectionTitle.length)}\n\n${taskList}\n\n✅ Focus on these first - they drive 80% of your results!`;
+            const fullText = `${sectionTitle}\n${'='.repeat(sectionTitle.length)}\n\n${taskList}\n\n✅ Focus on these high-impact tasks (80+) first!`;
 
             try {
                 await navigator.clipboard.writeText(fullText);
-                setProgressText(`✅ Copied ${tasks.length} high-impact tasks! Paste into your daily planner.`);
+                setProgressText(`✅ Copied ${tasks.length} high-impact tasks (80+)! Paste into your daily planner.`);
                 setTimeout(() => setProgressText(''), 3000);
             } catch (err) {
                 console.error('Failed to copy:', err);
             }
         } else {
             const taskList = tasks.map(task => `[${task.impact_score}] ${task.task}`).join('\n');
-            const fullText = `${sectionTitle}\n${'='.repeat(sectionTitle.length)}\n\n${taskList}\n\n📁 Archive these in your "someday/maybe" list for later review.`;
+            const fullText = `${sectionTitle}\n${'='.repeat(sectionTitle.length)}\n\n${taskList}\n\n📁 Archive these lower-priority tasks in your "someday/maybe" list.`;
 
             try {
                 await navigator.clipboard.writeText(fullText);
-                setProgressText(`📁 Copied ${tasks.length} low-impact tasks to archive! Clear them from your mind.`);
+                setProgressText(`📁 Copied ${tasks.length} lower-priority tasks to archive! Clear them from your mind.`);
                 setTimeout(() => setProgressText(''), 3000);
             } catch (err) {
                 console.error('Failed to copy:', err);
@@ -107,11 +107,11 @@ const LandingPage = () => {
         const vitalList = vitalFew.map(task => `[${task.impact_score}] ${task.task}`).join('\n');
         const trivialList = trivialMany.map(task => `[${task.impact_score}] ${task.task}`).join('\n');
 
-        const fullText = `80/20 TASK ANALYSIS RESULTS\n${'='.repeat(30)}\n\n🔥 DO THESE FIRST (${vitalFew.length} tasks)\n${'-'.repeat(40)}\n${vitalList}\n\n✅ Focus on these - they drive 80% of your results!\n\n\n🗂️ ARCHIVE THESE (${trivialMany.length} tasks)\n${'-'.repeat(40)}\n${trivialList}\n\n📁 Move these to your "someday/maybe" list.`;
+        const fullText = `TASK ANALYSIS RESULTS\n${'='.repeat(30)}\n\n🔥 HIGH IMPACT (Score 80+) - DO THESE FIRST (${vitalFew.length} tasks)\n${'-'.repeat(40)}\n${vitalList}\n\n✅ Focus on these high-impact tasks first!\n\n\n📁 LOWER PRIORITY (Score below 80) - ARCHIVE THESE (${trivialMany.length} tasks)\n${'-'.repeat(40)}\n${trivialList}\n\n📁 Move these to your "someday/maybe" list.`;
 
         try {
             await navigator.clipboard.writeText(fullText);
-            setProgressText(`📋 Copied complete 80/20 breakdown! Paste into your task manager.`);
+            setProgressText(`📋 Copied complete task breakdown! Paste into your task manager.`);
             setTimeout(() => setProgressText(''), 3000);
         } catch (err) {
             console.error('Failed to copy:', err);
@@ -158,15 +158,15 @@ const LandingPage = () => {
             const allTasks = [...processedTasks];
             const sortedTasks = allTasks.sort((a, b) => (b.impact_score || 0) - (a.impact_score || 0));
 
-            const splitPoint = Math.ceil(sortedTasks.length * 0.2);
-            const vitalFewTasks = sortedTasks.slice(0, splitPoint);
-            const trivialManyTasks = sortedTasks.slice(splitPoint);
+            // Split by absolute score: 80+ is "vital few", below 80 is "trivial many"
+            const vitalFewTasks = sortedTasks.filter(task => task.impact_score >= 80);
+            const trivialManyTasks = sortedTasks.filter(task => task.impact_score < 80);
 
             setVitalFew(vitalFewTasks);
             setTrivialMany(trivialManyTasks);
 
             setProgress(100);
-            setProgressText(`Analysis complete! ${vitalFewTasks.length} vital few, ${trivialManyTasks.length} trivial many`);
+            setProgressText(`Analysis complete! ${vitalFewTasks.length} high-impact (80+), ${trivialManyTasks.length} lower priority`);
             setIsAnalyzing(false);
 
         } catch (error) {
@@ -256,7 +256,8 @@ const LandingPage = () => {
                                 <p className="text-sm text-muted-foreground">AI-Powered Task Prioritization</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        {/* OAuth/Sign-in commented out */}
+                        {/* <div className="flex items-center gap-4">
                             {isAuthenticated ? (
                                 <div className="flex items-center space-x-3">
                                     <UserMenu />
@@ -269,7 +270,7 @@ const LandingPage = () => {
                                     Sign In
                                 </button>
                             )}
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </header>
@@ -309,12 +310,12 @@ const LandingPage = () => {
                             </div>
 
                             <div className="space-y-6">
-                                {/* Top 20% Section */}
+                                {/* High Impact (80+) Section */}
                                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-6">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h4 className="text-lg font-semibold text-primary">🔥 Top 20% - DO THESE FIRST ({vitalFew.length} tasks)</h4>
+                                        <h4 className="text-lg font-semibold text-primary">🔥 HIGH IMPACT (Score 80+) - DO THESE FIRST ({vitalFew.length} tasks)</h4>
                                         <button
-                                            onClick={() => copyTaskSection(vitalFew, '🔥 DO THESE FIRST (Top 20%)')}
+                                            onClick={() => copyTaskSection(vitalFew, '🔥 DO THESE FIRST (High Impact 80+)')}
                                             className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
                                         >
                                             Copy
@@ -363,12 +364,12 @@ const LandingPage = () => {
                                     </div>
                                 )}
 
-                                {/* Bottom 80% Section */}
+                                {/* Lower Priority (Below 80) Section */}
                                 <div className="bg-muted/20 border border-border/50 rounded-lg p-6">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h4 className="text-lg font-semibold text-muted-foreground">📁 Bottom 80% - ARCHIVE THESE ({trivialMany.length} tasks)</h4>
+                                        <h4 className="text-lg font-semibold text-muted-foreground">📁 LOWER PRIORITY (Score below 80) - ARCHIVE THESE ({trivialMany.length} tasks)</h4>
                                         <button
-                                            onClick={() => copyTaskSection(trivialMany, '📁 ARCHIVE THESE (Bottom 80%)')}
+                                            onClick={() => copyTaskSection(trivialMany, '📁 ARCHIVE THESE (Score below 80)')}
                                             className="px-3 py-1 bg-muted text-muted-foreground rounded-md text-sm font-medium hover:bg-muted/80 transition-colors"
                                         >
                                             Copy
@@ -388,8 +389,8 @@ const LandingPage = () => {
 
                             <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
                                 <p className="text-sm text-muted-foreground">
-                                    <strong className="text-primary">Pro tip:</strong> Focus on completing the top 20% tasks first.
-                                    Archive the bottom 80% to your "someday/maybe" list to clear mental clutter.
+                                    <strong className="text-primary">Pro tip:</strong> Focus on completing the high-impact tasks (80+ score) first.
+                                    Archive tasks below 80 to your "someday/maybe" list to clear mental clutter.
                                 </p>
                             </div>
                         </div>
@@ -524,11 +525,11 @@ const LandingPage = () => {
                 </div>
             </footer>
 
-            {/* Login Dialog */}
-            <CleanLoginDialog
+            {/* Login Dialog - Commented out */}
+            {/* <CleanLoginDialog
                 open={showLoginDialog}
                 onClose={() => setShowLoginDialog(false)}
-            />
+            /> */}
         </div>
     );
 };
