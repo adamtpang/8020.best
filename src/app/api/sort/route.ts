@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import type { SortResponse } from '@/lib/types';
+import { jevPickBuckets } from '@/lib/jev';
 
 // Fast + cheap is ideal for bucketing. Override with ANTHROPIC_MODEL if you want Sonnet/Opus.
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
@@ -32,6 +33,22 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No tasks provided' }, { status: 400 });
         }
 
+        const buckets: string[] = Array.isArray(existingBuckets) ? existingBuckets : [];
+
+        // Jev first: it can only pick an existing bucket or say none fit.
+        // Confident picks are final; everything else goes to Haiku below,
+        // which can still propose a new bucket. If Jev fails, Haiku gets all.
+        const picks = await jevPickBuckets(batch, buckets);
+        const jevTasks = picks
+            ? batch.flatMap((text: string, i: number) => (picks[i].bucket ? [{ text, bucket: picks[i].bucket as string }] : []))
+            : [];
+        const haikuBatch: string[] = picks ? batch.filter((_: string, i: number) => !picks[i].bucket) : batch;
+        console.log(`[sort] jev answered ${jevTasks.length}, haiku answers ${haikuBatch.length}`);
+
+        if (haikuBatch.length === 0) {
+            return NextResponse.json({ tasks: jevTasks } satisfies SortResponse);
+        }
+
         const apiKey = process.env.ANTHROPIC_API_KEY;
         if (!apiKey) {
             return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
@@ -40,7 +57,7 @@ export async function POST(request: NextRequest) {
         const bucketsContext = existingBuckets?.length > 0
             ? `Existing buckets: ${existingBuckets.join(', ')}\n\n`
             : '';
-        const tasksText = batch.map((task: string, i: number) => `${i + 1}. ${task}`).join('\n');
+        const tasksText = haikuBatch.map((task: string, i: number) => `${i + 1}. ${task}`).join('\n');
         const userPrompt = `${bucketsContext}Tasks:\n${tasksText}`;
 
         const client = new Anthropic({ apiKey });
@@ -76,7 +93,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid AI response structure' }, { status: 500 });
         }
 
-        return NextResponse.json(parsedResponse);
+        // Put tasks back in their original order.
+        const answered = new Map<string, string>();
+        for (const t of jevTasks) answered.set(t.text, t.bucket);
+        for (const t of parsedResponse.tasks) if (!answered.has(t.text)) answered.set(t.text, t.bucket);
+        const tasks = batch.flatMap((text: string) => (answered.has(text) ? [{ text, bucket: answered.get(text) as string }] : []));
+        const matched = new Set(tasks.map((t: { text: string }) => t.text));
+        // Haiku sometimes rewords a task; keep those answers rather than drop them.
+        for (const t of parsedResponse.tasks) if (!matched.has(t.text)) tasks.push(t);
+        return NextResponse.json({ tasks } satisfies SortResponse);
     } catch (error) {
         console.error('Sort error:', error);
         const status = (error as { status?: number })?.status;

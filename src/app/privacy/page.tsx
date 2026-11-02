@@ -12,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <main className="trust-page">
       <h1>8020.best privacy policy</h1>
-      <p>Last updated: August 27, 2026.</p>
+      <p>Last updated: September 20, 2026.</p>
       <p>
         8020.best provides a web task prioritizer and a Chrome tab-management extension. The products are designed to keep working libraries on the user&apos;s device, while optional AI actions send only the information needed to complete the action that the user requested.
       </p>
@@ -35,10 +35,16 @@ export default function PrivacyPage() {
       <p>
         An optional filesystem mirror writes the same saved-tab Markdown snapshot to a local file chosen by the companion configuration. The mirror itself does not invoke AI or transmit the snapshot away from the device.
       </p>
+      <p>
+        If Claude reaches a session or usage limit, the local companion retries the requested analysis through the signed-in Codex CLI (codex_local). This fallback sends the same analysis metadata and priority or project context to OpenAI under its terms and privacy policy. It does not send project source files or webpage bodies. The analysis response identifies the provider used.
+      </p>
 
       <h2>Hosting and service providers</h2>
       <p>
-        Vercel hosts the public web app and processes the technical request information needed to deliver it. Anthropic processes task text only for requested AI sorting or decomposition. The current web app contains no advertising scripts or analytics trackers, and 8020.best does not sell user data.
+        When the local companion is configured with an OpenRouter API key, category and priority classification sends tab titles and local priority context to TypeSafe Jev through OpenRouter. Classification uses the highest-probability category and tier without a minimum confidence threshold. Malformed responses and provider failures stop the batch without switching providers. Jev does not receive webpage bodies or project source files. Keys remain in the local companion, not the extension package. Separate focus explanations and project routing still use the Claude/Codex path.
+      </p>
+      <p>
+        Vercel hosts the public web app and processes the technical request information needed to deliver it. Anthropic processes task text only for requested AI sorting or decomposition. When you sort tasks on the web app, each task&apos;s text and your existing bucket names are first sent to TypeSafe Jev through OpenRouter to pick an existing bucket; tasks Jev is not confident about are then sent to Anthropic. The current web app contains no advertising scripts or analytics trackers, and 8020.best does not sell user data.
       </p>
 
       <h2>Retention and deletion</h2>
