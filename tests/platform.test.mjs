@@ -45,7 +45,10 @@ test("preserved task prioritizer controls have stable accessible names", async (
   assert.match(page, /<label htmlFor="task-input"/);
   assert.match(page, /id="task-input"/);
   assert.match(page, /aria-label="Upload a task file"/);
-  assert.match(page, /aria-label="Choose a task file to upload"/);
+  // WCAG 2.5.3: the button's accessible name must contain its visible text,
+  // so it carries no aria-label that would replace "Choose file".
+  assert.match(page, />\s*Choose file\s*<\/button>/);
+  assert.doesNotMatch(page, /aria-label="Choose a task file to upload"/);
 });
 
 test("crawler discovery files name the public trust routes", async () => {
