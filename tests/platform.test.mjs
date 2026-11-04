@@ -22,7 +22,7 @@ test("root metadata exposes canonical extension identity and truthful schema", a
   assert.match(layout, /"@type": "Organization"/);
   assert.match(layout, /"@type": "SoftwareApplication"/);
   assert.match(layout, /name: "8020 - Priority Tab Manager"/);
-  assert.match(layout, /chromewebstore\.google\.com\/detail\/hjnoblncmfgibmkbappbndbledimmkme/);
+  assert.match(layout, /downloadUrl: "https:\/\/8020\.best\/download"/);
   assert.match(layout, /price:\s*"0"/);
   assert.match(layout, /href="\/privacy"/);
   assert.match(layout, /href="\/about"/);

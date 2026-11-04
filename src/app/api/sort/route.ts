@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import type { SortResponse } from '@/lib/types';
 import { jevPickBuckets } from '@/lib/jev';
+import { checkRequest, cleanStrings } from '@/lib/guard';
 
 // Fast + cheap is ideal for bucketing. Override with ANTHROPIC_MODEL if you want Sonnet/Opus.
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
@@ -25,15 +26,21 @@ function extractJSON(str: string): string {
 }
 
 export async function POST(request: NextRequest) {
+    const blocked = checkRequest('sort', request.headers, { perIpPerHour: 40, globalPerHour: 400 });
+    if (blocked) return NextResponse.json({ error: blocked.error }, { status: blocked.status });
     try {
         const body = await request.json();
-        const { batch, existingBuckets } = body;
-
-        if (!batch || batch.length === 0) {
+        // The tasks page sends 30 per batch; cap item count and length so one
+        // request cannot carry an outsized, expensive prompt.
+        const batch = cleanStrings(body?.batch, 30, 500);
+        if (batch === null) {
+            return NextResponse.json({ error: 'Send at most 30 tasks per request' }, { status: 413 });
+        }
+        if (batch.length === 0) {
             return NextResponse.json({ error: 'No tasks provided' }, { status: 400 });
         }
 
-        const buckets: string[] = Array.isArray(existingBuckets) ? existingBuckets : [];
+        const buckets: string[] = (cleanStrings(body?.existingBuckets, 200, 80) || []).slice(0, 80);
 
         // Jev first: it can only pick an existing bucket or say none fit.
         // Confident picks are final; everything else goes to Haiku below,
@@ -54,8 +61,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
         }
 
-        const bucketsContext = existingBuckets?.length > 0
-            ? `Existing buckets: ${existingBuckets.join(', ')}\n\n`
+        const bucketsContext = buckets.length > 0
+            ? `Existing buckets: ${buckets.join(', ')}\n\n`
             : '';
         const tasksText = haikuBatch.map((task: string, i: number) => `${i + 1}. ${task}`).join('\n');
         const userPrompt = `${bucketsContext}Tasks:\n${tasksText}`;

@@ -1,8 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { INSTALL_URL } from "@/lib/extension-release";
 
-const CHROME_STORE_URL =
-  "https://chromewebstore.google.com/detail/hjnoblncmfgibmkbappbndbledimmkme";
 
 const priorities = [
   ["S", "Act today", "Time-sensitive work where waiting creates a real cost."],
@@ -26,7 +25,7 @@ export default function Home() {
           <a href="#priority">Priority system</a>
           <Link href="/privacy">Privacy</Link>
         </nav>
-        <a className="nav-install" href={CHROME_STORE_URL}>
+        <a className="nav-install" href={INSTALL_URL}>
           Get 8020
         </a>
       </header>
@@ -39,8 +38,8 @@ export default function Home() {
             8020 turns a crowded browser into a clear, recoverable priority system. Save tabs into collections, find anything quickly, restore exactly what you need, and keep the three highest-leverage items visible in a focused Your 20% queue.
           </p>
           <div className="hero-actions">
-            <a className="install-button" href={CHROME_STORE_URL}>
-              Get 8020 for Chrome <span aria-hidden="true">↗</span>
+            <a className="install-button" href={INSTALL_URL}>
+              Get 8020 for Chrome <span aria-hidden="true">→</span>
             </a>
             <a className="text-button" href="#how-it-works">
               See how it works
@@ -194,8 +193,8 @@ export default function Home() {
         <p>
           Turn today’s browser sprawl into a local, searchable library that keeps the vital few visible and everything else safely recoverable.
         </p>
-        <a className="install-button light" href={CHROME_STORE_URL}>
-          Get 8020 for Chrome <span aria-hidden="true">↗</span>
+        <a className="install-button light" href={INSTALL_URL}>
+          Get 8020 for Chrome <span aria-hidden="true">→</span>
         </a>
         <Link className="legacy-link" href="/tasks">
           Looking for the original task prioritizer?

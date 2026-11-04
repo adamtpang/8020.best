@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { checkRequest } from '@/lib/guard';
 
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
 
@@ -24,9 +25,12 @@ Return ONLY valid JSON:
 }`;
 
 export async function POST(request: NextRequest) {
+    const blocked = checkRequest('deconstruct', request.headers, { perIpPerHour: 20, globalPerHour: 200 });
+    if (blocked) return NextResponse.json({ error: blocked.error }, { status: blocked.status });
     try {
         const body = await request.json();
-        const { task, context } = body;
+        const task = typeof body?.task === 'string' ? body.task.trim().slice(0, 1000) : '';
+        const context = typeof body?.context === 'string' ? body.context.slice(0, 200) : '';
 
         if (!task) {
             return NextResponse.json({ error: 'No task provided' }, { status: 400 });

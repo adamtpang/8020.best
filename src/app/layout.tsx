@@ -83,8 +83,7 @@ const structuredData = {
       applicationCategory: "ProductivityApplication",
       operatingSystem: "ChromeOS, macOS, Windows, Linux",
       browserRequirements: "Google Chrome with Manifest V3 support",
-      downloadUrl:
-        "https://chromewebstore.google.com/detail/hjnoblncmfgibmkbappbndbledimmkme",
+      downloadUrl: "https://8020.best/download",
       isAccessibleForFree: true,
       offers: {
         "@type": "Offer",

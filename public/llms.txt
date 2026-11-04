@@ -12,7 +12,7 @@
 ## Key pages
 
 - Home and Chrome extension overview: https://8020.best/
-- Chrome Web Store: https://chromewebstore.google.com/detail/hjnoblncmfgibmkbappbndbledimmkme
+- Download and install the extension: https://8020.best/download
 - Original task prioritizer: https://8020.best/tasks
 - About: https://8020.best/about
 - Task deconstructor: https://8020.best/deconstructor

@@ -1015,3 +1015,16 @@ select:focus {
     padding: 6rem 0 4rem;
   }
 }
+
+/* Download page */
+.download-actions { margin-top: 1.5rem; }
+.download-steps { margin: 0.75rem 0 0 1.25rem; list-style: decimal; }
+.download-steps li + li { margin-top: 0.5rem; }
+.download-page code,
+.download-page kbd {
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.3));
+  border-radius: 0.3rem;
+  font-size: 0.9em;
+}
+.download-page .hash { display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
