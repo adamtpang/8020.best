@@ -637,7 +637,6 @@ export default function Home() {
           type="button"
           className="btn-secondary text-sm px-4 py-2"
           onClick={() => fileInputRef.current?.click()}
-          aria-label="Choose a task file to upload"
         >
           Choose file
         </button>

@@ -1028,3 +1028,6 @@ select:focus {
   font-size: 0.9em;
 }
 .download-page .hash { display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
+/* .trust-page a would otherwise turn the button's white label near-black. */
+.trust-page a.install-button { color: #fff; text-decoration: none; }
+.trust-page a.text-button { text-decoration: none; }

@@ -72,3 +72,8 @@ test("CSP allows exactly the PostHog hosts the analytics snippet uses", async ()
   assert.match(script, /https:\/\/us-assets\.i\.posthog\.com/);
   for (const host of hosts) assert.ok(connect.includes(`https://${host}`), `${host} missing from connect-src`);
 });
+
+test("buttons inside trust pages keep their own colors", async () => {
+  const css = await read("src/app/globals.css");
+  assert.match(css, /\.trust-page a\.install-button\s*\{[^}]*color:\s*#fff/);
+});
