@@ -61,3 +61,14 @@ test("crawler discovery files name the public trust routes", async () => {
   assert.match(sitemap, /"\/contact"/);
   assert.match(sitemap, /"\/privacy"/);
 });
+
+test("CSP allows exactly the PostHog hosts the analytics snippet uses", async () => {
+  const config = await read("next.config.ts");
+  const layout = await read("src/app/layout.tsx");
+  const hosts = [...new Set([...layout.matchAll(/https:\/\/([a-z0-9.-]*posthog\.com)/g)].map(m => m[1]))];
+  assert.ok(hosts.length > 0, "layout loads PostHog");
+  const script = config.match(/"script-src ([^"]+)"/)[1];
+  const connect = config.match(/"connect-src ([^"]+)"/)[1];
+  assert.match(script, /https:\/\/us-assets\.i\.posthog\.com/);
+  for (const host of hosts) assert.ok(connect.includes(`https://${host}`), `${host} missing from connect-src`);
+});

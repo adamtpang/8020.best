@@ -499,7 +499,7 @@ select:focus {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: #72727b;
+  color: #5d5d66;
   font-family: var(--font-mono), monospace;
   font-size: 0.7rem;
   font-weight: 600;
@@ -576,7 +576,7 @@ select:focus {
   flex-wrap: wrap;
   gap: 0.5rem 1.25rem;
   margin-top: 2.2rem;
-  color: #777780;
+  color: #5d5d66;
   font-family: var(--font-mono), monospace;
   font-size: 0.66rem;
   letter-spacing: 0.05em;
@@ -623,7 +623,7 @@ select:focus {
 
 .window-bar b {
   margin-left: 8px;
-  color: #7b7b83;
+  color: #5d5d66;
   font-family: var(--font-mono), monospace;
   font-size: 0.58rem;
   font-weight: 500;
@@ -705,7 +705,7 @@ select:focus {
 }
 
 .feature-number {
-  color: #8d8d95;
+  color: #5d5d66;
   font-family: var(--font-mono), monospace;
   font-size: 0.65rem;
 }
@@ -891,7 +891,7 @@ select:focus {
 
 .legacy-link {
   margin-top: 1.5rem;
-  color: #777780;
+  color: #5d5d66;
   font-size: 0.72rem;
   text-decoration: underline;
   text-underline-offset: 4px;

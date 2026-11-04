@@ -3,7 +3,9 @@ import type { NextConfig } from "next";
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
-  "connect-src 'self'",
+  // PostHog visit analytics (disclosed on /privacy). Without these the
+  // snippet in layout.tsx is blocked and records nothing.
+  "connect-src 'self' https://us.i.posthog.com https://us-assets.i.posthog.com",
   "font-src 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
@@ -12,7 +14,7 @@ const contentSecurityPolicy = [
   "manifest-src 'self'",
   "media-src 'self'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com",
   "style-src 'self' 'unsafe-inline'",
   "worker-src 'self' blob:",
   "upgrade-insecure-requests",
