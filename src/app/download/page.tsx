@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { EXTENSION_SHA256, EXTENSION_VERSION, EXTENSION_ZIP } from "@/lib/extension-release";
+import { COMPANION_SHA256, COMPANION_ZIP, EXTENSION_ID, EXTENSION_SHA256, EXTENSION_VERSION, EXTENSION_ZIP } from "@/lib/extension-release";
 
 export const metadata: Metadata = {
   title: "Download 8020 for Chrome",
@@ -53,6 +53,37 @@ export default function DownloadPage() {
         Export a backup from the library first if you want to be extra safe.
       </p>
 
+      <h2>Optional: AI sorting and chat</h2>
+      <p>
+        Everything above works without AI. To let 8020 sort tabs, grade them
+        against your goals, and answer questions about them, install the
+        small local companion. It needs <a href="https://nodejs.org">Node.js</a>{" "}
+        20 or newer.
+      </p>
+      <p className="download-actions">
+        <a className="text-button" href={COMPANION_ZIP} download>
+          Download the companion <span aria-hidden="true">↓</span>
+        </a>
+      </p>
+      <ol className="download-steps">
+        <li>Unzip it into a folder you will keep.</li>
+        <li>
+          In a terminal inside its <code>server</code> folder, run{" "}
+          <code>node install.js</code>. It registers the companion for your
+          user only, in Chrome, Helium, Chromium, Edge, and Brave. No admin
+          rights needed.
+        </li>
+        <li>
+          Pick a provider: an OpenRouter key in <code>.env.local</code> for Jev
+          sorting, or <a href="https://claude.com/claude-code">Claude Code</a>{" "}
+          signed in for chat. The included README has the details.
+        </li>
+        <li>
+          Reload 8020. The first AI action shows exactly what will be sent
+          before anything leaves your computer.
+        </li>
+      </ol>
+
       <h2>What it can see</h2>
       <p>
         Saved tabs stay in local browser storage on your device. Nothing is
@@ -67,6 +98,16 @@ export default function DownloadPage() {
       </p>
       <p>
         <code className="hash">{EXTENSION_SHA256}</code>
+      </p>
+      <p>
+        SHA-256 of <code>{COMPANION_ZIP.split("/").pop()}</code>:
+      </p>
+      <p>
+        <code className="hash">{COMPANION_SHA256}</code>
+      </p>
+      <p>
+        Once installed, 8020 shows the extension ID <code>{EXTENSION_ID}</code>{" "}
+        on your extensions page.
       </p>
       <p>
         Questions or problems? See <Link href="/support">support</Link>.

@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import test from "node:test";
 import { checkRequest, cleanStrings, resetGuardForTests } from "../src/lib/guard.ts";
-import { EXTENSION_SHA256, EXTENSION_ZIP, INSTALL_URL } from "../src/lib/extension-release.ts";
+import { COMPANION_SHA256, COMPANION_ZIP, EXTENSION_SHA256, EXTENSION_ZIP, INSTALL_URL } from "../src/lib/extension-release.ts";
 
 const h = (ip, origin) => new Headers({ "x-forwarded-for": ip, ...(origin ? { origin } : {}) });
 
@@ -42,4 +42,7 @@ test("the published extension zip exists and matches its advertised hash", () =>
   const file = new URL(`../public${EXTENSION_ZIP}`, import.meta.url);
   assert.ok(existsSync(file), `missing ${EXTENSION_ZIP}`);
   assert.equal(createHash("sha256").update(readFileSync(file)).digest("hex"), EXTENSION_SHA256);
+  const companion = new URL(`../public${COMPANION_ZIP}`, import.meta.url);
+  assert.ok(existsSync(companion), `missing ${COMPANION_ZIP}`);
+  assert.equal(createHash("sha256").update(readFileSync(companion)).digest("hex"), COMPANION_SHA256);
 });
