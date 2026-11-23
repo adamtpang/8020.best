@@ -31,24 +31,24 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "8020 · Your important tabs, first",
-    description: "A local-first Chrome tab manager with collections, S-to-F priorities, and a focused Your 20% queue.",
+    description: "A free, local-first Chrome tab manager. Sort tabs into S to F priorities and keep your 20% in view.",
     url: "https://8020.best",
     siteName: "8020.best",
     type: "website",
     images: [
       {
-        url: "/og.png",
-        width: 1672,
-        height: 941,
-        alt: "8020, your important tabs first",
+        url: "/og.png?v=2",
+        width: 1200,
+        height: 630,
+        alt: "8020: a pile of messy browser tabs sorted into S, A and B priority stacks",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "8020 · Your important tabs, first",
-    description: "Save and prioritize Chrome tabs in a private local library that keeps the vital few visible.",
-    images: ["/og.png"],
+    description: "A free, local-first Chrome tab manager. Sort tabs into S to F priorities and keep your 20% in view.",
+    images: ["/og.png?v=2"],
   },
   other: {
     "ai-summary":
